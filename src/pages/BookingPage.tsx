@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, MapPin, PawPrint, FileText, Car, Building2, CalendarDays } from "lucide-react";
+import AMapPlaceholder from "@/components/AMapPlaceholder";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -45,6 +46,7 @@ const BookingPage = () => {
   const [notes, setNotes] = useState("");
   const [pickupAddress, setPickupAddress] = useState("");
   const [needPickup, setNeedPickup] = useState(false);
+  const [dropoffAddress, setDropoffAddress] = useState("");
   const [activeTab, setActiveTab] = useState<"home" | "store" | "pickup">("home");
 
   return (
@@ -171,30 +173,14 @@ const BookingPage = () => {
         {activeTab === "pickup" && (
           <section className="mb-6 animate-fade-in-up">
             <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
-              <Car className="w-4 h-4 text-primary" /> 接送地址
+              <Car className="w-4 h-4 text-primary" /> 宠物接送
             </h2>
-            <div className="bg-card rounded-xl p-4 card-shadow space-y-3">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">取宠地址</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={pickupAddress}
-                    onChange={(e) => setPickupAddress(e.target.value)}
-                    placeholder="请输入取宠地址（支持高德地图定位）"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all"
-                  />
-                </div>
-              </div>
-              <div className="rounded-lg overflow-hidden border border-border h-40 flex items-center justify-center bg-muted">
-                <div className="text-center text-muted-foreground">
-                  <MapPin className="w-8 h-8 mx-auto mb-2 text-primary/50" />
-                  <p className="text-sm">高德地图定位</p>
-                  <p className="text-xs mt-1">接入高德地图 API 后显示地图</p>
-                </div>
-              </div>
-            </div>
+            <AMapPlaceholder
+              pickupAddress={pickupAddress}
+              onPickupAddressChange={setPickupAddress}
+              dropoffAddress={dropoffAddress}
+              onDropoffAddressChange={setDropoffAddress}
+            />
           </section>
         )}
 
