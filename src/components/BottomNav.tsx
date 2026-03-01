@@ -7,7 +7,7 @@ const BottomNav = () => {
     { path: "/", icon: Home, label: "首页" },
     { path: "/booking", icon: Calendar, label: "预约" },
     { path: "/community", icon: MessageSquare, label: "社区" },
-    { path: "/auth", icon: User, label: "我的" },
+    { path: "/profile", icon: User, label: "我的" },
   ];
 
   return (
