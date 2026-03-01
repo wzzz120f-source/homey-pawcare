@@ -6,9 +6,10 @@ import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Heart, MessageCircle, Image as ImageIcon,
-  Mic, Send, X, Play, Pause, Plus, LogIn,
+  Mic, Send, X, Play, Pause, Plus, LogIn, Hash,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ interface Post {
   user_id: string;
   content: string;
   created_at: string;
+  tags: string[];
   profiles: { username: string; avatar_url: string } | null;
   media: { id: string; media_url: string; media_type: string }[];
   likes_count: number;
@@ -42,16 +44,25 @@ const CommunityPage = () => {
   const [expandedComments, setExpandedComments] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, any[]>>({});
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPosts = async () => {
-    const { data: postsData, error } = await supabase
+    let query = supabase
       .from("posts")
-      .select("id, user_id, content, created_at")
+      .select("id, user_id, content, created_at, tags")
       .order("created_at", { ascending: false })
       .limit(50);
+
+    if (filterTag) {
+      query = query.contains("tags", [filterTag]);
+    }
+
+    const { data: postsData, error } = await query;
 
     if (error || !postsData) {
       setLoading(false);
@@ -70,6 +81,7 @@ const CommunityPage = () => {
 
         return {
           ...post,
+          tags: (post as any).tags || [],
           profiles: profileRes.data,
           media: mediaRes.data || [],
           likes_count: likesRes.count || 0,
@@ -94,7 +106,19 @@ const CommunityPage = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, filterTag]);
+
+  const addTag = () => {
+    const t = tagInput.trim().replace(/^#/, "");
+    if (t && !tags.includes(t) && tags.length < 5) {
+      setTags((prev) => [...prev, t]);
+    }
+    setTagInput("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((t) => t !== tag));
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -159,7 +183,7 @@ const CommunityPage = () => {
     try {
       const { data: post, error } = await supabase
         .from("posts")
-        .insert({ user_id: user.id, content: newContent.trim() })
+        .insert({ user_id: user.id, content: newContent.trim(), tags } as any)
         .select("id")
         .single();
       if (error) throw error;
@@ -185,6 +209,7 @@ const CommunityPage = () => {
       setSelectedImages([]);
       setImagePreviews([]);
       setVoiceFile(null);
+      setTags([]);
       setShowCreate(false);
       fetchPosts();
     } catch (error: any) {
@@ -275,6 +300,16 @@ const CommunityPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto">
+        {/* Filter Tag */}
+        {filterTag && (
+          <div className="px-4 pt-3 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">筛选：</span>
+            <Badge variant="default" className="gap-1 cursor-pointer" onClick={() => setFilterTag(null)}>
+              #{filterTag} <X className="w-3 h-3" />
+            </Badge>
+          </div>
+        )}
+
         {/* Create Post Modal */}
         {showCreate && (
           <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end sm:items-center justify-center">
@@ -293,6 +328,30 @@ const CommunityPage = () => {
                 rows={4}
                 className="w-full p-3 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary resize-none"
               />
+
+              {/* Tags */}
+              <div className="mt-3">
+                <div className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                    placeholder="输入标签后回车添加（最多5个）"
+                    className="text-sm h-9 flex-1"
+                  />
+                  <Button size="sm" variant="secondary" className="h-9 rounded-xl" onClick={addTag}>添加</Button>
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="gap-1 cursor-pointer" onClick={() => removeTag(tag)}>
+                        #{tag} <X className="w-3 h-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
@@ -395,6 +454,22 @@ const CommunityPage = () => {
 
                 {/* Content */}
                 {post.content && <p className="text-sm text-foreground mb-3 leading-relaxed">{post.content}</p>}
+
+                {/* Tags */}
+                {post.tags && post.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {post.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                        onClick={() => setFilterTag(tag)}
+                      >
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {/* Media */}
                 {post.media.length > 0 && (
