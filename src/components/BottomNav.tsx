@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Calendar, MessageSquare, User } from "lucide-react";
+import { Home, ShoppingBag, MessageSquare, User, Headphones } from "lucide-react";
 
 const BottomNav = () => {
   const location = useLocation();
   const tabs = [
     { path: "/", icon: Home, label: "首页" },
-    { path: "/booking", icon: Calendar, label: "预约" },
+    { path: "/shop", icon: ShoppingBag, label: "商城" },
     { path: "/community", icon: MessageSquare, label: "社区" },
+    { path: "/customer-service", icon: Headphones, label: "客服" },
     { path: "/profile", icon: User, label: "我的" },
   ];
 
