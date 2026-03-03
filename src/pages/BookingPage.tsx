@@ -254,7 +254,35 @@ const BookingPage = () => {
 
         {/* Summary & Submit */}
         <div className="sticky bottom-16 bg-background/90 backdrop-blur-md py-4 border-t border-border/50">
-          <Button variant="hero" size="xl" className="w-full">
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            disabled={!selectedPet || !selectedDate || !selectedTime || (activeTab === "home" && !selectedService) || (activeTab === "store" && !selectedStore)}
+            onClick={() => {
+              const petInfo = PET_TYPES.find((p) => p.id === selectedPet);
+              const serviceInfo = SERVICE_TYPES.find((s) => s.id === selectedService);
+              const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
+              const amount = activeTab === "home" ? Number(priceStr) : activeTab === "store" ? 199 : 99;
+
+              navigate("/payment", {
+                state: {
+                  order_type: activeTab,
+                  service_type: selectedService || activeTab,
+                  pet_type: selectedPet,
+                  booking_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined,
+                  booking_time: selectedTime,
+                  store_name: selectedStore || undefined,
+                  pickup_address: pickupAddress || undefined,
+                  dropoff_address: dropoffAddress || undefined,
+                  notes: notes || undefined,
+                  total_amount: amount,
+                  service_label: serviceInfo?.label || (activeTab === "store" ? "门店寄养" : "宠物接送"),
+                  pet_label: petInfo ? `${petInfo.emoji} ${petInfo.label}` : undefined,
+                },
+              });
+            }}
+          >
             确认预约
           </Button>
         </div>

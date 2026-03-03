@@ -193,6 +193,69 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          booking_date: string | null
+          booking_time: string | null
+          created_at: string
+          dropoff_address: string | null
+          id: string
+          notes: string | null
+          order_no: string
+          order_status: string
+          order_type: string
+          payment_method: string | null
+          payment_status: string
+          pet_type: string | null
+          pickup_address: string | null
+          service_type: string | null
+          store_name: string | null
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_date?: string | null
+          booking_time?: string | null
+          created_at?: string
+          dropoff_address?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          order_status?: string
+          order_type?: string
+          payment_method?: string | null
+          payment_status?: string
+          pet_type?: string | null
+          pickup_address?: string | null
+          service_type?: string | null
+          store_name?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_date?: string | null
+          booking_time?: string | null
+          created_at?: string
+          dropoff_address?: string | null
+          id?: string
+          notes?: string | null
+          order_no?: string
+          order_status?: string
+          order_type?: string
+          payment_method?: string | null
+          payment_status?: string
+          pet_type?: string | null
+          pickup_address?: string | null
+          service_type?: string | null
+          store_name?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_media: {
         Row: {
           created_at: string
