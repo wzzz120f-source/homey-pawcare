@@ -122,6 +122,57 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_discount: number | null
+          min_order_amount: number
+          name: string
+          usage_limit: number | null
+          used_count: number
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_order_amount?: number
+          name: string
+          usage_limit?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_order_amount?: number
+          name?: string
+          usage_limit?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string
@@ -448,6 +499,41 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      user_coupons: {
+        Row: {
+          claimed_at: string
+          coupon_id: string
+          id: string
+          is_used: boolean
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          coupon_id: string
+          id?: string
+          is_used?: boolean
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          coupon_id?: string
+          id?: string
+          is_used?: boolean
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
