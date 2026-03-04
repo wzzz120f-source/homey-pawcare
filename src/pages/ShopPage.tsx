@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShieldCheck, MessageCircle, ChevronRight, Search, ShoppingCart, Plus, Minus, Trash2 } from "lucide-react";
+import { ShieldCheck, MessageCircle, ChevronRight, Search, ShoppingCart, Plus, Minus, Trash2, Heart } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,8 @@ const ShopPage = () => {
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
   const [showMerchantDialog, setShowMerchantDialog] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchCategories();
@@ -76,6 +79,16 @@ const ShopPage = () => {
   useEffect(() => {
     fetchProducts();
   }, [selectedCategory, searchQuery]);
+
+  // Fetch user favorites
+  useEffect(() => {
+    if (!user) return;
+    const fetchFavs = async () => {
+      const { data } = await supabase.from("favorites").select("product_id").eq("user_id", user.id);
+      if (data) setFavoriteIds(new Set(data.map((f: any) => f.product_id)));
+    };
+    fetchFavs();
+  }, [user]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from("product_categories").select("*").order("sort_order");
@@ -108,6 +121,28 @@ const ShopPage = () => {
       merchantName: merchant?.name || "未知商家",
     });
     toast({ title: "已加入购物车", description: product.name });
+  };
+
+  const handleToggleFavorite = async (productId: string) => {
+    if (!user) {
+      toast({ title: "请先登录", variant: "destructive" });
+      navigate("/auth");
+      return;
+    }
+    if (favoriteIds.has(productId)) {
+      await supabase.from("favorites").delete().eq("user_id", user.id).eq("product_id", productId);
+      setFavoriteIds((prev) => { const n = new Set(prev); n.delete(productId); return n; });
+      toast({ title: "已取消收藏" });
+    } else {
+      await supabase.from("favorites").insert({ user_id: user.id, product_id: productId });
+      setFavoriteIds((prev) => new Set(prev).add(productId));
+      toast({ title: "已收藏" });
+    }
+  };
+
+  const trackBrowsing = async (productId: string) => {
+    if (!user) return;
+    await supabase.from("browsing_history").insert({ user_id: user.id, product_id: productId });
   };
 
   const handleCheckout = () => {
@@ -212,14 +247,14 @@ const ShopPage = () => {
               <Card key={product.id} className="overflow-hidden">
                 <div
                   className="aspect-square bg-muted flex items-center justify-center text-4xl cursor-pointer"
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => { setSelectedProduct(product); trackBrowsing(product.id); }}
                 >
                   {getEmoji(product.category_id)}
                 </div>
                 <CardContent className="p-2.5">
                   <p
                     className="text-sm font-medium text-foreground line-clamp-2 mb-1 cursor-pointer"
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => { setSelectedProduct(product); trackBrowsing(product.id); }}
                   >
                     {product.name}
                   </p>
@@ -418,6 +453,14 @@ const ShopPage = () => {
                     </Card>
                   )}
                   <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFavorite(selectedProduct.id)}
+                      className="w-11 h-11 rounded-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shrink-0"
+                      aria-label={favoriteIds.has(selectedProduct.id) ? "取消收藏" : "收藏"}
+                    >
+                      <Heart className={cn("w-5 h-5", favoriteIds.has(selectedProduct.id) ? "text-primary fill-primary" : "text-muted-foreground")} />
+                    </button>
                     <Button variant="warm" className="flex-1" onClick={() => { setSelectedProduct(null); handleAddToCart(selectedProduct); }}>
                       <ShoppingCart className="w-4 h-4 mr-1" /> 加入购物车
                     </Button>
