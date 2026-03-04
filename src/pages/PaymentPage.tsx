@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { CartItem } from "@/hooks/useCart";
 
 interface OrderData {
   order_type: string;
@@ -20,6 +22,18 @@ interface OrderData {
   total_amount: number;
   service_label?: string;
   pet_label?: string;
+  cart_items?: CartItem[];
+}
+
+interface Coupon {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  discount_type: string;
+  discount_value: number;
+  min_order_amount: number;
+  max_discount: number | null;
 }
 
 const PAYMENT_METHODS = [
@@ -60,6 +74,11 @@ const PaymentPage = () => {
   const [isPaying, setIsPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
 
+  // Coupon state
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
+  const [showCouponPicker, setShowCouponPicker] = useState(false);
+
   const orderData = location.state as OrderData | null;
 
   useEffect(() => {
@@ -68,7 +87,30 @@ const PaymentPage = () => {
     }
   }, [orderData, navigate]);
 
+  // Fetch available coupons
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      const { data } = await supabase.from("coupons").select("*");
+      if (data) setCoupons(data as Coupon[]);
+    };
+    fetchCoupons();
+  }, []);
+
   if (!orderData) return null;
+
+  const calcDiscount = (coupon: Coupon): number => {
+    if (orderData.total_amount < coupon.min_order_amount) return 0;
+    if (coupon.discount_type === "fixed") return coupon.discount_value;
+    // percent
+    const raw = (orderData.total_amount * coupon.discount_value) / 100;
+    return coupon.max_discount ? Math.min(raw, coupon.max_discount) : raw;
+  };
+
+  const discountAmount = selectedCoupon ? calcDiscount(selectedCoupon) : 0;
+  const finalAmount = Math.max(0, orderData.total_amount - discountAmount);
+
+  const applicableCoupons = coupons.filter((c) => orderData.total_amount >= c.min_order_amount);
+  const inapplicableCoupons = coupons.filter((c) => orderData.total_amount < c.min_order_amount);
 
   const handlePay = async () => {
     if (!user) {
@@ -80,7 +122,6 @@ const PaymentPage = () => {
     setIsPaying(true);
 
     try {
-      // Create the order
       const { error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
@@ -92,7 +133,7 @@ const PaymentPage = () => {
         pickup_address: orderData.pickup_address ?? null,
         dropoff_address: orderData.dropoff_address ?? null,
         notes: orderData.notes ?? null,
-        total_amount: orderData.total_amount,
+        total_amount: finalAmount,
         payment_method: selectedMethod,
         payment_status: "paid",
         order_status: "confirmed",
@@ -100,7 +141,11 @@ const PaymentPage = () => {
 
       if (error) throw error;
 
-      // Simulate payment processing
+      // Clear cart if shop order
+      if (orderData.order_type === "shop") {
+        localStorage.removeItem("pawcare_cart");
+      }
+
       await new Promise((r) => setTimeout(r, 1500));
       setPaySuccess(true);
     } catch (err) {
@@ -120,7 +165,7 @@ const PaymentPage = () => {
           </div>
           <h1 className="text-2xl font-extrabold text-foreground">支付成功</h1>
           <p className="text-muted-foreground text-sm text-center">
-            您的预约订单已确认，我们会尽快为您安排服务
+            您的订单已确认，我们会尽快为您安排服务
           </p>
           <div className="flex gap-3 mt-6 w-full">
             <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
@@ -157,51 +202,89 @@ const PaymentPage = () => {
         <section className="bg-card rounded-2xl p-5 card-shadow">
           <h2 className="font-bold text-foreground mb-3 text-base">订单详情</h2>
           <div className="space-y-2.5 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">服务类型</span>
-              <span className="font-semibold text-foreground">{orderData.service_label || orderData.order_type}</span>
-            </div>
-            {orderData.pet_label && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">宠物类型</span>
-                <span className="font-semibold text-foreground">{orderData.pet_label}</span>
-              </div>
-            )}
-            {orderData.booking_date && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">预约日期</span>
-                <span className="font-semibold text-foreground">{orderData.booking_date}</span>
-              </div>
-            )}
-            {orderData.booking_time && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">预约时段</span>
-                <span className="font-semibold text-foreground">{orderData.booking_time}</span>
-              </div>
-            )}
-            {orderData.store_name && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">门店</span>
-                <span className="font-semibold text-foreground">{orderData.store_name}</span>
-              </div>
-            )}
-            {orderData.pickup_address && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">接宠地址</span>
-                <span className="font-semibold text-foreground truncate max-w-[180px]">{orderData.pickup_address}</span>
-              </div>
-            )}
-            {orderData.notes && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">备注</span>
-                <span className="font-medium text-foreground truncate max-w-[180px]">{orderData.notes}</span>
-              </div>
+            {/* Cart items list */}
+            {orderData.cart_items && orderData.cart_items.length > 0 ? (
+              <>
+                {orderData.cart_items.map((item) => (
+                  <div key={item.id} className="flex justify-between">
+                    <span className="text-muted-foreground truncate max-w-[200px]">{item.name} ×{item.quantity}</span>
+                    <span className="font-semibold text-foreground">¥{(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">服务类型</span>
+                  <span className="font-semibold text-foreground">{orderData.service_label || orderData.order_type}</span>
+                </div>
+                {orderData.pet_label && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">宠物类型</span>
+                    <span className="font-semibold text-foreground">{orderData.pet_label}</span>
+                  </div>
+                )}
+                {orderData.booking_date && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">预约日期</span>
+                    <span className="font-semibold text-foreground">{orderData.booking_date}</span>
+                  </div>
+                )}
+                {orderData.booking_time && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">预约时段</span>
+                    <span className="font-semibold text-foreground">{orderData.booking_time}</span>
+                  </div>
+                )}
+                {orderData.store_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">门店</span>
+                    <span className="font-semibold text-foreground">{orderData.store_name}</span>
+                  </div>
+                )}
+                {orderData.pickup_address && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">接宠地址</span>
+                    <span className="font-semibold text-foreground truncate max-w-[180px]">{orderData.pickup_address}</span>
+                  </div>
+                )}
+                {orderData.notes && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">备注</span>
+                    <span className="font-medium text-foreground truncate max-w-[180px]">{orderData.notes}</span>
+                  </div>
+                )}
+              </>
             )}
             <div className="border-t border-border pt-2.5 mt-2.5 flex justify-between items-center">
-              <span className="font-bold text-foreground">应付金额</span>
-              <span className="text-xl font-extrabold text-primary">¥{orderData.total_amount.toFixed(2)}</span>
+              <span className="text-muted-foreground">商品总额</span>
+              <span className="font-bold text-foreground">¥{orderData.total_amount.toFixed(2)}</span>
             </div>
           </div>
+        </section>
+
+        {/* Coupon Section */}
+        <section className="bg-card rounded-2xl p-5 card-shadow">
+          <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
+            <Tag className="w-4 h-4 text-primary" /> 优惠券
+          </h2>
+          <button
+            type="button"
+            onClick={() => setShowCouponPicker(true)}
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-secondary hover:bg-muted transition-colors min-h-[48px]"
+          >
+            {selectedCoupon ? (
+              <div className="flex items-center gap-2">
+                <span className="text-primary font-bold">-¥{discountAmount.toFixed(2)}</span>
+                <span className="text-sm text-foreground">{selectedCoupon.name}</span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {applicableCoupons.length > 0 ? `${applicableCoupons.length}张可用` : "暂无可用优惠券"}
+              </span>
+            )}
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
         </section>
 
         {/* Payment Method */}
@@ -236,6 +319,24 @@ const PaymentPage = () => {
           </div>
         </section>
 
+        {/* Summary */}
+        {discountAmount > 0 && (
+          <div className="bg-card rounded-2xl p-4 card-shadow space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">商品总额</span>
+              <span className="text-foreground">¥{orderData.total_amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-primary">
+              <span>优惠券抵扣</span>
+              <span className="font-bold">-¥{discountAmount.toFixed(2)}</span>
+            </div>
+            <div className="border-t border-border pt-2 flex justify-between items-center">
+              <span className="font-bold text-foreground">实付金额</span>
+              <span className="text-xl font-extrabold text-primary">¥{finalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Security Note */}
         <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
           <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
@@ -255,10 +356,92 @@ const PaymentPage = () => {
               <Loader2 className="w-5 h-5 animate-spin" /> 支付处理中...
             </>
           ) : (
-            `立即支付 ¥${orderData.total_amount.toFixed(2)}`
+            `立即支付 ¥${finalAmount.toFixed(2)}`
           )}
         </Button>
       </main>
+
+      {/* Coupon Picker Dialog */}
+      <Dialog open={showCouponPicker} onOpenChange={setShowCouponPicker}>
+        <DialogContent className="max-w-md max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>选择优惠券</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {selectedCoupon && (
+              <button
+                type="button"
+                onClick={() => { setSelectedCoupon(null); setShowCouponPicker(false); }}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="w-4 h-4" /> 不使用优惠券
+              </button>
+            )}
+
+            {applicableCoupons.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">可用优惠券</p>
+                <div className="space-y-2">
+                  {applicableCoupons.map((coupon) => {
+                    const discount = calcDiscount(coupon);
+                    return (
+                      <button
+                        key={coupon.id}
+                        type="button"
+                        onClick={() => { setSelectedCoupon(coupon); setShowCouponPicker(false); }}
+                        className={cn(
+                          "w-full text-left p-4 rounded-xl border-2 transition-all",
+                          selectedCoupon?.id === coupon.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-primary font-extrabold text-lg">
+                            {coupon.discount_type === "fixed" ? `¥${coupon.discount_value}` : `${coupon.discount_value}%OFF`}
+                          </span>
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                            省¥{discount.toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-sm text-foreground">{coupon.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {coupon.description} · 满¥{coupon.min_order_amount}可用
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {inapplicableCoupons.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">暂不可用</p>
+                <div className="space-y-2 opacity-50">
+                  {inapplicableCoupons.map((coupon) => (
+                    <div key={coupon.id} className="p-4 rounded-xl border border-border bg-muted/30">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-muted-foreground font-extrabold text-lg">
+                          {coupon.discount_type === "fixed" ? `¥${coupon.discount_value}` : `${coupon.discount_value}%OFF`}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-sm text-muted-foreground">{coupon.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        满¥{coupon.min_order_amount}可用
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {coupons.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">暂无优惠券</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
