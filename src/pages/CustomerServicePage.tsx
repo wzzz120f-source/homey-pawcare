@@ -1,139 +1,120 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, ArrowLeft, Bot } from "lucide-react";
+import { Send, ArrowLeft, Bot, Sparkles, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 interface Message {
-  id: string;
+  role: "user" | "assistant";
   content: string;
-  sender_type: string;
-  created_at: string;
 }
 
-const AUTO_REPLIES: Record<string, string> = {
-  "你好": "您好！欢迎来到宠物商城客服中心，请问有什么可以帮您的？😊",
-  "退款": "关于退款，我们支持7天无理由退换货。请您提供订单号，我们会尽快为您处理。",
-  "发货": "一般情况下，您的订单会在付款后48小时内发货，您可以在订单详情中查看物流信息。",
-  "质量": "我们所有商品均经过严格质检。如您收到的商品有质量问题，请拍照联系我们，我们会第一时间为您处理。",
-};
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`;
 
-const getAutoReply = (content: string): string => {
-  for (const [keyword, reply] of Object.entries(AUTO_REPLIES)) {
-    if (content.includes(keyword)) return reply;
-  }
-  return "感谢您的咨询！客服人员将尽快回复您。您也可以查看我们的常见问题：退款政策、发货时间、商品质量保障等。";
-};
+const QUICK_QUESTIONS = [
+  "退款政策是什么？",
+  "发货需要多久？",
+  "有什么宠物护理建议？",
+  "推荐一些热门商品",
+];
 
 const CustomerServicePage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
+    if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
-
-  useEffect(() => {
-    if (user) initConversation();
-  }, [user]);
-
-  useEffect(() => {
-    if (!conversationId) return;
-    const channel = supabase
-      .channel(`chat-${conversationId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "chat_messages",
-        filter: `conversation_id=eq.${conversationId}`,
-      }, (payload) => {
-        setMessages((prev) => [...prev, payload.new as Message]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [conversationId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const initConversation = async () => {
-    if (!user) return;
-    // Find existing conversation
-    const { data: existing } = await supabase
-      .from("chat_conversations")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    let convId: string;
-    if (existing && existing.length > 0) {
-      convId = existing[0].id;
-    } else {
-      const { data: newConv } = await supabase
-        .from("chat_conversations")
-        .insert({ user_id: user.id })
-        .select("id")
-        .single();
-      if (!newConv) return;
-      convId = newConv.id;
-    }
-    setConversationId(convId);
-
-    // Load existing messages
-    const { data: msgs } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("conversation_id", convId)
-      .order("created_at");
-    if (msgs) setMessages(msgs);
-
-    // Send welcome message if empty
-    if (!msgs || msgs.length === 0) {
-      await supabase.from("chat_messages").insert({
-        conversation_id: convId,
-        sender_id: user.id,
-        sender_type: "system",
-        content: "您好！欢迎来到宠物商城客服中心 🐾\n有任何问题都可以直接发送消息，我们将竭诚为您服务！",
-      });
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!input.trim() || !conversationId || !user || sending) return;
-    setSending(true);
-    const content = input.trim();
+  const sendMessage = async (content?: string) => {
+    const text = (content || input).trim();
+    if (!text || isStreaming) return;
     setInput("");
 
-    await supabase.from("chat_messages").insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      sender_type: "user",
-      content,
-    });
+    const userMsg: Message = { role: "user", content: text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setIsStreaming(true);
 
-    // Auto reply after a short delay
-    setTimeout(async () => {
-      await supabase.from("chat_messages").insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        sender_type: "service",
-        content: getAutoReply(content),
+    let assistantSoFar = "";
+    const upsertAssistant = (chunk: string) => {
+      assistantSoFar += chunk;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant") {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+        }
+        return [...prev, { role: "assistant", content: assistantSoFar }];
       });
-      setSending(false);
-    }, 800);
+    };
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        if (resp.status === 429) toast.error("请求过于频繁，请稍后再试");
+        else if (resp.status === 402) toast.error("AI服务额度不足");
+        else toast.error(errData.error || "AI服务暂时不可用");
+        setIsStreaming(false);
+        return;
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const c = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (c) upsertAssistant(c);
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("连接AI服务失败，请稍后重试");
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   if (authLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
@@ -145,49 +126,79 @@ const CustomerServicePage = () => {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
-          <h1 className="text-base font-bold text-foreground">在线客服</h1>
-          <p className="text-xs text-muted-foreground">通常在 1 分钟内回复</p>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-foreground">爪爪管家 · AI客服</h1>
+            <p className="text-xs text-muted-foreground">智能助手 · 随时为您服务</p>
+          </div>
         </div>
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((msg) => {
-          const isUser = msg.sender_type === "user";
-          const isSystem = msg.sender_type === "system";
+        {messages.length === 0 && (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+              <Bot className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="font-bold text-foreground mb-1">您好！我是爪爪管家 🐾</h2>
+            <p className="text-sm text-muted-foreground">AI智能客服，有任何问题都可以问我~</p>
+          </div>
+        )}
+
+        {messages.map((msg, i) => {
+          const isUser = msg.role === "user";
           return (
-            <div key={msg.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+            <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
               {!isUser && (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2 shrink-0 mt-1">
-                  <Bot className="w-4 h-4 text-primary" />
+                  <Sparkles className="w-4 h-4 text-primary" />
                 </div>
               )}
-              <Card className={`max-w-[75%] ${isUser ? "bg-primary text-primary-foreground" : isSystem ? "bg-muted" : "bg-card"}`}>
+              <Card className={`max-w-[80%] ${isUser ? "bg-primary text-primary-foreground" : "bg-card"}`}>
                 <CardContent className="p-3">
-                  <p className={`text-sm whitespace-pre-wrap ${isUser ? "text-primary-foreground" : "text-foreground"}`}>
-                    {msg.content}
-                  </p>
-                  <p className={`text-[10px] mt-1 ${isUser ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                    {new Date(msg.created_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+                  {isUser ? (
+                    <p className="text-sm whitespace-pre-wrap text-primary-foreground">{msg.content}</p>
+                  ) : (
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
           );
         })}
+
+        {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+          <div className="flex justify-start">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2 shrink-0">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <Card className="bg-card">
+              <CardContent className="p-3 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">思考中...</span>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
-      {/* Quick replies */}
+      {/* Quick Questions */}
       <div className="px-4 pb-1">
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {["退款政策", "发货时间", "质量问题"].map((q) => (
+          {QUICK_QUESTIONS.map((q) => (
             <Button
               key={q}
               variant="outline"
               size="sm"
               className="whitespace-nowrap shrink-0 text-xs rounded-full"
-              onClick={() => { setInput(q); }}
+              onClick={() => sendMessage(q)}
+              disabled={isStreaming}
             >
               {q}
             </Button>
@@ -200,11 +211,12 @@ const CustomerServicePage = () => {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
           placeholder="输入消息..."
           className="flex-1 rounded-full"
+          disabled={isStreaming}
         />
-        <Button size="icon" onClick={sendMessage} disabled={!input.trim() || sending} className="rounded-full shrink-0">
+        <Button size="icon" onClick={() => sendMessage()} disabled={!input.trim() || isStreaming} className="rounded-full shrink-0">
           <Send className="w-4 h-4" />
         </Button>
       </div>

@@ -519,7 +519,11 @@ const ProfilePage = () => {
                   {orders.map((order) => {
                     const status = ORDER_STATUS_MAP[order.order_status] || { label: order.order_status, color: "bg-muted text-muted-foreground" };
                     return (
-                      <div key={order.id} className="bg-card rounded-2xl p-4 card-shadow">
+                      <div
+                        key={order.id}
+                        className="bg-card rounded-2xl p-4 card-shadow cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => navigate(`/order/${order.id}`)}
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs text-muted-foreground font-mono">{order.order_no}</span>
                           <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", status.color)}>{status.label}</span>
