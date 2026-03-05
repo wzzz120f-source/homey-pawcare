@@ -3,9 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Truck, CheckCircle2, Clock, MapPin, CreditCard } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addHours, addMinutes } from "date-fns";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -27,6 +29,13 @@ interface Order {
   notes: string | null;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  content: string;
+  created_at: string;
+}
+
 const STATUS_STEPS = [
   { key: "created", label: "订单创建", icon: Package },
   { key: "confirmed", label: "已确认", icon: CheckCircle2 },
@@ -40,13 +49,34 @@ const PAYMENT_LABEL: Record<string, string> = {
   bankcard: "银行卡支付",
 };
 
-const LOGISTICS_MOCK = [
-  { time: "2026-03-05 14:30", text: "服务已完成，感谢您的使用 🎉" },
-  { time: "2026-03-05 10:00", text: "技师已到达，服务进行中" },
-  { time: "2026-03-05 09:30", text: "技师正在前往您的位置" },
-  { time: "2026-03-04 16:00", text: "订单已确认，已为您分配技师" },
-  { time: "2026-03-04 15:30", text: "订单创建成功，等待确认" },
-];
+// Generate dynamic logistics based on order status and timestamps
+const generateLogistics = (order: Order) => {
+  const created = new Date(order.created_at);
+  const updated = new Date(order.updated_at);
+  const steps: { time: string; text: string }[] = [];
+
+  // Always show creation
+  steps.push({ time: format(created, "yyyy-MM-dd HH:mm"), text: "订单创建成功，等待确认 📋" });
+
+  const statusOrder = ["created", "confirmed", "in_progress", "completed"];
+  const currentIdx = statusOrder.indexOf(order.order_status);
+
+  if (currentIdx >= 1) {
+    const t = addMinutes(created, 15 + Math.floor(Math.random() * 30));
+    steps.push({ time: format(t, "yyyy-MM-dd HH:mm"), text: "订单已确认，已为您分配专属技师 ✅" });
+  }
+  if (currentIdx >= 2) {
+    const t = addHours(created, 1 + Math.floor(Math.random() * 2));
+    steps.push({ time: format(t, "yyyy-MM-dd HH:mm"), text: "技师正在前往您的位置 🚗" });
+    const t2 = addMinutes(t, 20);
+    steps.push({ time: format(t2, "yyyy-MM-dd HH:mm"), text: "技师已到达，服务进行中 🐾" });
+  }
+  if (currentIdx >= 3) {
+    steps.push({ time: format(updated, "yyyy-MM-dd HH:mm"), text: "服务已完成，感谢您的使用 🎉" });
+  }
+
+  return steps.reverse(); // newest first
+};
 
 const OrderDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +84,11 @@ const OrderDetailPage = () => {
   const { user, loading: authLoading } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [review, setReview] = useState<Review | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -61,18 +96,38 @@ const OrderDetailPage = () => {
 
   useEffect(() => {
     if (!user || !id) return;
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", id)
-        .eq("user_id", user.id)
-        .single();
-      if (data) setOrder(data as Order);
+    const fetchData = async () => {
+      const [orderRes, reviewRes] = await Promise.all([
+        supabase.from("orders").select("*").eq("id", id).eq("user_id", user.id).single(),
+        supabase.from("order_reviews" as any).select("*").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
+      ]);
+      if (orderRes.data) setOrder(orderRes.data as Order);
+      if (reviewRes.data) setReview(reviewRes.data as any);
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [user, id]);
+
+  const handleSubmitReview = async () => {
+    if (!user || !order) return;
+    setSubmittingReview(true);
+    try {
+      const { data, error } = await supabase.from("order_reviews" as any).insert({
+        order_id: order.id,
+        user_id: user.id,
+        rating: reviewRating,
+        content: reviewContent.trim(),
+      } as any).select().single();
+      if (error) throw error;
+      setReview(data as any);
+      setShowReviewForm(false);
+      toast.success("评价提交成功！");
+    } catch (err: any) {
+      toast.error(err.message || "提交失败");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -93,16 +148,13 @@ const OrderDetailPage = () => {
 
   const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === order.order_status);
   const activeStep = currentStepIndex === -1 ? 0 : currentStepIndex;
+  const logistics = generateLogistics(order);
 
   return (
     <div className="min-h-screen bg-background pb-8">
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
+          <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <h1 className="font-extrabold text-lg text-foreground">订单详情</h1>
@@ -119,24 +171,12 @@ const OrderDetailPage = () => {
               return (
                 <div key={step.key} className="flex flex-col items-center flex-1 relative">
                   {i > 0 && (
-                    <div
-                      className={cn(
-                        "absolute top-4 right-1/2 w-full h-0.5 -z-10",
-                        i <= activeStep ? "bg-primary" : "bg-border"
-                      )}
-                    />
+                    <div className={cn("absolute top-4 right-1/2 w-full h-0.5 -z-10", i <= activeStep ? "bg-primary" : "bg-border")} />
                   )}
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center z-10",
-                      isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                    )}
-                  >
+                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center z-10", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                     <StepIcon className="w-4 h-4" />
                   </div>
-                  <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>
-                    {step.label}
-                  </span>
+                  <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>{step.label}</span>
                 </div>
               );
             })}
@@ -178,7 +218,6 @@ const OrderDetailPage = () => {
           </div>
         </section>
 
-        {/* Notes */}
         {order.notes && (
           <section className="bg-card rounded-2xl p-5 card-shadow">
             <h2 className="font-bold text-foreground text-base mb-2">备注</h2>
@@ -192,14 +231,11 @@ const OrderDetailPage = () => {
             <Truck className="w-4 h-4 text-primary" /> 服务进度
           </h2>
           <div className="space-y-0">
-            {LOGISTICS_MOCK.map((item, i) => (
+            {logistics.map((item, i) => (
               <div key={i} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <div className={cn(
-                    "w-2.5 h-2.5 rounded-full shrink-0 mt-1.5",
-                    i === 0 ? "bg-primary" : "bg-border"
-                  )} />
-                  {i < LOGISTICS_MOCK.length - 1 && <div className="w-px flex-1 bg-border my-1" />}
+                  <div className={cn("w-2.5 h-2.5 rounded-full shrink-0 mt-1.5", i === 0 ? "bg-primary" : "bg-border")} />
+                  {i < logistics.length - 1 && <div className="w-px flex-1 bg-border my-1" />}
                 </div>
                 <div className="pb-4">
                   <p className={cn("text-sm", i === 0 ? "text-foreground font-semibold" : "text-muted-foreground")}>{item.text}</p>
@@ -210,14 +246,60 @@ const OrderDetailPage = () => {
           </div>
         </section>
 
+        {/* Review Section */}
+        <section className="bg-card rounded-2xl p-5 card-shadow">
+          <h2 className="font-bold text-foreground text-base flex items-center gap-2 mb-3">
+            <MessageSquare className="w-4 h-4 text-primary" /> 订单评价
+          </h2>
+          {review ? (
+            <div>
+              <div className="flex items-center gap-1 mb-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} className={cn("w-5 h-5", s <= review.rating ? "text-amber-400 fill-amber-400" : "text-border")} />
+                ))}
+                <span className="text-xs text-muted-foreground ml-2">{format(new Date(review.created_at), "yyyy-MM-dd")}</span>
+              </div>
+              {review.content && <p className="text-sm text-foreground">{review.content}</p>}
+            </div>
+          ) : order.order_status === "completed" || order.payment_status === "paid" ? (
+            showReviewForm ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button key={s} type="button" onClick={() => setReviewRating(s)} className="p-0.5">
+                      <Star className={cn("w-7 h-7 transition-colors", s <= reviewRating ? "text-amber-400 fill-amber-400" : "text-border hover:text-amber-300")} />
+                    </button>
+                  ))}
+                  <span className="text-sm text-muted-foreground ml-2">{reviewRating}分</span>
+                </div>
+                <Textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  placeholder="分享您的服务体验..."
+                  rows={3}
+                  maxLength={500}
+                />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
+                  <Button variant="hero" size="sm" className="flex-1" onClick={handleSubmitReview} disabled={submittingReview}>
+                    {submittingReview ? "提交中..." : "提交评价"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="warm" size="sm" onClick={() => setShowReviewForm(true)} className="w-full">
+                <Star className="w-4 h-4 mr-1" /> 写评价
+              </Button>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">订单完成后可评价</p>
+          )}
+        </section>
+
         {/* Actions */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => navigate("/customer-service")}>
-            联系客服
-          </Button>
-          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>
-            返回订单列表
-          </Button>
+          <Button variant="outline" className="flex-1" onClick={() => navigate("/customer-service")}>联系客服</Button>
+          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>返回订单列表</Button>
         </div>
       </main>
     </div>

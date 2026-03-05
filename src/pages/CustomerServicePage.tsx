@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, ArrowLeft, Bot, Sparkles, Loader2 } from "lucide-react";
+import { Send, ArrowLeft, Bot, Sparkles, Loader2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -11,6 +12,13 @@ import { toast } from "sonner";
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+interface DbMessage {
+  id: string;
+  content: string;
+  sender_type: string;
+  created_at: string;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`;
@@ -28,15 +36,83 @@ const CustomerServicePage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
+  // Load conversation history
+  useEffect(() => {
+    if (!user) return;
+    const loadHistory = async () => {
+      // Find or create conversation
+      const { data: existing } = await supabase
+        .from("chat_conversations")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let convId: string;
+      if (existing && existing.length > 0) {
+        convId = existing[0].id;
+      } else {
+        const { data: newConv } = await supabase
+          .from("chat_conversations")
+          .insert({ user_id: user.id })
+          .select("id")
+          .single();
+        if (!newConv) { setLoadingHistory(false); return; }
+        convId = newConv.id;
+      }
+      setConversationId(convId);
+
+      // Load messages
+      const { data: msgs } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("conversation_id", convId)
+        .order("created_at");
+
+      if (msgs && msgs.length > 0) {
+        const restored: Message[] = msgs
+          .filter((m: DbMessage) => m.sender_type === "user" || m.sender_type === "assistant")
+          .map((m: DbMessage) => ({
+            role: m.sender_type as "user" | "assistant",
+            content: m.content,
+          }));
+        setMessages(restored);
+      }
+      setLoadingHistory(false);
+    };
+    loadHistory();
+  }, [user]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  const persistMessage = async (role: "user" | "assistant", content: string) => {
+    if (!conversationId || !user) return;
+    await supabase.from("chat_messages").insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      sender_type: role,
+      content,
+    });
+  };
+
+  const handleClearHistory = async () => {
+    if (!conversationId || !user) return;
+    // Delete messages from DB
+    await supabase.from("chat_messages").delete().eq("conversation_id", conversationId);
+    setMessages([]);
+    toast.success("聊天记录已清空");
+  };
 
   const sendMessage = async (content?: string) => {
     const text = (content || input).trim();
@@ -47,6 +123,9 @@ const CustomerServicePage = () => {
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setIsStreaming(true);
+
+    // Persist user message
+    await persistMessage("user", text);
 
     let assistantSoFar = "";
     const upsertAssistant = (chunk: string) => {
@@ -109,6 +188,11 @@ const CustomerServicePage = () => {
           }
         }
       }
+
+      // Persist assistant response
+      if (assistantSoFar) {
+        await persistMessage("assistant", assistantSoFar);
+      }
     } catch (e) {
       console.error(e);
       toast.error("连接AI服务失败，请稍后重试");
@@ -117,7 +201,16 @@ const CustomerServicePage = () => {
     }
   };
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
+  if (authLoading || loadingHistory) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-muted-foreground">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="text-sm">加载中...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -126,7 +219,7 @@ const CustomerServicePage = () => {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
@@ -135,6 +228,16 @@ const CustomerServicePage = () => {
             <p className="text-xs text-muted-foreground">智能助手 · 随时为您服务</p>
           </div>
         </div>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClearHistory}
+            className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
+            title="清空聊天记录"
+          >
+            <Trash2 className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Messages */}
