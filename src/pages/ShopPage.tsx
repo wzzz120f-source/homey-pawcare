@@ -247,14 +247,14 @@ const ShopPage = () => {
               <Card key={product.id} className="overflow-hidden">
                 <div
                   className="aspect-square bg-muted flex items-center justify-center text-4xl cursor-pointer"
-                  onClick={() => { setSelectedProduct(product); trackBrowsing(product.id); }}
+                  onClick={() => { navigate(`/product/${product.id}`); trackBrowsing(product.id); }}
                 >
                   {getEmoji(product.category_id)}
                 </div>
                 <CardContent className="p-2.5">
                   <p
                     className="text-sm font-medium text-foreground line-clamp-2 mb-1 cursor-pointer"
-                    onClick={() => { setSelectedProduct(product); trackBrowsing(product.id); }}
+                    onClick={() => { navigate(`/product/${product.id}`); trackBrowsing(product.id); }}
                   >
                     {product.name}
                   </p>
