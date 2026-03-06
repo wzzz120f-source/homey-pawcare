@@ -12,6 +12,7 @@ import ShopPage from "./pages/ShopPage";
 import CustomerServicePage from "./pages/CustomerServicePage";
 import PaymentPage from "./pages/PaymentPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/order/:id" element={<OrderDetailPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

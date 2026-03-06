@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, MapPin, PawPrint, FileText, Car, Building2, CalendarDays } from "lucide-react";
-import AMapPlaceholder from "@/components/AMapPlaceholder";
+import AMapReal from "@/components/AMapReal";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -170,7 +170,7 @@ const BookingPage = () => {
             <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
               <Car className="w-4 h-4 text-primary" aria-hidden="true" /> 宠物接送
             </h2>
-            <AMapPlaceholder
+            <AMapReal
               pickupAddress={pickupAddress}
               onPickupAddressChange={setPickupAddress}
               dropoffAddress={dropoffAddress}
