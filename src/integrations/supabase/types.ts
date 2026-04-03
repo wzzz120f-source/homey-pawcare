@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      banners: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       browsing_history: {
         Row: {
           id: string
@@ -231,6 +261,53 @@ export type Database = {
           },
         ]
       }
+      flash_sales: {
+        Row: {
+          created_at: string
+          ends_at: string
+          flash_price: number
+          id: string
+          is_active: boolean
+          original_price: number
+          product_id: string
+          sold_count: number
+          starts_at: string
+          stock: number
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          flash_price: number
+          id?: string
+          is_active?: boolean
+          original_price: number
+          product_id: string
+          sold_count?: number
+          starts_at?: string
+          stock?: number
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          flash_price?: number
+          id?: string
+          is_active?: boolean
+          original_price?: number
+          product_id?: string
+          sold_count?: number
+          starts_at?: string
+          stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -256,6 +333,53 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_appeals: {
+        Row: {
+          contact_info: string | null
+          created_at: string
+          description: string
+          id: string
+          order_id: string | null
+          reason: string
+          reply: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_info?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          order_id?: string | null
+          reason: string
+          reply?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_info?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          order_id?: string | null
+          reason?: string
+          reply?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_appeals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -334,6 +458,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      order_reviews: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          order_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          rating?: number
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
@@ -637,6 +796,38 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      review_media: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          media_url: string
+          review_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url: string
+          review_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_media_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "order_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_coupons: {
         Row: {
