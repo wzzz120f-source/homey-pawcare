@@ -303,7 +303,20 @@ const OrderDetailPage = () => {
                 ))}
                 <span className="text-xs text-muted-foreground ml-2">{format(new Date(review.created_at), "yyyy-MM-dd")}</span>
               </div>
-              {review.content && <p className="text-sm text-foreground">{review.content}</p>}
+              {review.content && <p className="text-sm text-foreground mb-2">{review.content}</p>}
+              {review.media && review.media.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {review.media.map((m) => (
+                    <div key={m.id} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative">
+                      {m.media_type === "video" ? (
+                        <video src={m.media_url} className="w-full h-full object-cover" controls />
+                      ) : (
+                        <img src={m.media_url} alt="评价图片" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : order.order_status === "completed" || order.payment_status === "paid" ? (
             showReviewForm ? (
@@ -323,6 +336,29 @@ const OrderDetailPage = () => {
                   rows={3}
                   maxLength={500}
                 />
+                <div>
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileSelect} />
+                  <div className="flex gap-2 flex-wrap">
+                    {mediaPreviews.map((p, i) => (
+                      <div key={i} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative group">
+                        {p.type === "video" ? (
+                          <video src={p.url} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={p.url} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <button type="button" onClick={() => removeMedia(i)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-foreground/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3 text-primary-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                    {mediaPreviews.length < 9 && (
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors">
+                        <ImagePlus className="w-5 h-5" />
+                        <span className="text-[10px] mt-0.5">图片/视频</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
                   <Button variant="hero" size="sm" className="flex-1" onClick={handleSubmitReview} disabled={submittingReview}>
@@ -342,8 +378,11 @@ const OrderDetailPage = () => {
 
         {/* Actions */}
         <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => navigate("/merchant-appeal")}>
+            <AlertTriangle className="w-4 h-4 mr-1" /> 商家申诉
+          </Button>
           <Button variant="outline" className="flex-1" onClick={() => navigate("/customer-service")}>联系客服</Button>
-          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>返回订单列表</Button>
+          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>返回</Button>
         </div>
       </main>
     </div>
