@@ -112,6 +112,26 @@ const OrderDetailPage = () => {
     fetchData();
   }, [user, id]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (mediaFiles.length + files.length > 9) {
+      toast.error("最多上传9张图片/视频");
+      return;
+    }
+    const newPreviews = files.map((f) => ({
+      url: URL.createObjectURL(f),
+      type: f.type.startsWith("video") ? "video" : "image",
+    }));
+    setMediaFiles((prev) => [...prev, ...files]);
+    setMediaPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeMedia = (idx: number) => {
+    URL.revokeObjectURL(mediaPreviews[idx].url);
+    setMediaFiles((prev) => prev.filter((_, i) => i !== idx));
+    setMediaPreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmitReview = async () => {
     if (!user || !order) return;
     setSubmittingReview(true);
@@ -123,8 +143,28 @@ const OrderDetailPage = () => {
         content: reviewContent.trim(),
       } as any).select().single();
       if (error) throw error;
-      setReview(data as any);
+
+      // Upload media files
+      const mediaResults: { id: string; media_url: string; media_type: string }[] = [];
+      for (const file of mediaFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${(data as any).id}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("review-media").upload(path, file);
+        if (uploadError) continue;
+        const { data: urlData } = supabase.storage.from("review-media").getPublicUrl(path);
+        const mediaType = file.type.startsWith("video") ? "video" : "image";
+        const { data: mediaRow } = await (supabase.from("review_media") as any).insert({
+          review_id: (data as any).id,
+          media_url: urlData.publicUrl,
+          media_type: mediaType,
+        }).select().single();
+        if (mediaRow) mediaResults.push(mediaRow as any);
+      }
+
+      setReview({ ...(data as any), media: mediaResults });
       setShowReviewForm(false);
+      setMediaFiles([]);
+      setMediaPreviews([]);
       toast.success("评价提交成功！");
     } catch (err: any) {
       toast.error(err.message || "提交失败");
