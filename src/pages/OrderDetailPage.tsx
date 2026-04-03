@@ -103,7 +103,7 @@ const OrderDetailPage = () => {
     const fetchData = async () => {
       const [orderRes, reviewRes] = await Promise.all([
         supabase.from("orders").select("*").eq("id", id).eq("user_id", user.id).single(),
-        supabase.from("order_reviews" as any).select("*").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
+        supabase.from("order_reviews" as any).select("*, media:review_media(id, media_url, media_type)").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
       ]);
       if (orderRes.data) setOrder(orderRes.data as Order);
       if (reviewRes.data) setReview(reviewRes.data as any);
