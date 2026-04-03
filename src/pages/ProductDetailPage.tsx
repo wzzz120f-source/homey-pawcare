@@ -125,7 +125,7 @@ const ProductDetailPage = () => {
       if (merchantRes.data) setMerchant(merchantRes.data as any);
       if (reviewRes.data) setReviews((reviewRes.data as any[]).slice(0, 5));
       if (skuRes.data && (skuRes.data as any[]).length > 0) {
-        const skuList = skuRes.data as ProductSku[];
+        const skuList = skuRes.data as unknown as ProductSku[];
         setSkus(skuList);
         setSelectedSku(skuList[0]); // default select first SKU
       }
