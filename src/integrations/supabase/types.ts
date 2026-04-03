@@ -492,6 +492,53 @@ export type Database = {
           },
         ]
       }
+      product_skus: {
+        Row: {
+          attributes: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          original_price: number | null
+          price: number
+          product_id: string
+          sort_order: number
+          stock: number
+        }
+        Insert: {
+          attributes?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          original_price?: number | null
+          price: number
+          product_id: string
+          sort_order?: number
+          stock?: number
+        }
+        Update: {
+          attributes?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          original_price?: number | null
+          price?: number
+          product_id?: string
+          sort_order?: number
+          stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_skus_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand: string | null
