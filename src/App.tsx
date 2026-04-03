@@ -16,6 +16,7 @@ const CustomerServicePage = lazy(() => import("./pages/CustomerServicePage"));
 const PaymentPage = lazy(() => import("./pages/PaymentPage"));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
 const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
+const MerchantAppealPage = lazy(() => import("./pages/MerchantAppealPage"));
 
 const queryClient = new QueryClient();
 
