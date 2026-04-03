@@ -17,6 +17,8 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 import heroBanner from "@/assets/hero-banner.jpg";
+import BannerCarousel from "@/components/BannerCarousel";
+import FlashSaleSection from "@/components/FlashSaleSection";
 
 interface RecentOrder {
   id: string;
@@ -157,6 +159,9 @@ const Index = () => {
           </div>
         </section>
 
+        {/* Banner Carousel */}
+        <BannerCarousel />
+
         {/* CTA */}
         <div className="px-4 mt-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
           <Button variant="hero" size="xl" className="w-full gap-2" onClick={() => navigate("/booking")}>
@@ -203,6 +208,9 @@ const Index = () => {
             </div>
           </section>
         )}
+
+        {/* Flash Sales */}
+        <FlashSaleSection />
 
         {/* Popular Services */}
         <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "0.2s" }} aria-label="热门服务">

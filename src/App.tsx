@@ -16,6 +16,7 @@ const CustomerServicePage = lazy(() => import("./pages/CustomerServicePage"));
 const PaymentPage = lazy(() => import("./pages/PaymentPage"));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
 const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
+const MerchantAppealPage = lazy(() => import("./pages/MerchantAppealPage"));
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/order/:id" element={<OrderDetailPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/merchant-appeal" element={<MerchantAppealPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

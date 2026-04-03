@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare } from "lucide-react";
+import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, ImagePlus, X, Play, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ interface Review {
   rating: number;
   content: string;
   created_at: string;
+  media?: { id: string; media_url: string; media_type: string }[];
 }
 
 const STATUS_STEPS = [
@@ -89,6 +90,9 @@ const OrderDetailPage = () => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -99,7 +103,7 @@ const OrderDetailPage = () => {
     const fetchData = async () => {
       const [orderRes, reviewRes] = await Promise.all([
         supabase.from("orders").select("*").eq("id", id).eq("user_id", user.id).single(),
-        supabase.from("order_reviews" as any).select("*").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
+        supabase.from("order_reviews" as any).select("*, media:review_media(id, media_url, media_type)").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
       ]);
       if (orderRes.data) setOrder(orderRes.data as Order);
       if (reviewRes.data) setReview(reviewRes.data as any);
@@ -107,6 +111,26 @@ const OrderDetailPage = () => {
     };
     fetchData();
   }, [user, id]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (mediaFiles.length + files.length > 9) {
+      toast.error("最多上传9张图片/视频");
+      return;
+    }
+    const newPreviews = files.map((f) => ({
+      url: URL.createObjectURL(f),
+      type: f.type.startsWith("video") ? "video" : "image",
+    }));
+    setMediaFiles((prev) => [...prev, ...files]);
+    setMediaPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeMedia = (idx: number) => {
+    URL.revokeObjectURL(mediaPreviews[idx].url);
+    setMediaFiles((prev) => prev.filter((_, i) => i !== idx));
+    setMediaPreviews((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleSubmitReview = async () => {
     if (!user || !order) return;
@@ -119,8 +143,28 @@ const OrderDetailPage = () => {
         content: reviewContent.trim(),
       } as any).select().single();
       if (error) throw error;
-      setReview(data as any);
+
+      // Upload media files
+      const mediaResults: { id: string; media_url: string; media_type: string }[] = [];
+      for (const file of mediaFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${(data as any).id}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("review-media").upload(path, file);
+        if (uploadError) continue;
+        const { data: urlData } = supabase.storage.from("review-media").getPublicUrl(path);
+        const mediaType = file.type.startsWith("video") ? "video" : "image";
+        const { data: mediaRow } = await (supabase.from("review_media") as any).insert({
+          review_id: (data as any).id,
+          media_url: urlData.publicUrl,
+          media_type: mediaType,
+        }).select().single();
+        if (mediaRow) mediaResults.push(mediaRow as any);
+      }
+
+      setReview({ ...(data as any), media: mediaResults });
       setShowReviewForm(false);
+      setMediaFiles([]);
+      setMediaPreviews([]);
       toast.success("评价提交成功！");
     } catch (err: any) {
       toast.error(err.message || "提交失败");
@@ -259,7 +303,20 @@ const OrderDetailPage = () => {
                 ))}
                 <span className="text-xs text-muted-foreground ml-2">{format(new Date(review.created_at), "yyyy-MM-dd")}</span>
               </div>
-              {review.content && <p className="text-sm text-foreground">{review.content}</p>}
+              {review.content && <p className="text-sm text-foreground mb-2">{review.content}</p>}
+              {review.media && review.media.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {review.media.map((m) => (
+                    <div key={m.id} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative">
+                      {m.media_type === "video" ? (
+                        <video src={m.media_url} className="w-full h-full object-cover" controls />
+                      ) : (
+                        <img src={m.media_url} alt="评价图片" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : order.order_status === "completed" || order.payment_status === "paid" ? (
             showReviewForm ? (
@@ -279,6 +336,29 @@ const OrderDetailPage = () => {
                   rows={3}
                   maxLength={500}
                 />
+                <div>
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileSelect} />
+                  <div className="flex gap-2 flex-wrap">
+                    {mediaPreviews.map((p, i) => (
+                      <div key={i} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative group">
+                        {p.type === "video" ? (
+                          <video src={p.url} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={p.url} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <button type="button" onClick={() => removeMedia(i)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-foreground/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3 text-primary-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                    {mediaPreviews.length < 9 && (
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors">
+                        <ImagePlus className="w-5 h-5" />
+                        <span className="text-[10px] mt-0.5">图片/视频</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
                   <Button variant="hero" size="sm" className="flex-1" onClick={handleSubmitReview} disabled={submittingReview}>
@@ -298,8 +378,11 @@ const OrderDetailPage = () => {
 
         {/* Actions */}
         <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => navigate("/merchant-appeal")}>
+            <AlertTriangle className="w-4 h-4 mr-1" /> 商家申诉
+          </Button>
           <Button variant="outline" className="flex-1" onClick={() => navigate("/customer-service")}>联系客服</Button>
-          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>返回订单列表</Button>
+          <Button variant="hero" className="flex-1" onClick={() => navigate("/profile")}>返回</Button>
         </div>
       </main>
     </div>
