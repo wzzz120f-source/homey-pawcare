@@ -120,7 +120,7 @@ const ProductDetailPage = () => {
       const [merchantRes, reviewRes, skuRes] = await Promise.all([
         supabase.from("merchants").select("id, name, is_verified, description").eq("id", p.merchant_id).single(),
         supabase.from("order_reviews" as any).select("*").limit(10),
-        supabase.from("product_skus" as any).select("*").eq("product_id", id).order("sort_order", { ascending: true }),
+        supabase.from("product_skus" as any).select("*").eq("product_id", id).order("sort_order" as any, { ascending: true }),
       ]);
       if (merchantRes.data) setMerchant(merchantRes.data as any);
       if (reviewRes.data) setReviews((reviewRes.data as any[]).slice(0, 5));
