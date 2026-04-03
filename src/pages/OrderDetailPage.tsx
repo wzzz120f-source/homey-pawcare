@@ -34,6 +34,7 @@ interface Review {
   rating: number;
   content: string;
   created_at: string;
+  media?: { id: string; media_url: string; media_type: string }[];
 }
 
 const STATUS_STEPS = [
