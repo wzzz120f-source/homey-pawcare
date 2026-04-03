@@ -53,6 +53,46 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "已完成",
 };
 
+/* ── Skeleton Placeholders ── */
+const ServiceSkeleton = () => (
+  <div className="flex-shrink-0 w-40 space-y-2">
+    <Skeleton className="w-40 h-28 rounded-2xl" />
+    <Skeleton className="h-4 w-24" />
+    <Skeleton className="h-3 w-16" />
+  </div>
+);
+
+const ProductSkeleton = () => (
+  <div className="shrink-0 w-36 space-y-2">
+    <Skeleton className="aspect-square w-36 rounded-t-xl" />
+    <div className="px-1 space-y-1.5">
+      <Skeleton className="h-3 w-28" />
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="h-3 w-12" />
+    </div>
+  </div>
+);
+
+const TechnicianSkeleton = () => <Skeleton className="h-[76px] rounded-2xl" />;
+
+const OrderSkeleton = () => (
+  <Card>
+    <CardContent className="p-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-10 h-10 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+      <div className="space-y-1.5 flex flex-col items-end">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-4 w-14 rounded-full" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
 const Index = () => {
   const navigate = useNavigate();
   const { data: services, isLoading: loadingServices } = useServices();
@@ -60,26 +100,34 @@ const Index = () => {
   const { user } = useAuth();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
-    // Fetch recommended products (top sellers)
     supabase
       .from("products")
       .select("id, name, price, original_price, sales_count, category_id, cover_image")
       .order("sales_count", { ascending: false })
       .limit(6)
-      .then(({ data }) => { if (data) setRecommended(data as any); });
+      .then(({ data }) => {
+        if (data) setRecommended(data as any);
+        setLoadingProducts(false);
+      });
   }, []);
 
   useEffect(() => {
     if (!user) { setRecentOrders([]); return; }
+    setLoadingOrders(true);
     supabase
       .from("orders")
       .select("id, order_no, service_type, order_status, total_amount, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(3)
-      .then(({ data }) => { if (data) setRecentOrders(data as RecentOrder[]); });
+      .then(({ data }) => {
+        if (data) setRecentOrders(data as RecentOrder[]);
+        setLoadingOrders(false);
+      });
   }, [user]);
 
   return (
@@ -118,7 +166,7 @@ const Index = () => {
         </div>
 
         {/* Recent Orders */}
-        {recentOrders.length > 0 && (
+        {(loadingOrders || recentOrders.length > 0) && (
           <section className="mt-6 px-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }} aria-label="最近订单">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-extrabold text-foreground">📦 最近订单</h2>
@@ -127,29 +175,31 @@ const Index = () => {
               </button>
             </div>
             <div className="space-y-2">
-              {recentOrders.map((o) => (
-                <Card key={o.id} className="cursor-pointer hover:card-shadow-hover transition-shadow" onClick={() => navigate(`/order/${o.id}`)}>
-                  <CardContent className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Package className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{o.service_type || "服务订单"}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(o.created_at), { addSuffix: true, locale: zhCN })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-primary">¥{Number(o.total_amount).toFixed(0)}</p>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {STATUS_LABEL[o.order_status] || o.order_status}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {loadingOrders
+                ? Array.from({ length: 2 }).map((_, i) => <OrderSkeleton key={i} />)
+                : recentOrders.map((o) => (
+                    <Card key={o.id} className="cursor-pointer hover:card-shadow-hover transition-shadow" onClick={() => navigate(`/order/${o.id}`)}>
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{o.service_type || "服务订单"}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatDistanceToNow(new Date(o.created_at), { addSuffix: true, locale: zhCN })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-primary">¥{Number(o.total_amount).toFixed(0)}</p>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {STATUS_LABEL[o.order_status] || o.order_status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
             </div>
           </section>
         )}
@@ -164,47 +214,47 @@ const Index = () => {
           </div>
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none" role="list" style={{ WebkitOverflowScrolling: "touch" }}>
             {loadingServices
-              ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="flex-shrink-0 w-40 h-[180px] rounded-2xl" />)
+              ? Array.from({ length: 4 }).map((_, i) => <ServiceSkeleton key={i} />)
               : services?.map((s) => <ServiceCard key={s.id} {...s} onClick={() => navigate("/booking")} />)}
           </div>
         </section>
 
         {/* Recommended Products */}
-        {recommended.length > 0 && (
-          <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }} aria-label="推荐商品">
-            <div className="flex items-center justify-between px-5 mb-3">
-              <h2 className="text-lg font-extrabold text-foreground">🛍️ 推荐好物</h2>
-              <button type="button" className="flex items-center gap-0.5 text-sm text-muted-foreground hover:text-primary transition-colors min-h-[44px] min-w-[44px] justify-end" onClick={() => navigate("/shop")}>
-                逛商城 <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
-              {recommended.map((p) => (
-                <Card
-                  key={p.id}
-                  className="shrink-0 w-36 overflow-hidden cursor-pointer hover:card-shadow-hover transition-shadow"
-                  onClick={() => navigate(`/product/${p.id}`)}
-                >
-                  <div className="aspect-square bg-muted flex items-center justify-center text-4xl">
-                    {p.cover_image ? (
-                      <img src={p.cover_image} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      getEmoji(p.category_id)
-                    )}
-                  </div>
-                  <CardContent className="p-2">
-                    <p className="text-xs font-medium text-foreground line-clamp-2 mb-1">{p.name}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-primary font-bold text-sm">¥{p.price}</span>
-                      {p.original_price && <span className="text-muted-foreground text-[10px] line-through">¥{p.original_price}</span>}
+        <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }} aria-label="推荐商品">
+          <div className="flex items-center justify-between px-5 mb-3">
+            <h2 className="text-lg font-extrabold text-foreground">🛍️ 推荐好物</h2>
+            <button type="button" className="flex items-center gap-0.5 text-sm text-muted-foreground hover:text-primary transition-colors min-h-[44px] min-w-[44px] justify-end" onClick={() => navigate("/shop")}>
+              逛商城 <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+            {loadingProducts
+              ? Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)
+              : recommended.map((p) => (
+                  <Card
+                    key={p.id}
+                    className="shrink-0 w-36 overflow-hidden cursor-pointer hover:card-shadow-hover transition-shadow"
+                    onClick={() => navigate(`/product/${p.id}`)}
+                  >
+                    <div className="aspect-square bg-muted flex items-center justify-center text-4xl">
+                      {p.cover_image ? (
+                        <img src={p.cover_image} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        getEmoji(p.category_id)
+                      )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">已售{p.sales_count}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
+                    <CardContent className="p-2">
+                      <p className="text-xs font-medium text-foreground line-clamp-2 mb-1">{p.name}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-primary font-bold text-sm">¥{p.price}</span>
+                        {p.original_price && <span className="text-muted-foreground text-[10px] line-through">¥{p.original_price}</span>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">已售{p.sales_count}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+          </div>
+        </section>
 
         {/* Top Technicians */}
         <section className="mt-8 px-5 animate-fade-in-up" style={{ animationDelay: "0.3s" }} aria-label="附近高分技师">
@@ -216,7 +266,7 @@ const Index = () => {
           </div>
           <div className="flex flex-col gap-3" role="list">
             {loadingTechnicians
-              ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[76px] rounded-2xl" />)
+              ? Array.from({ length: 3 }).map((_, i) => <TechnicianSkeleton key={i} />)
               : technicians?.map((t) => <TechnicianCard key={t.id} {...t} />)}
           </div>
         </section>
