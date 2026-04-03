@@ -209,6 +209,9 @@ const Index = () => {
           </section>
         )}
 
+        {/* Flash Sales */}
+        <FlashSaleSection />
+
         {/* Popular Services */}
         <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "0.2s" }} aria-label="热门服务">
           <div className="flex items-center justify-between px-5 mb-3">
