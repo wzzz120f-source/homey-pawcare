@@ -400,8 +400,40 @@ const OrderDetailPage = () => {
           )}
         </section>
 
+        {/* Cancel Confirmation */}
+        {showCancelConfirm && (
+          <section className="bg-destructive/10 border border-destructive/30 rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-destructive text-base flex items-center gap-2">
+              <XCircle className="w-4 h-4" /> 确认取消订单？
+            </h2>
+            <p className="text-sm text-muted-foreground">取消后订单将无法恢复，已支付的金额将原路退回。</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowCancelConfirm(false)}>再想想</Button>
+              <Button variant="destructive" size="sm" className="flex-1" onClick={handleCancelOrder} disabled={cancelling}>
+                {cancelling ? "取消中..." : "确认取消"}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {/* Cancelled Banner */}
+        {order.order_status === "cancelled" && (
+          <section className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-center gap-3">
+            <XCircle className="w-6 h-6 text-destructive shrink-0" />
+            <div>
+              <p className="font-bold text-destructive">订单已取消</p>
+              <p className="text-xs text-muted-foreground">如有疑问请联系客服</p>
+            </div>
+          </section>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3">
+          {canCancel && !showCancelConfirm && (
+            <Button variant="destructive" className="flex-1" onClick={() => setShowCancelConfirm(true)}>
+              <XCircle className="w-4 h-4 mr-1" /> 取消订单
+            </Button>
+          )}
           <Button variant="outline" className="flex-1" onClick={() => navigate("/merchant-appeal")}>
             <AlertTriangle className="w-4 h-4 mr-1" /> 商家申诉
           </Button>
