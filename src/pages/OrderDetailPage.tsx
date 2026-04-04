@@ -175,7 +175,29 @@ const OrderDetailPage = () => {
     }
   };
 
-  if (authLoading || loading) {
+  const canCancel = order && ["created", "confirmed"].includes(order.order_status);
+
+  const handleCancelOrder = async () => {
+    if (!user || !order) return;
+    setCancelling(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ order_status: "cancelled" })
+        .eq("id", order.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setOrder({ ...order, order_status: "cancelled" });
+      setShowCancelConfirm(false);
+      toast.success("订单已取消");
+    } catch (err: any) {
+      toast.error(err.message || "取消失败");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
