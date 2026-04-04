@@ -66,6 +66,9 @@ const ShopPage = () => {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"sales" | "price_asc" | "price_desc">("sales");
+  const [allBrands, setAllBrands] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
   const [showMerchantDialog, setShowMerchantDialog] = useState(false);
