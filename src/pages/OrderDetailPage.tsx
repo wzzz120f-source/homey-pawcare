@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, ImagePlus, X, Play, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, ImagePlus, X, Play, AlertTriangle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
 import { toast } from "sonner";
