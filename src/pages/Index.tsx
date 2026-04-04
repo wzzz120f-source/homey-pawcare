@@ -157,8 +157,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Banner Carousel */}
-        <BannerCarousel />
 
         {/* CTA */}
         <div className="px-4 mt-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
