@@ -92,6 +92,8 @@ const OrderDetailPage = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: string }[]>([]);
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
