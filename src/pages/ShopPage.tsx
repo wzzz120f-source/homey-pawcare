@@ -106,11 +106,19 @@ const ShopPage = () => {
   };
 
   const fetchProducts = async () => {
-    let query = supabase.from("products").select("*").order("sales_count", { ascending: false });
+    const orderCol = sortBy === "sales" ? "sales_count" : "price";
+    const ascending = sortBy === "price_asc";
+    let query = supabase.from("products").select("*").order(orderCol, { ascending: sortBy === "price_asc" ? true : sortBy === "price_desc" ? false : false });
     if (selectedCategory) query = query.eq("category_id", selectedCategory);
-    if (searchQuery) query = query.ilike("name", `%${searchQuery}%`);
+    if (searchQuery) query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
+    if (brandFilter) query = query.eq("brand", brandFilter);
     const { data } = await query;
-    if (data) setProducts(data);
+    if (data) {
+      setProducts(data);
+      // Extract unique brands
+      const brands = [...new Set(data.map((p: any) => p.brand).filter(Boolean))] as string[];
+      if (allBrands.length === 0 && brands.length > 0) setAllBrands(brands);
+    }
   };
 
   const getMerchant = (merchantId: string) => merchants.find((m) => m.id === merchantId);
