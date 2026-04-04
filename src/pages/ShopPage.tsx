@@ -252,6 +252,10 @@ const ShopPage = () => {
         </div>
       </div>
 
+      {/* Banner Carousel & Flash Sales */}
+      <BannerCarousel />
+      <FlashSaleSection />
+
       {/* Merchant Banners */}
       <div className="px-4 pt-4 pb-2">
         <h2 className="text-sm font-bold text-foreground mb-2">认证商家</h2>
