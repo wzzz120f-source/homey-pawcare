@@ -222,6 +222,34 @@ const ShopPage = () => {
             ))}
           </div>
         </ScrollArea>
+
+        {/* Filters Row */}
+        <div className="flex gap-2 mt-2">
+          {allBrands.length > 0 && (
+            <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="h-8 text-xs w-28">
+                <SelectValue placeholder="品牌筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部品牌</SelectItem>
+                {allBrands.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="h-8 text-xs w-28">
+              <ArrowUpDown className="w-3 h-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sales">销量优先</SelectItem>
+              <SelectItem value="price_asc">价格低→高</SelectItem>
+              <SelectItem value="price_desc">价格高→低</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Merchant Banners */}
