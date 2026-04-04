@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShieldCheck, MessageCircle, ChevronRight, Search, ShoppingCart, Plus, Minus, Trash2, Heart } from "lucide-react";
+import { ShieldCheck, MessageCircle, ChevronRight, Search, ShoppingCart, Plus, Minus, Trash2, Heart, ArrowUpDown } from "lucide-react";
+import BannerCarousel from "@/components/BannerCarousel";
+import FlashSaleSection from "@/components/FlashSaleSection";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
@@ -64,6 +67,9 @@ const ShopPage = () => {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"sales" | "price_asc" | "price_desc">("sales");
+  const [allBrands, setAllBrands] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
   const [showMerchantDialog, setShowMerchantDialog] = useState(false);
@@ -78,7 +84,7 @@ const ShopPage = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, brandFilter, sortBy]);
 
   // Fetch user favorites
   useEffect(() => {
@@ -101,11 +107,19 @@ const ShopPage = () => {
   };
 
   const fetchProducts = async () => {
-    let query = supabase.from("products").select("*").order("sales_count", { ascending: false });
+    const orderCol = sortBy === "sales" ? "sales_count" : "price";
+    const ascending = sortBy === "price_asc";
+    let query = supabase.from("products").select("*").order(orderCol, { ascending: sortBy === "price_asc" ? true : sortBy === "price_desc" ? false : false });
     if (selectedCategory) query = query.eq("category_id", selectedCategory);
-    if (searchQuery) query = query.ilike("name", `%${searchQuery}%`);
+    if (searchQuery) query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
+    if (brandFilter) query = query.eq("brand", brandFilter);
     const { data } = await query;
-    if (data) setProducts(data);
+    if (data) {
+      setProducts(data);
+      // Extract unique brands
+      const brands = [...new Set(data.map((p: any) => p.brand).filter(Boolean))] as string[];
+      if (allBrands.length === 0 && brands.length > 0) setAllBrands(brands);
+    }
   };
 
   const getMerchant = (merchantId: string) => merchants.find((m) => m.id === merchantId);
@@ -209,7 +223,39 @@ const ShopPage = () => {
             ))}
           </div>
         </ScrollArea>
+
+        {/* Filters Row */}
+        <div className="flex gap-2 mt-2">
+          {allBrands.length > 0 && (
+            <Select value={brandFilter} onValueChange={(v) => setBrandFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="h-8 text-xs w-28">
+                <SelectValue placeholder="品牌筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部品牌</SelectItem>
+                {allBrands.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="h-8 text-xs w-28">
+              <ArrowUpDown className="w-3 h-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sales">销量优先</SelectItem>
+              <SelectItem value="price_asc">价格低→高</SelectItem>
+              <SelectItem value="price_desc">价格高→低</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {/* Banner Carousel & Flash Sales */}
+      <BannerCarousel />
+      <FlashSaleSection />
 
       {/* Merchant Banners */}
       <div className="px-4 pt-4 pb-2">
