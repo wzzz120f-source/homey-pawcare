@@ -10,6 +10,7 @@ import BannerCarousel from "@/components/BannerCarousel";
 import FlashSaleSection from "@/components/FlashSaleSection";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
