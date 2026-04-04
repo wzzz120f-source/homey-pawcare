@@ -83,7 +83,7 @@ const ShopPage = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, brandFilter, sortBy]);
 
   // Fetch user favorites
   useEffect(() => {
