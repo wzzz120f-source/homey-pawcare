@@ -39,6 +39,10 @@ const BottomNav = () => {
           );
         })}
       </div>
+      <div className="text-center py-2 border-t border-border/30 bg-card">
+        <p className="text-[10px] text-muted-foreground leading-tight">©2026 萌宠到家 版权所有</p>
+        <p className="text-[9px] text-muted-foreground/60 leading-tight mt-0.5">禁止抄袭、反编译、盗用接口及源码</p>
+      </div>
     </nav>
   );
 };
