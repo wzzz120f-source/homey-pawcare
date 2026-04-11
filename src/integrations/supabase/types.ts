@@ -557,6 +557,66 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_hotels: {
+        Row: {
+          address: string
+          amenities: string[]
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          latitude: number
+          longitude: number
+          name: string
+          phone: string | null
+          price_max: number
+          price_min: number
+          rating: number
+          reviews_count: number
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          amenities?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          latitude: number
+          longitude: number
+          name: string
+          phone?: string | null
+          price_max?: number
+          price_min?: number
+          rating?: number
+          reviews_count?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          amenities?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          phone?: string | null
+          price_max?: number
+          price_min?: number
+          rating?: number
+          reviews_count?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_media: {
         Row: {
           created_at: string
