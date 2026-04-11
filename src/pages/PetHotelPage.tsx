@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, Wifi, PawPrint, Car } from "lucide-react";
+import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, Wifi, PawPrint, Car, CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import BottomNav from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 declare global {
   interface Window {
@@ -21,57 +25,49 @@ interface PetHotel {
   id: string;
   name: string;
   address: string;
-  distance: string;
+  longitude: number;
+  latitude: number;
   rating: number;
-  reviews: number;
-  priceRange: string;
+  reviews_count: number;
+  price_min: number;
+  price_max: number;
   tags: string[];
-  phone: string;
-  image: string;
   amenities: string[];
-  location?: [number, number];
+  phone: string | null;
+  image_url: string | null;
+  description: string | null;
 }
-
-const MOCK_HOTELS: PetHotel[] = [
-  {
-    id: "h1", name: "汪星人友好酒店·浦东店", address: "浦东新区陆家嘴环路1000号",
-    distance: "1.2km", rating: 4.9, reviews: 328, priceRange: "¥388-688/晚",
-    tags: ["可带大型犬", "宠物泳池", "24h看护"], phone: "021-58881234",
-    image: "🏨", amenities: ["宠物泳池", "专属遛狗区", "宠物SPA", "24h监控"],
-    location: [121.5018, 31.2397],
-  },
-  {
-    id: "h2", name: "喵星球精品民宿", address: "浦东新区世纪大道200号",
-    distance: "2.0km", rating: 4.8, reviews: 215, priceRange: "¥268-528/晚",
-    tags: ["猫咪友好", "独立猫房", "有机猫粮"], phone: "021-58765432",
-    image: "🐱", amenities: ["独立猫房", "猫爬架", "有机食品", "安静环境"],
-    location: [121.5133, 31.2335],
-  },
-  {
-    id: "h3", name: "萌宠度假村·世纪公园", address: "浦东新区锦绣路1001号",
-    distance: "3.1km", rating: 4.7, reviews: 186, priceRange: "¥198-458/晚",
-    tags: ["花园庭院", "多宠同住", "接送服务"], phone: "021-68901234",
-    image: "🌳", amenities: ["大花园", "接送服务", "宠物摄影", "训练课程"],
-    location: [121.5445, 31.2168],
-  },
-  {
-    id: "h4", name: "爱宠之家·陆家嘴旗舰店", address: "浦东新区东方路500号",
-    distance: "1.8km", rating: 4.6, reviews: 142, priceRange: "¥158-388/晚",
-    tags: ["经济实惠", "宠物美容", "寄养托管"], phone: "021-50987654",
-    image: "🏠", amenities: ["寄养托管", "美容服务", "训练课程", "宠物用品"],
-    location: [121.5228, 31.2290],
-  },
-];
 
 const PetHotelPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const [hotels, setHotels] = useState<PetHotel[]>([]);
+  const [loadingHotels, setLoadingHotels] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedHotel, setSelectedHotel] = useState<PetHotel | null>(null);
   const [currentLocation, setCurrentLocation] = useState("");
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
+  const [bookingHotel, setBookingHotel] = useState<PetHotel | null>(null);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingNights, setBookingNights] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Fetch hotels from DB
+  useEffect(() => {
+    supabase
+      .from("pet_hotels" as any)
+      .select("*")
+      .eq("is_active", true)
+      .order("rating", { ascending: false })
+      .then(({ data, error }) => {
+        if (data) setHotels(data as any);
+        if (error) console.error(error);
+        setLoadingHotels(false);
+      });
+  }, []);
 
   // Load AMap SDK
   useEffect(() => {
@@ -83,29 +79,29 @@ const PetHotelPage = () => {
     document.head.appendChild(script);
   }, []);
 
-  // Init map & markers
+  // Init map & markers when hotels loaded
   useEffect(() => {
-    if (!loaded || !mapRef.current || mapInstance.current) return;
+    if (!loaded || !mapRef.current || mapInstance.current || hotels.length === 0) return;
     const map = new window.AMap.Map(mapRef.current, {
       zoom: 13,
-      center: [121.5018, 31.2304],
+      center: [hotels[0].longitude, hotels[0].latitude],
       mapStyle: "amap://styles/light",
     });
     mapInstance.current = map;
 
-    // Add hotel markers
-    MOCK_HOTELS.forEach((h) => {
-      if (!h.location) return;
+    hotels.forEach((h) => {
       const marker = new window.AMap.Marker({
-        position: h.location,
+        position: [h.longitude, h.latitude],
         title: h.name,
-        label: { content: `<span style="font-size:12px;background:#fff;padding:2px 6px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15)">${h.image} ${h.name.slice(0, 6)}</span>`, direction: "top" },
+        label: {
+          content: `<span style="font-size:12px;background:#fff;padding:2px 6px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15)">${h.image_url || "🏨"} ${h.name.slice(0, 6)}</span>`,
+          direction: "top",
+        },
       });
-      marker.on("click", () => setSelectedHotel(h));
+      marker.on("click", () => { setSelectedHotel(h); planRouteToHotel(h, map); });
       map.add(marker);
     });
 
-    // Get current location
     const geo = new window.AMap.Geolocation({ enableHighAccuracy: true, timeout: 10000 });
     map.addControl(geo);
     geo.getCurrentPosition((status: string, result: any) => {
@@ -117,32 +113,32 @@ const PetHotelPage = () => {
         });
       }
     });
-  }, [loaded]);
+  }, [loaded, hotels]);
 
-  const filteredHotels = MOCK_HOTELS.filter((h) =>
+  const filteredHotels = hotels.filter((h) =>
     !searchQuery || h.name.includes(searchQuery) || h.tags.some((t) => t.includes(searchQuery))
   );
 
-  const planRouteToHotel = (hotel: PetHotel) => {
-    if (!loaded || !mapInstance.current || !hotel.location) return;
+  const planRouteToHotel = (hotel: PetHotel, map?: any) => {
+    const m = map || mapInstance.current;
+    if (!loaded || !m) return;
     setSelectedHotel(hotel);
+    setRouteInfo(null);
 
     const geocoder = new window.AMap.Geocoder();
     const startAddr = currentLocation || "上海市浦东新区张杨路500号";
     geocoder.getLocation(startAddr, (s: string, r: any) => {
       if (s !== "complete" || !r.geocodes[0]) return;
       const start = r.geocodes[0].location;
-      mapInstance.current.clearMap();
+      m.clearMap();
 
-      // Re-add markers
-      MOCK_HOTELS.forEach((h) => {
-        if (!h.location) return;
-        const marker = new window.AMap.Marker({ position: h.location, title: h.name });
-        mapInstance.current.add(marker);
+      hotels.forEach((h) => {
+        const marker = new window.AMap.Marker({ position: [h.longitude, h.latitude], title: h.name });
+        m.add(marker);
       });
 
-      const driving = new window.AMap.Driving({ map: mapInstance.current });
-      driving.search(start, new window.AMap.LngLat(hotel.location[0], hotel.location[1]), (status: string, result: any) => {
+      const driving = new window.AMap.Driving({ map: m });
+      driving.search(start, new window.AMap.LngLat(hotel.longitude, hotel.latitude), (status: string, result: any) => {
         if (status === "complete" && result.routes?.length > 0) {
           const route = result.routes[0];
           setRouteInfo({
@@ -152,6 +148,34 @@ const PetHotelPage = () => {
         }
       });
     });
+  };
+
+  const handleBooking = async () => {
+    if (!user) { navigate("/auth"); return; }
+    if (!bookingHotel || !bookingDate) { toast.error("请选择入住日期"); return; }
+
+    setSubmitting(true);
+    try {
+      const totalAmount = bookingHotel.price_min * bookingNights;
+      const { error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        order_type: "hotel",
+        service_type: `宠物友好酒店 - ${bookingHotel.name}`,
+        store_name: bookingHotel.name,
+        booking_date: bookingDate,
+        notes: `入住${bookingNights}晚，地址：${bookingHotel.address}`,
+        total_amount: totalAmount,
+        pickup_address: bookingHotel.address,
+      });
+      if (error) throw error;
+      toast.success("预订成功！");
+      setBookingHotel(null);
+      navigate("/profile");
+    } catch (err: any) {
+      toast.error(err.message || "预订失败");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -196,7 +220,7 @@ const PetHotelPage = () => {
         {/* Route Info */}
         {routeInfo && selectedHotel && (
           <div className="px-4 mt-3">
-            <Card className="bg-primary/5 border-primary/20">
+            <Card className="border-primary/20" style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}>
               <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Car className="w-4 h-4 text-primary" />
@@ -205,8 +229,8 @@ const PetHotelPage = () => {
                     <p className="text-[10px] text-muted-foreground">{routeInfo.distance} · 约{routeInfo.duration}</p>
                   </div>
                 </div>
-                <Button size="sm" variant="default" onClick={() => navigate("/booking")}>
-                  预约接送
+                <Button size="sm" variant="default" onClick={() => setBookingHotel(selectedHotel)}>
+                  立即预订
                 </Button>
               </CardContent>
             </Card>
@@ -216,7 +240,20 @@ const PetHotelPage = () => {
         {/* Hotel List */}
         <div className="px-4 mt-4 space-y-3 pb-4">
           <h2 className="text-base font-extrabold text-foreground">📍 附近宠物友好酒店</h2>
-          {filteredHotels.map((hotel) => (
+
+          {loadingHotels ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}><CardContent className="p-0 flex">
+                <Skeleton className="w-24 h-28 shrink-0" />
+                <div className="flex-1 p-3 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-5 w-1/3" />
+                </div>
+              </CardContent></Card>
+            ))
+          ) : filteredHotels.map((hotel) => (
             <Card
               key={hotel.id}
               className={cn(
@@ -228,17 +265,16 @@ const PetHotelPage = () => {
               <CardContent className="p-0">
                 <div className="flex">
                   <div className="w-24 h-28 bg-secondary flex items-center justify-center text-4xl shrink-0">
-                    {hotel.image}
+                    {hotel.image_url || "🏨"}
                   </div>
                   <div className="flex-1 p-3 min-w-0">
                     <div className="flex items-start justify-between gap-1">
                       <h3 className="text-sm font-bold text-foreground line-clamp-1">{hotel.name}</h3>
-                      <span className="text-xs text-muted-foreground shrink-0">{hotel.distance}</span>
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span className="text-xs font-bold text-foreground">{hotel.rating}</span>
-                      <span className="text-[10px] text-muted-foreground">({hotel.reviews}条评价)</span>
+                      <span className="text-xs font-bold text-foreground">{Number(hotel.rating).toFixed(1)}</span>
+                      <span className="text-[10px] text-muted-foreground">({hotel.reviews_count}条评价)</span>
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <MapPin className="w-3 h-3 text-muted-foreground" />
@@ -250,7 +286,7 @@ const PetHotelPage = () => {
                       ))}
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <span className="text-sm font-extrabold text-primary">{hotel.priceRange}</span>
+                      <span className="text-sm font-extrabold text-primary">¥{hotel.price_min}-{hotel.price_max}/晚</span>
                       <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg hover:bg-secondary">
                         <Phone className="w-4 h-4 text-primary" />
                       </a>
@@ -263,13 +299,16 @@ const PetHotelPage = () => {
         </div>
 
         {/* Selected Hotel Detail */}
-        {selectedHotel && (
+        {selectedHotel && !bookingHotel && (
           <div className="px-4 pb-6">
             <Card>
               <CardContent className="p-4 space-y-3">
                 <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
                   <PawPrint className="w-4 h-4 text-primary" /> {selectedHotel.name}
                 </h3>
+                {selectedHotel.description && (
+                  <p className="text-xs text-muted-foreground">{selectedHotel.description}</p>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   {selectedHotel.amenities.map((a) => (
                     <div key={a} className="flex items-center gap-1.5 text-xs text-foreground bg-secondary rounded-lg px-2.5 py-2">
@@ -279,15 +318,64 @@ const PetHotelPage = () => {
                   ))}
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(`tel:${selectedHotel.phone}`)}>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => { if (selectedHotel.phone) window.open(`tel:${selectedHotel.phone}`); }}>
                     <Phone className="w-4 h-4 mr-1" /> 电话咨询
                   </Button>
-                  <Button variant="hero" size="sm" className="flex-1" onClick={() => navigate("/booking")}>
+                  <Button variant="hero" size="sm" className="flex-1" onClick={() => setBookingHotel(selectedHotel)}>
                     立即预订
                   </Button>
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Booking Modal */}
+        {bookingHotel && (
+          <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center" onClick={() => setBookingHotel(null)}>
+            <div className="bg-background w-full max-w-lg rounded-t-2xl p-5 space-y-4 animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-primary" /> 预订 {bookingHotel.name}
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1 block">入住日期</label>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-3 py-2.5 rounded-xl bg-secondary text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1 block">入住天数</label>
+                  <div className="flex items-center gap-3">
+                    <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.max(1, bookingNights - 1))}>-</button>
+                    <span className="text-lg font-extrabold text-foreground w-8 text-center">{bookingNights}</span>
+                    <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.min(30, bookingNights + 1))}>+</button>
+                    <span className="text-sm text-muted-foreground">晚</span>
+                  </div>
+                </div>
+                <div className="bg-secondary rounded-xl p-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">房费</span>
+                    <span className="text-foreground">¥{bookingHotel.price_min}/晚 × {bookingNights}晚</span>
+                  </div>
+                  <div className="flex justify-between text-base font-extrabold border-t border-border pt-2 mt-2">
+                    <span className="text-foreground">合计</span>
+                    <span className="text-primary">¥{bookingHotel.price_min * bookingNights}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setBookingHotel(null)}>取消</Button>
+                <Button variant="hero" className="flex-1" onClick={handleBooking} disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  确认预订
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </main>
