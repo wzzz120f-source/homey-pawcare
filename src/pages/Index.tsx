@@ -275,16 +275,21 @@ const Index = () => {
 
         {/* Quick Actions */}
         <section className="mt-8 px-5 pb-6 animate-fade-in-up" style={{ animationDelay: "0.4s" }} aria-label="快捷入口">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/booking")}>
               <span className="text-2xl" aria-hidden="true">🏠</span>
-              <span className="font-bold">宠物寄养</span>
-              <span className="text-xs text-muted-foreground">附近优质门店</span>
+              <span className="font-bold text-xs">宠物寄养</span>
+              <span className="text-[10px] text-muted-foreground">附近优质门店</span>
             </Button>
             <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/booking")}>
               <span className="text-2xl" aria-hidden="true">🚗</span>
-              <span className="font-bold">宠物接送</span>
-              <span className="text-xs text-muted-foreground">安全专车服务</span>
+              <span className="font-bold text-xs">宠物接送</span>
+              <span className="text-[10px] text-muted-foreground">安全专车服务</span>
+            </Button>
+            <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/pet-hotel")}>
+              <span className="text-2xl" aria-hidden="true">🏨</span>
+              <span className="font-bold text-xs">友好酒店</span>
+              <span className="text-[10px] text-muted-foreground">携宠入住</span>
             </Button>
           </div>
         </section>
