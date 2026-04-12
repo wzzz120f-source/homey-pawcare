@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, Wifi, PawPrint, Car, CalendarDays, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, Wifi, PawPrint, Car, CalendarDays, Loader2, Camera, X, MessageSquare, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import BottomNav from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,17 @@ interface PetHotel {
   description: string | null;
 }
 
+interface HotelReview {
+  id: string;
+  hotel_id: string;
+  user_id: string;
+  rating: number;
+  content: string | null;
+  images: string[];
+  created_at: string;
+  profiles?: { username: string; avatar_url: string | null } | null;
+}
+
 const PetHotelPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -54,6 +66,18 @@ const PetHotelPage = () => {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingNights, setBookingNights] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  // Review state
+  const [reviewHotel, setReviewHotel] = useState<PetHotel | null>(null);
+  const [reviews, setReviews] = useState<HotelReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewImages, setReviewImages] = useState<File[]>([]);
+  const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch hotels from DB
   useEffect(() => {
@@ -178,6 +202,87 @@ const PetHotelPage = () => {
     }
   };
 
+  // ===== Review Functions =====
+  const fetchReviews = async (hotelId: string) => {
+    setLoadingReviews(true);
+    const { data, error } = await supabase
+      .from("hotel_reviews" as any)
+      .select("*, profiles:user_id(username, avatar_url)")
+      .eq("hotel_id", hotelId)
+      .order("created_at", { ascending: false });
+    if (data) setReviews(data as any);
+    if (error) console.error(error);
+    setLoadingReviews(false);
+  };
+
+  const openReviews = (hotel: PetHotel) => {
+    setReviewHotel(hotel);
+    setShowReviewForm(false);
+    fetchReviews(hotel.id);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (reviewImages.length + files.length > 9) {
+      toast.error("最多上传9张图片");
+      return;
+    }
+    const newFiles = [...reviewImages, ...files].slice(0, 9);
+    setReviewImages(newFiles);
+    setReviewPreviews(newFiles.map((f) => URL.createObjectURL(f)));
+  };
+
+  const removeImage = (idx: number) => {
+    const newFiles = reviewImages.filter((_, i) => i !== idx);
+    setReviewImages(newFiles);
+    setReviewPreviews(newFiles.map((f) => URL.createObjectURL(f)));
+  };
+
+  const submitReview = async () => {
+    if (!user) { navigate("/auth"); return; }
+    if (!reviewHotel) return;
+    if (!reviewContent.trim()) { toast.error("请输入评价内容"); return; }
+
+    setSubmittingReview(true);
+    try {
+      // Upload images
+      const imageUrls: string[] = [];
+      for (const file of reviewImages) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("hotel-review-images")
+          .upload(path, file);
+        if (uploadErr) throw uploadErr;
+        const { data: urlData } = supabase.storage
+          .from("hotel-review-images")
+          .getPublicUrl(path);
+        imageUrls.push(urlData.publicUrl);
+      }
+
+      const { error } = await supabase.from("hotel_reviews" as any).insert({
+        hotel_id: reviewHotel.id,
+        user_id: user.id,
+        rating: reviewRating,
+        content: reviewContent,
+        images: imageUrls,
+      });
+      if (error) throw error;
+
+      toast.success("评价发表成功！");
+      setShowReviewForm(false);
+      setReviewContent("");
+      setReviewRating(5);
+      setReviewImages([]);
+      setReviewPreviews([]);
+      fetchReviews(reviewHotel.id);
+    } catch (err: any) {
+      toast.error(err.message || "评价失败");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -287,9 +392,18 @@ const PetHotelPage = () => {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm font-extrabold text-primary">¥{hotel.price_min}-{hotel.price_max}/晚</span>
-                      <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg hover:bg-secondary">
-                        <Phone className="w-4 h-4 text-primary" />
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openReviews(hotel); }}
+                          className="p-1 rounded-lg hover:bg-secondary"
+                          title="查看评价"
+                        >
+                          <MessageSquare className="w-4 h-4 text-primary" />
+                        </button>
+                        <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg hover:bg-secondary">
+                          <Phone className="w-4 h-4 text-primary" />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -299,7 +413,7 @@ const PetHotelPage = () => {
         </div>
 
         {/* Selected Hotel Detail */}
-        {selectedHotel && !bookingHotel && (
+        {selectedHotel && !bookingHotel && !reviewHotel && (
           <div className="px-4 pb-6">
             <Card>
               <CardContent className="p-4 space-y-3">
@@ -318,8 +432,8 @@ const PetHotelPage = () => {
                   ))}
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => { if (selectedHotel.phone) window.open(`tel:${selectedHotel.phone}`); }}>
-                    <Phone className="w-4 h-4 mr-1" /> 电话咨询
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openReviews(selectedHotel)}>
+                    <MessageSquare className="w-4 h-4 mr-1" /> 查看评价
                   </Button>
                   <Button variant="hero" size="sm" className="flex-1" onClick={() => setBookingHotel(selectedHotel)}>
                     立即预订
@@ -374,6 +488,161 @@ const PetHotelPage = () => {
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
                   确认预订
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reviews Panel */}
+        {reviewHotel && (
+          <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center" onClick={() => { setReviewHotel(null); setShowReviewForm(false); }}>
+            <div
+              className="bg-background w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col animate-fade-in-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+                <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  {reviewHotel.name} 的评价
+                </h3>
+                <button onClick={() => { setReviewHotel(null); setShowReviewForm(false); }} className="p-1 rounded-lg hover:bg-secondary">
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {showReviewForm ? (
+                  /* Review Form */
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-foreground mb-2 block">评分</label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <button key={s} onClick={() => setReviewRating(s)}>
+                            <Star className={cn("w-7 h-7 transition-colors", s <= reviewRating ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-foreground mb-1 block">评价内容</label>
+                      <Textarea
+                        value={reviewContent}
+                        onChange={(e) => setReviewContent(e.target.value)}
+                        placeholder="分享您和毛孩子的入住体验..."
+                        className="min-h-[100px] rounded-xl bg-secondary border-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-foreground mb-2 block">上传图片 ({reviewImages.length}/9)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {reviewPreviews.map((src, idx) => (
+                          <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
+                            <img src={src} alt="" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => removeImage(idx)}
+                              className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {reviewImages.length < 9 && (
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-20 h-20 rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary transition-colors"
+                          >
+                            <Camera className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">添加</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageSelect}
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button variant="outline" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
+                      <Button variant="hero" className="flex-1" onClick={submitReview} disabled={submittingReview}>
+                        {submittingReview ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                        发表评价
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Review List */
+                  <>
+                    <Button
+                      variant="warm"
+                      className="w-full"
+                      onClick={() => {
+                        if (!user) { navigate("/auth"); return; }
+                        setShowReviewForm(true);
+                      }}
+                    >
+                      <Star className="w-4 h-4 mr-1" /> 写评价
+                    </Button>
+
+                    {loadingReviews ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="w-8 h-8 rounded-full" />
+                            <Skeleton className="h-4 w-20" />
+                          </div>
+                          <Skeleton className="h-12 w-full" />
+                        </div>
+                      ))
+                    ) : reviews.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">暂无评价，来做第一个评价的人吧！</p>
+                      </div>
+                    ) : (
+                      reviews.map((review) => (
+                        <Card key={review.id} className="overflow-hidden">
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                                  {(review.profiles as any)?.username?.charAt(0) || "U"}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-foreground">{(review.profiles as any)?.username || "用户"}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {new Date(review.created_at).toLocaleDateString("zh-CN")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star key={s} className={cn("w-3 h-3", s <= review.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30")} />
+                                ))}
+                              </div>
+                            </div>
+                            {review.content && (
+                              <p className="text-xs text-foreground leading-relaxed">{review.content}</p>
+                            )}
+                            {review.images && review.images.length > 0 && (
+                              <div className="flex gap-1.5 flex-wrap">
+                                {review.images.map((img, idx) => (
+                                  <img key={idx} src={img} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
