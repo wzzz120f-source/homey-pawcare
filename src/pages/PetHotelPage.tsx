@@ -287,7 +287,7 @@ const PetHotelPage = () => {
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={() => navigate(-1)} className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 rounded-lg hover:bg-secondary transition-colors" aria-label="返回">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
@@ -392,16 +392,22 @@ const PetHotelPage = () => {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm font-extrabold text-primary">¥{hotel.price_min}-{hotel.price_max}/晚</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         <button
                           onClick={(e) => { e.stopPropagation(); openReviews(hotel); }}
-                          className="p-1 rounded-lg hover:bg-secondary"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary active:bg-secondary/80 transition-colors"
                           title="查看评价"
+                          aria-label="查看评价"
                         >
-                          <MessageSquare className="w-4 h-4 text-primary" />
+                          <MessageSquare className="w-5 h-5 text-primary" />
                         </button>
-                        <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg hover:bg-secondary">
-                          <Phone className="w-4 h-4 text-primary" />
+                        <a
+                          href={`tel:${hotel.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary active:bg-secondary/80 transition-colors"
+                          aria-label="拨打电话"
+                        >
+                          <Phone className="w-5 h-5 text-primary" />
                         </a>
                       </div>
                     </div>
@@ -497,7 +503,7 @@ const PetHotelPage = () => {
         {reviewHotel && (
           <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center" onClick={() => { setReviewHotel(null); setShowReviewForm(false); }}>
             <div
-              className="bg-background w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col animate-fade-in-up"
+              className="bg-background w-full max-w-lg rounded-t-2xl max-h-[85vh] flex flex-col animate-fade-in-up pb-safe"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -506,7 +512,11 @@ const PetHotelPage = () => {
                   <MessageSquare className="w-5 h-5 text-primary" />
                   {reviewHotel.name} 的评价
                 </h3>
-                <button onClick={() => { setReviewHotel(null); setShowReviewForm(false); }} className="p-1 rounded-lg hover:bg-secondary">
+                <button
+                  onClick={() => { setReviewHotel(null); setShowReviewForm(false); }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary"
+                  aria-label="关闭评价"
+                >
                   <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
