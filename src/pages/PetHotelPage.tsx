@@ -392,16 +392,22 @@ const PetHotelPage = () => {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm font-extrabold text-primary">¥{hotel.price_min}-{hotel.price_max}/晚</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         <button
                           onClick={(e) => { e.stopPropagation(); openReviews(hotel); }}
-                          className="p-1 rounded-lg hover:bg-secondary"
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary active:bg-secondary/80 transition-colors"
                           title="查看评价"
+                          aria-label="查看评价"
                         >
-                          <MessageSquare className="w-4 h-4 text-primary" />
+                          <MessageSquare className="w-5 h-5 text-primary" />
                         </button>
-                        <a href={`tel:${hotel.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded-lg hover:bg-secondary">
-                          <Phone className="w-4 h-4 text-primary" />
+                        <a
+                          href={`tel:${hotel.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary active:bg-secondary/80 transition-colors"
+                          aria-label="拨打电话"
+                        >
+                          <Phone className="w-5 h-5 text-primary" />
                         </a>
                       </div>
                     </div>
