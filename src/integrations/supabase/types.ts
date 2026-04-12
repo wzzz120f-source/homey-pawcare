@@ -308,6 +308,44 @@ export type Database = {
           },
         ]
       }
+      hotel_reviews: {
+        Row: {
+          content: string | null
+          created_at: string
+          hotel_id: string
+          id: string
+          images: string[]
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          hotel_id: string
+          id?: string
+          images?: string[]
+          rating?: number
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          images?: string[]
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_reviews_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "pet_hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
