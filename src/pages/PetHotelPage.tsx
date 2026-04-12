@@ -503,7 +503,7 @@ const PetHotelPage = () => {
         {reviewHotel && (
           <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center" onClick={() => { setReviewHotel(null); setShowReviewForm(false); }}>
             <div
-              className="bg-background w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col animate-fade-in-up"
+              className="bg-background w-full max-w-lg rounded-t-2xl max-h-[85vh] flex flex-col animate-fade-in-up pb-safe"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
