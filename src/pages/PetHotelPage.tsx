@@ -512,7 +512,11 @@ const PetHotelPage = () => {
                   <MessageSquare className="w-5 h-5 text-primary" />
                   {reviewHotel.name} 的评价
                 </h3>
-                <button onClick={() => { setReviewHotel(null); setShowReviewForm(false); }} className="p-1 rounded-lg hover:bg-secondary">
+                <button
+                  onClick={() => { setReviewHotel(null); setShowReviewForm(false); }}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-secondary"
+                  aria-label="关闭评价"
+                >
                   <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
