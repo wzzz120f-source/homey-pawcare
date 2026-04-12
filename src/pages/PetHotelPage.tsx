@@ -287,7 +287,7 @@ const PetHotelPage = () => {
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={() => navigate(-1)} className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 rounded-lg hover:bg-secondary transition-colors" aria-label="返回">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
