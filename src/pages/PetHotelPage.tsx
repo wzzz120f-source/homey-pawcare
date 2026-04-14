@@ -11,6 +11,18 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
+import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
+import hotelPetSpa from "@/assets/hotel-pet-spa.jpg";
+
+const HOTEL_IMAGES: Record<string, string> = {};
+const getHotelImage = (hotel: { name: string; image_url: string | null }, index: number): string => {
+  if (hotel.image_url && hotel.image_url.startsWith("http")) return hotel.image_url;
+  const fallbacks = [hotelDogFriendly, hotelCatFriendly, hotelPetSpa];
+  if (hotel.name.includes("猫")) return hotelCatFriendly;
+  if (hotel.name.includes("SPA") || hotel.name.includes("spa")) return hotelPetSpa;
+  return fallbacks[index % fallbacks.length];
+};
 
 declare global {
   interface Window {
@@ -358,7 +370,7 @@ const PetHotelPage = () => {
                 </div>
               </CardContent></Card>
             ))
-          ) : filteredHotels.map((hotel) => (
+          ) : filteredHotels.map((hotel, index) => (
             <Card
               key={hotel.id}
               className={cn(
@@ -369,8 +381,15 @@ const PetHotelPage = () => {
             >
               <CardContent className="p-0">
                 <div className="flex">
-                  <div className="w-24 h-28 bg-secondary flex items-center justify-center text-4xl shrink-0">
-                    {hotel.image_url || "🏨"}
+                  <div className="w-24 h-28 bg-secondary shrink-0 overflow-hidden">
+                    <img 
+                      src={getHotelImage(hotel, index)} 
+                      alt={hotel.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      width={96}
+                      height={112}
+                    />
                   </div>
                   <div className="flex-1 p-3 min-w-0">
                     <div className="flex items-start justify-between gap-1">
