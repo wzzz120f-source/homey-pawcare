@@ -370,7 +370,7 @@ const PetHotelPage = () => {
                 </div>
               </CardContent></Card>
             ))
-          ) : filteredHotels.map((hotel) => (
+          ) : filteredHotels.map((hotel, index) => (
             <Card
               key={hotel.id}
               className={cn(
