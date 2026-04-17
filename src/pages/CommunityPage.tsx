@@ -67,19 +67,15 @@ const CommunityPage = () => {
   const badgeMap = useUserBadges(userIds);
 
   const fetchPosts = async () => {
-    let query = supabase
+    let query: any = (supabase as any)
       .from("posts")
-      .select("id, user_id, content, created_at, tags, category, is_featured" as any)
+      .select("id, user_id, content, created_at, tags, category, is_featured")
       .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (filterCategory !== "all") {
-      query = query.eq("category" as any, filterCategory);
-    }
-    if (filterTag) {
-      query = query.contains("tags", [filterTag]);
-    }
+    if (filterCategory !== "all") query = query.eq("category", filterCategory);
+    if (filterTag) query = query.contains("tags", [filterTag]);
 
     const { data: postsData, error } = await query;
     if (error || !postsData) {
