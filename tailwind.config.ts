@@ -60,6 +60,60 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "status-rescue": {
+          DEFAULT: "hsl(var(--status-rescue))",
+          foreground: "hsl(var(--status-rescue-foreground))",
+        },
+        "status-treating": {
+          DEFAULT: "hsl(var(--status-treating))",
+          foreground: "hsl(var(--status-treating-foreground))",
+        },
+        "status-recover": {
+          DEFAULT: "hsl(var(--status-recover))",
+          foreground: "hsl(var(--status-recover-foreground))",
+        },
+        "status-adopt": {
+          DEFAULT: "hsl(var(--status-adopt))",
+          foreground: "hsl(var(--status-adopt-foreground))",
+        },
+        "status-success": {
+          DEFAULT: "hsl(var(--status-success))",
+          foreground: "hsl(var(--status-success-foreground))",
+        },
+        "status-featured": {
+          DEFAULT: "hsl(var(--status-featured))",
+          foreground: "hsl(var(--status-featured-foreground))",
+        },
+        "status-info": {
+          DEFAULT: "hsl(var(--status-info-bg))",
+          border: "hsl(var(--status-info-border))",
+          foreground: "hsl(var(--status-info-foreground))",
+        },
+        "status-warn": {
+          DEFAULT: "hsl(var(--status-warn-bg))",
+          border: "hsl(var(--status-warn-border))",
+          foreground: "hsl(var(--status-warn-foreground))",
+        },
+        "badge-bronze": {
+          DEFAULT: "hsl(var(--badge-bronze-bg))",
+          foreground: "hsl(var(--badge-bronze-fg))",
+          border: "hsl(var(--badge-bronze-border))",
+        },
+        "badge-silver": {
+          DEFAULT: "hsl(var(--badge-silver-bg))",
+          foreground: "hsl(var(--badge-silver-fg))",
+          border: "hsl(var(--badge-silver-border))",
+        },
+        "badge-gold": {
+          DEFAULT: "hsl(var(--badge-gold-bg))",
+          foreground: "hsl(var(--badge-gold-fg))",
+          border: "hsl(var(--badge-gold-border))",
+        },
+        "badge-platinum": {
+          DEFAULT: "hsl(var(--badge-platinum-bg))",
+          foreground: "hsl(var(--badge-platinum-fg))",
+          border: "hsl(var(--badge-platinum-border))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
