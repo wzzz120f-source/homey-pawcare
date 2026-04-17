@@ -92,6 +92,17 @@ const HotelDetailPage = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Carousel state (must be declared before any conditional return)
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setCurrentSlide(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on("select", onSelect);
+    return () => { carouselApi.off("select", onSelect); };
+  }, [carouselApi]);
+
   useEffect(() => {
     if (!id) return;
     supabase.from("pet_hotels" as any).select("*").eq("id", id).single()
@@ -201,15 +212,6 @@ const HotelDetailPage = () => {
     heroImg,
     ...ALL_IMAGES.filter(img => img !== heroImg).slice(0, 3),
   ]));
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  useEffect(() => {
-    if (!carouselApi) return;
-    const onSelect = () => setCurrentSlide(carouselApi.selectedScrollSnap());
-    onSelect();
-    carouselApi.on("select", onSelect);
-    return () => { carouselApi.off("select", onSelect); };
-  }, [carouselApi]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
