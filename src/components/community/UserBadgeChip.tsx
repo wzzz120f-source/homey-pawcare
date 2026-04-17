@@ -10,10 +10,10 @@ export interface UserBadge {
 }
 
 const LEVEL_STYLES: Record<string, string> = {
-  bronze: "bg-orange-100 text-orange-700 border-orange-200",
-  silver: "bg-slate-100 text-slate-700 border-slate-200",
-  gold: "bg-yellow-100 text-yellow-700 border-yellow-300",
-  platinum: "bg-purple-100 text-purple-700 border-purple-200",
+  bronze: "bg-badge-bronze text-badge-bronze-foreground border-badge-bronze-border",
+  silver: "bg-badge-silver text-badge-silver-foreground border-badge-silver-border",
+  gold: "bg-badge-gold text-badge-gold-foreground border-badge-gold-border",
+  platinum: "bg-badge-platinum text-badge-platinum-foreground border-badge-platinum-border",
 };
 
 interface Props {

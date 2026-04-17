@@ -15,9 +15,9 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
-  searching: { text: "🔥 紧急寻找", color: "bg-destructive" },
-  found: { text: "✅ 已找回", color: "bg-green-500" },
-  closed: { text: "已关闭", color: "bg-muted-foreground" },
+  searching: { text: "🔥 紧急寻找", color: "bg-destructive text-destructive-foreground" },
+  found: { text: "✅ 已找回", color: "bg-status-success text-status-success-foreground" },
+  closed: { text: "已关闭", color: "bg-muted text-muted-foreground" },
 };
 
 const PetRadar = () => {
@@ -150,7 +150,7 @@ const PetRadar = () => {
   return (
     <div className="px-4 pt-3 pb-4">
       {/* 紧急横幅 */}
-      <div className="mb-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl p-3 flex items-center gap-2">
+      <div className="mb-3 text-destructive-foreground rounded-xl p-3 flex items-center gap-2" style={{ background: "var(--emergency-gradient)" }}>
         <AlertTriangle className="w-5 h-5 flex-shrink-0" />
         <div className="text-xs flex-1">
           <p className="font-bold">紧急寻宠雷达 📡</p>
@@ -283,7 +283,7 @@ const PetRadar = () => {
               找回后将悬赏积分转捐救助站 ❤️ 形成爱心循环
             </label>
 
-            <div className="text-[11px] text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-2">
+            <div className="text-[11px] text-status-info-foreground bg-status-info border border-status-info-border rounded-lg p-2">
               ℹ️ 你的真实手机号不会公开，系统将生成虚拟中间号供他人联系
             </div>
           </div>

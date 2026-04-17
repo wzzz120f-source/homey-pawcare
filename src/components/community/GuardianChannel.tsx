@@ -17,17 +17,17 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
-  rescuing: { text: "救助中", color: "bg-orange-500" },
-  treating: { text: "治疗中", color: "bg-yellow-500" },
-  recovering: { text: "康复中", color: "bg-blue-500" },
-  adopting: { text: "待领养", color: "bg-purple-500" },
-  adopted: { text: "已领养", color: "bg-green-500" },
+  rescuing: { text: "救助中", color: "bg-status-rescue text-status-rescue-foreground" },
+  treating: { text: "治疗中", color: "bg-status-treating text-status-treating-foreground" },
+  recovering: { text: "康复中", color: "bg-status-recover text-status-recover-foreground" },
+  adopting: { text: "待领养", color: "bg-status-adopt text-status-adopt-foreground" },
+  adopted: { text: "已领养", color: "bg-status-success text-status-success-foreground" },
 };
 
 const TNR_STATUS_LABELS: Record<string, { text: string; color: string }> = {
-  recruiting: { text: "招募中", color: "bg-orange-500" },
-  in_progress: { text: "进行中", color: "bg-blue-500" },
-  done: { text: "已完成", color: "bg-green-500" },
+  recruiting: { text: "招募中", color: "bg-status-rescue text-status-rescue-foreground" },
+  in_progress: { text: "进行中", color: "bg-status-recover text-status-recover-foreground" },
+  done: { text: "已完成", color: "bg-status-success text-status-success-foreground" },
 };
 
 const GuardianChannel = () => {
@@ -180,8 +180,8 @@ const GuardianChannel = () => {
         </TabsList>
 
         {/* 合规提示 */}
-        <div className="mb-3 flex items-start gap-2 text-[11px] text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-2">
-          <ShieldAlert className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+        <div className="mb-3 flex items-start gap-2 text-[11px] text-status-info-foreground bg-status-info border border-status-info-border rounded-lg p-2">
+          <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
           <span>所有救助物资请走平台对接的品牌商渠道。严禁个人收款码 / 私转。如有困难请联系客服。</span>
         </div>
 
@@ -230,7 +230,7 @@ const GuardianChannel = () => {
                       </div>
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-secondary">
                         {s.after_image ? <img src={s.after_image} alt="现在" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">期待 ✨</div>}
-                        <Badge className="absolute top-1 left-1 text-[9px] bg-green-600 text-white">现在</Badge>
+                        <Badge className="absolute top-1 left-1 text-[9px] bg-status-success text-status-success-foreground">现在</Badge>
                       </div>
                     </div>
                   )}
@@ -239,7 +239,7 @@ const GuardianChannel = () => {
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-orange-500" /> 已收到 {s.cloud_feed_count || 0} 份爱心粮
+                      <Sparkles className="w-3 h-3 text-status-rescue" /> 已收到 {s.cloud_feed_count || 0} 份爱心粮
                     </div>
                     <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => cloudFeed(s.id)}>
                       🍖 投喂

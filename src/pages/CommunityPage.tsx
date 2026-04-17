@@ -397,8 +397,8 @@ const CommunityPage = () => {
                   )}
 
                   {/* 安全提示 */}
-                  <div className="mt-3 flex items-start gap-2 text-[11px] text-muted-foreground bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-lg p-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div className="mt-3 flex items-start gap-2 text-[11px] text-status-warn-foreground bg-status-warn border border-status-warn-border rounded-lg p-2">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                     <span>严禁发布个人收款码、二维码、微信号求转账。所有救助物资请走平台正规渠道。</span>
                   </div>
 
@@ -438,7 +438,7 @@ const CommunityPage = () => {
                           <div className="relative">
                             <img src={cover.media_url} alt="" className="w-full object-cover" loading="lazy" />
                             {post.is_featured && (
-                              <Badge className="absolute top-2 left-2 bg-yellow-500 text-white text-[10px] gap-0.5">
+                              <Badge className="absolute top-2 left-2 bg-status-featured text-status-featured-foreground text-[10px] gap-0.5">
                                 <Sparkles className="w-3 h-3" /> 加精
                               </Badge>
                             )}
