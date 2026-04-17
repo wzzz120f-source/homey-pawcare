@@ -146,6 +146,41 @@ export type Database = {
           },
         ]
       }
+      cloud_feeding: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          points: number
+          rescue_story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          points?: number
+          rescue_story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          points?: number
+          rescue_story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloud_feeding_rescue_story_id_fkey"
+            columns: ["rescue_story_id"]
+            isOneToOne: false
+            referencedRelation: "rescue_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -180,6 +215,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      content_violations: {
+        Row: {
+          content_snippet: string | null
+          content_type: string
+          created_at: string
+          id: string
+          status: string
+          user_id: string
+          violation_type: string
+        }
+        Insert: {
+          content_snippet?: string | null
+          content_type: string
+          created_at?: string
+          id?: string
+          status?: string
+          user_id: string
+          violation_type: string
+        }
+        Update: {
+          content_snippet?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          status?: string
+          user_id?: string
+          violation_type?: string
+        }
+        Relationships: []
       }
       coupons: {
         Row: {
@@ -374,6 +439,110 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lost_pet_clues: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          image_url: string | null
+          latitude: number
+          longitude: number
+          lost_pet_id: string
+          spotted_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          image_url?: string | null
+          latitude: number
+          longitude: number
+          lost_pet_id: string
+          spotted_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          latitude?: number
+          longitude?: number
+          lost_pet_id?: string
+          spotted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lost_pet_clues_lost_pet_id_fkey"
+            columns: ["lost_pet_id"]
+            isOneToOne: false
+            referencedRelation: "lost_pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lost_pets: {
+        Row: {
+          breed: string | null
+          created_at: string
+          donate_to_shelter: boolean
+          features: string
+          id: string
+          image_url: string | null
+          last_seen_location: string
+          latitude: number
+          longitude: number
+          lost_at: string
+          pet_name: string
+          pet_type: string
+          reward_points: number
+          status: string
+          updated_at: string
+          user_id: string
+          virtual_phone: string | null
+        }
+        Insert: {
+          breed?: string | null
+          created_at?: string
+          donate_to_shelter?: boolean
+          features: string
+          id?: string
+          image_url?: string | null
+          last_seen_location: string
+          latitude: number
+          longitude: number
+          lost_at?: string
+          pet_name: string
+          pet_type?: string
+          reward_points?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          virtual_phone?: string | null
+        }
+        Update: {
+          breed?: string | null
+          created_at?: string
+          donate_to_shelter?: boolean
+          features?: string
+          id?: string
+          image_url?: string | null
+          last_seen_location?: string
+          latitude?: number
+          longitude?: number
+          lost_at?: string
+          pet_name?: string
+          pet_type?: string
+          reward_points?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          virtual_phone?: string | null
+        }
+        Relationships: []
       }
       merchant_appeals: {
         Row: {
@@ -689,25 +858,31 @@ export type Database = {
       }
       posts: {
         Row: {
+          category: string
           content: string
           created_at: string
           id: string
+          is_featured: boolean
           tags: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          category?: string
           content?: string
           created_at?: string
           id?: string
+          is_featured?: boolean
           tags?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          category?: string
           content?: string
           created_at?: string
           id?: string
+          is_featured?: boolean
           tags?: string[] | null
           updated_at?: string
           user_id?: string
@@ -871,6 +1046,8 @@ export type Database = {
           bio: string | null
           created_at: string
           id: string
+          is_verified_real_name: boolean
+          love_points: number
           updated_at: string
           user_id: string
           username: string
@@ -880,6 +1057,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           id?: string
+          is_verified_real_name?: boolean
+          love_points?: number
           updated_at?: string
           user_id: string
           username?: string
@@ -889,9 +1068,65 @@ export type Database = {
           bio?: string | null
           created_at?: string
           id?: string
+          is_verified_real_name?: boolean
+          love_points?: number
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      rescue_stories: {
+        Row: {
+          after_image: string | null
+          before_image: string | null
+          cloud_feed_count: number
+          cloud_feed_points: number
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string | null
+          medical_progress: string | null
+          pet_name: string
+          pet_type: string
+          status: string
+          story: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          after_image?: string | null
+          before_image?: string | null
+          cloud_feed_count?: number
+          cloud_feed_points?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          medical_progress?: string | null
+          pet_name: string
+          pet_type?: string
+          status?: string
+          story: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          after_image?: string | null
+          before_image?: string | null
+          cloud_feed_count?: number
+          cloud_feed_points?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          medical_progress?: string | null
+          pet_name?: string
+          pet_type?: string
+          status?: string
+          story?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -926,6 +1161,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tnr_collaborations: {
+        Row: {
+          cats_count: number
+          created_at: string
+          description: string
+          id: string
+          latitude: number | null
+          location: string
+          longitude: number | null
+          scheduled_date: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          volunteers_joined: number
+          volunteers_needed: number
+        }
+        Insert: {
+          cats_count?: number
+          created_at?: string
+          description: string
+          id?: string
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          scheduled_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          volunteers_joined?: number
+          volunteers_needed?: number
+        }
+        Update: {
+          cats_count?: number
+          created_at?: string
+          description?: string
+          id?: string
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          scheduled_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          volunteers_joined?: number
+          volunteers_needed?: number
+        }
+        Relationships: []
+      }
+      user_badges: {
+        Row: {
+          awarded_at: string
+          awarded_by: string
+          badge_code: string
+          badge_icon: string
+          badge_level: string
+          badge_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          awarded_by?: string
+          badge_code: string
+          badge_icon?: string
+          badge_level?: string
+          badge_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          awarded_by?: string
+          badge_code?: string
+          badge_icon?: string
+          badge_level?: string
+          badge_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_coupons: {
         Row: {
