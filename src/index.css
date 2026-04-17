@@ -113,6 +113,37 @@
     --sidebar-accent-foreground: 35 30% 85%;
     --sidebar-border: 25 12% 22%;
     --sidebar-ring: 25 85% 57%;
+
+    --status-rescue: 25 90% 50%;
+    --status-rescue-foreground: 0 0% 100%;
+    --status-treating: 45 85% 50%;
+    --status-treating-foreground: 30 40% 10%;
+    --status-recover: 210 80% 50%;
+    --status-recover-foreground: 0 0% 100%;
+    --status-adopt: 270 60% 55%;
+    --status-adopt-foreground: 0 0% 100%;
+    --status-success: 145 55% 40%;
+    --status-success-foreground: 0 0% 100%;
+    --status-featured: 45 85% 55%;
+    --status-featured-foreground: 30 40% 10%;
+    --status-info-bg: 210 50% 18%;
+    --status-info-border: 210 40% 28%;
+    --status-info-foreground: 210 60% 80%;
+    --status-warn-bg: 30 50% 18%;
+    --status-warn-border: 30 40% 28%;
+    --status-warn-foreground: 35 80% 80%;
+    --badge-bronze-bg: 25 50% 22%;
+    --badge-bronze-fg: 25 70% 75%;
+    --badge-bronze-border: 25 40% 35%;
+    --badge-silver-bg: 220 10% 25%;
+    --badge-silver-fg: 220 15% 80%;
+    --badge-silver-border: 220 10% 35%;
+    --badge-gold-bg: 45 50% 22%;
+    --badge-gold-fg: 45 80% 75%;
+    --badge-gold-border: 45 40% 35%;
+    --badge-platinum-bg: 270 30% 25%;
+    --badge-platinum-fg: 270 50% 80%;
+    --badge-platinum-border: 270 25% 35%;
   }
 }
 
