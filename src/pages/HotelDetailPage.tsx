@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import BottomNav from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -193,22 +195,67 @@ const HotelDetailPage = () => {
     );
   }
 
+  // Build gallery: hero + 3 distinct images, deduped
   const heroImg = getHotelImage(hotel, 0);
+  const galleryImages = Array.from(new Set([
+    heroImg,
+    ...ALL_IMAGES.filter(img => img !== heroImg).slice(0, 3),
+  ]));
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setCurrentSlide(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on("select", onSelect);
+    return () => { carouselApi.off("select", onSelect); };
+  }, [carouselApi]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Hero Image */}
+      {/* Hero Image Carousel */}
       <div className="relative">
-        <img src={heroImg} alt={hotel.name} className="w-full h-56 object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
+        <Carousel
+          setApi={setCarouselApi}
+          opts={{ loop: true }}
+          plugins={[Autoplay({ delay: 4000, stopOnInteraction: true })]}
+          className="w-full"
+        >
+          <CarouselContent>
+            {galleryImages.map((img, idx) => (
+              <CarouselItem key={idx}>
+                <img src={img} alt={`${hotel.name} 实拍图 ${idx + 1}`} className="w-full h-56 object-cover" loading={idx === 0 ? "eager" : "lazy"} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+        <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent pointer-events-none" />
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 min-w-[44px] min-h-[44px] flex items-center justify-center bg-background/80 backdrop-blur rounded-full"
+          className="absolute top-4 left-4 min-w-[44px] min-h-[44px] flex items-center justify-center bg-background/80 backdrop-blur rounded-full z-10"
           aria-label="返回"
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
-        <div className="absolute bottom-4 left-4 right-4">
+        {/* Indicator badge */}
+        <div className="absolute top-4 right-4 z-10 bg-foreground/60 text-background text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur">
+          {currentSlide + 1}/{galleryImages.length}
+        </div>
+        {/* Dots */}
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+          {galleryImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => carouselApi?.scrollTo(idx)}
+              aria-label={`跳到第${idx + 1}张图片`}
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                idx === currentSlide ? "w-5 bg-white" : "w-1.5 bg-white/50"
+              )}
+            />
+          ))}
+        </div>
+        <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
           <h1 className="text-xl font-extrabold text-white drop-shadow-lg">{hotel.name}</h1>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex items-center gap-1">

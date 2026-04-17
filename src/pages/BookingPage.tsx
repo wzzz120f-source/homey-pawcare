@@ -252,8 +252,11 @@ const BookingPage = () => {
           />
         </section>
 
-        {/* Summary & Submit */}
-        <div className="sticky bottom-16 bg-background/90 backdrop-blur-md py-4 border-t border-border/50">
+      </main>
+
+      {/* Fixed Submit Bar (above BottomNav) */}
+      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50 px-5 py-3">
+        <div className="max-w-lg mx-auto">
           <Button
             variant="hero"
             size="xl"
@@ -286,7 +289,7 @@ const BookingPage = () => {
             确认预约
           </Button>
         </div>
-      </main>
+      </div>
 
       <BottomNav />
     </div>
