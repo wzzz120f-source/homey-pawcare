@@ -464,6 +464,23 @@ const ProfilePage = () => {
           </div>
         </button>
 
+        {/* 公益足迹入口 */}
+        <button
+          onClick={() => navigate("/charity-footprint")}
+          className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-xl">
+              ✨
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-foreground">我的公益足迹</p>
+              <p className="text-xs text-muted-foreground">勋章 · 救助 · 走失登记</p>
+            </div>
+          </div>
+          <span className="text-muted-foreground">→</span>
+        </button>
+
         <div className="mt-6 flex gap-1 bg-secondary/50 rounded-xl p-1 overflow-x-auto" role="tablist">
           {TABS.map((tab) => (
             <button
