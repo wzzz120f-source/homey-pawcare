@@ -354,7 +354,7 @@ const PetRadar = () => {
             <button onClick={() => imgRef.current?.click()} className="w-full aspect-video rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:border-primary">
               {petImg ? <img src={URL.createObjectURL(petImg)} className="w-full h-full object-cover rounded-lg" /> : <><Camera className="w-6 h-6" /><span>上传宠物照片</span></>}
             </button>
-            <input ref={imgRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && setPetImg(e.target.files[0])} />
+            <input ref={imgRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setPetImg(e.target.files[0])} />
 
             <div>
               <label className="text-xs text-muted-foreground">悬赏爱心积分（可选）</label>
@@ -386,7 +386,7 @@ const PetRadar = () => {
             <button onClick={() => clueImgRef.current?.click()} className="w-full aspect-video rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:border-primary">
               {clueImg ? <img src={URL.createObjectURL(clueImg)} className="w-full h-full object-cover rounded-lg" /> : <><Camera className="w-6 h-6" /><span>拍照上传（可选）</span></>}
             </button>
-            <input ref={clueImgRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && setClueImg(e.target.files[0])} />
+            <input ref={clueImgRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setClueImg(e.target.files[0])} />
             <p className="text-[11px] text-muted-foreground">系统会自动附上你的当前坐标，失主将立即收到通知</p>
           </div>
           <DialogFooter>
