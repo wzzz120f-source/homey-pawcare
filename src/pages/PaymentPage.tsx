@@ -331,6 +331,47 @@ const PaymentPage = () => {
           </button>
         </section>
 
+        {/* Love Points Redemption */}
+        <section className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-foreground text-base flex items-center gap-2">
+              <Heart className="w-4 h-4 text-primary fill-primary" /> 爱心积分抵现
+            </h2>
+            <Switch
+              checked={usePoints}
+              onCheckedChange={setUsePoints}
+              disabled={maxPointsAvailable <= 0}
+              aria-label="使用积分抵现"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            当前余额 <span className="font-bold text-primary">{pointsBalance}</span> 积分 · 100 积分 = ¥1 · 单笔最多抵 20%
+          </p>
+          {maxPointsAvailable <= 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {pointsBalance === 0 ? "暂无可用积分" : "本单不满足积分抵扣条件"}
+            </p>
+          ) : usePoints ? (
+            <div className="space-y-2 pt-1">
+              <Slider
+                value={[Math.min(pointsToUse, maxPointsAvailable)]}
+                min={0}
+                max={maxPointsAvailable}
+                step={10}
+                onValueChange={(v) => setPointsToUse(v[0])}
+              />
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">使用 <span className="font-bold text-foreground">{effectivePoints}</span> 积分</span>
+                <span className="text-primary font-bold">抵扣 ¥{pointsDiscount.toFixed(2)}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              最多可用 <span className="font-bold text-primary">{maxPointsAvailable}</span> 积分，抵扣 ¥{(maxPointsAvailable / POINTS_PER_YUAN).toFixed(2)}
+            </p>
+          )}
+        </section>
+
         {/* Payment Method */}
         <section className="bg-card rounded-2xl p-5 card-shadow">
           <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
