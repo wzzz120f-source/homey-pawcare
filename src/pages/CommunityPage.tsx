@@ -445,7 +445,12 @@ const CommunityPage = () => {
                       <article key={post.id} className="bg-card rounded-2xl overflow-hidden card-shadow animate-fade-in-up">
                         {/* 封面图 */}
                         {cover && (
-                          <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/post/${post.id}`)}
+                            className="relative block w-full text-left"
+                            aria-label="查看动态详情"
+                          >
                             <img src={cover.media_url} alt="" className="w-full object-cover" loading="lazy" />
                             {post.is_featured && (
                               <Badge className="absolute top-2 left-2 bg-status-featured text-status-featured-foreground text-[10px] gap-0.5">
@@ -457,13 +462,19 @@ const CommunityPage = () => {
                                 {images.length} 图
                               </Badge>
                             )}
-                          </div>
+                          </button>
                         )}
 
                         <div className="p-2.5 space-y-2">
                           {/* 内容 */}
                           {post.content && (
-                            <p className="text-xs text-foreground leading-relaxed line-clamp-3">{post.content}</p>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/post/${post.id}`)}
+                              className="block w-full text-left"
+                            >
+                              <p className="text-xs text-foreground leading-relaxed line-clamp-3">{post.content}</p>
+                            </button>
                           )}
 
                           {/* Tags */}
@@ -505,49 +516,13 @@ const CommunityPage = () => {
                             <UserBadgeRow badges={badgeMap[post.user_id]} max={1} />
                           )}
 
-                          {/* 评论入口 */}
+                          {/* 评论入口 - 跳转详情页盖楼 */}
                           <button
-                            onClick={() => toggleComments(post.id)}
+                            onClick={() => navigate(`/post/${post.id}`)}
                             className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary"
                           >
-                            <MessageCircle className="w-3 h-3" /> {post.comments_count || 0} 评论
+                            <MessageCircle className="w-3 h-3" /> {(post.comments_count || 0) > 0 ? `查看全部 ${post.comments_count} 条评论` : "抢沙发"}
                           </button>
-
-                          {/* 评论展开 */}
-                          {expandedComments === post.id && (
-                            <div className="pt-2 border-t border-border/50 space-y-2">
-                              {(comments[post.id] || []).slice(0, 5).map((c: any) => (
-                                <div key={c.id} className="flex gap-1.5">
-                                  <Avatar className="w-5 h-5 flex-shrink-0">
-                                    <AvatarImage src={c.profiles?.avatar_url} />
-                                    <AvatarFallback className="text-[9px]">{(c.profiles?.username || "宠")[0]}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-foreground">{c.profiles?.username}</p>
-                                    <p className="text-[11px] text-foreground break-words">{c.content}</p>
-                                    <p className="text-[9px] text-muted-foreground">
-                                      {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: zhCN })}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                              {user && (
-                                <div className="flex gap-1">
-                                  <Input
-                                    value={commentText}
-                                    onChange={(e) => setCommentText(e.target.value)}
-                                    placeholder="评论..."
-                                    className="text-[11px] h-7 px-2"
-                                    onKeyDown={(e) => e.key === "Enter" && submitComment(post.id)}
-                                    maxLength={300}
-                                  />
-                                  <Button size="sm" variant="hero" className="h-7 px-2 rounded-lg" onClick={() => submitComment(post.id)}>
-                                    <Send className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </article>
                     );
