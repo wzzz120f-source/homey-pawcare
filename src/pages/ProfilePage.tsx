@@ -19,6 +19,7 @@ interface Profile {
   username: string;
   avatar_url: string | null;
   bio: string | null;
+  love_points: number;
 }
 
 interface UserPost {
@@ -140,7 +141,7 @@ const ProfilePage = () => {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("username, avatar_url, bio")
+      .select("username, avatar_url, bio, love_points")
       .eq("user_id", user.id)
       .single();
     if (data) {
