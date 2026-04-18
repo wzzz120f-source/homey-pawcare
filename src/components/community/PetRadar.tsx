@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { MapPin, Plus, Phone, AlertTriangle, Camera, Heart, Navigation } from "lucide-react";
+import { MapPin, Plus, Phone, AlertTriangle, Camera, Heart, Navigation, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import ShareCardDialog from "@/components/ShareCardDialog";
 import { generateVirtualPhone, checkTextSafety } from "@/lib/contentSafety";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -34,6 +35,8 @@ const PetRadar = () => {
   const [showForm, setShowForm] = useState(false);
   const [showClueForm, setShowClueForm] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState<5 | 10 | 20>(10);
+  const [sharePet, setSharePet] = useState<any | null>(null);
 
   // 走失登记表单
   const [petName, setPetName] = useState("");
@@ -209,8 +212,35 @@ const PetRadar = () => {
         </div>
       ) : (
         <>
-          {/* 高德地图 — 红点标注 */}
-          <PetRadarMap pets={lostPets} userLocation={userLocation} onMarkerClick={focusPet} />
+          {/* 半径切换 */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[11px] text-muted-foreground">搜索范围</span>
+            <div className="inline-flex rounded-full bg-secondary p-0.5">
+              {([5, 10, 20] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRadiusKm(r)}
+                  className={`min-w-11 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    radiusKm === r ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-pressed={radiusKm === r}
+                >
+                  {r}km
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 高德地图 — 聚类 + 半径圈 */}
+          <PetRadarMap
+            pets={lostPets.filter((p) => {
+              if (!userLocation) return true;
+              return distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) <= radiusKm;
+            })}
+            userLocation={userLocation}
+            onMarkerClick={focusPet}
+            radiusKm={radiusKm}
+          />
 
           <div className="space-y-3">
             {lostPets.map((p) => {
@@ -278,11 +308,22 @@ const PetRadar = () => {
                     <div className="text-[10px] text-muted-foreground">
                       联系：<span className="font-mono font-bold text-foreground">{p.virtual_phone}</span>
                     </div>
-                    {p.status === "searching" && (
-                      <Button size="sm" variant="hero" className="h-8 rounded-full text-xs gap-1" onClick={() => setShowClueForm(p.id)}>
-                        <Camera className="w-3 h-3" /> 我看到了
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-full text-xs gap-1 px-2.5"
+                        onClick={() => setSharePet(p)}
+                        aria-label="扩散走失启事"
+                      >
+                        <Share2 className="w-3.5 h-3.5" /> 扩散
                       </Button>
-                    )}
+                      {p.status === "searching" && (
+                        <Button size="sm" variant="hero" className="h-8 rounded-full text-xs gap-1" onClick={() => setShowClueForm(p.id)}>
+                          <Camera className="w-3 h-3" /> 我看到了
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -355,6 +396,20 @@ const PetRadar = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 扩散分享卡片 */}
+      {sharePet && (
+        <ShareCardDialog
+          open={!!sharePet}
+          onOpenChange={(o) => !o && setSharePet(null)}
+          kind="lost"
+          targetId={sharePet.id}
+          authorName={sharePet.pet_name}
+          coverImage={sharePet.image_url}
+          contentSnippet={`${sharePet.pet_type === "cat" ? "🐱" : "🐶"} ${sharePet.pet_name} 在「${sharePet.last_seen_location}」走失。特征：${sharePet.features}${sharePet.reward_points ? ` · 悬赏 ${sharePet.reward_points} 爱心积分` : ""}`}
+          badgeText={sharePet.status === "searching" ? "🆘 紧急寻找" : "✅ 已找回"}
+        />
+      )}
     </div>
   );
 };
