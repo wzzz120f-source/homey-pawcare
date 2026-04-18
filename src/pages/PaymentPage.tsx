@@ -1,13 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLovePoints } from "@/hooks/useLovePoints";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CartItem } from "@/hooks/useCart";
+
+// 积分抵现规则: 100 积分 = ¥1，单笔订单最多抵 20%
+const POINTS_PER_YUAN = 100;
+const MAX_POINTS_RATIO = 0.2;
 
 interface OrderData {
   order_type: string;
@@ -70,6 +77,7 @@ const PaymentPage = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { balance: pointsBalance, refresh: refreshPoints } = useLovePoints();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("wechat");
   const [isPaying, setIsPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
@@ -78,6 +86,10 @@ const PaymentPage = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [showCouponPicker, setShowCouponPicker] = useState(false);
+
+  // Love points redemption
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
 
   const orderData = location.state as OrderData | null;
 
@@ -96,18 +108,33 @@ const PaymentPage = () => {
     fetchCoupons();
   }, []);
 
-  if (!orderData) return null;
-
   const calcDiscount = (coupon: Coupon): number => {
+    if (!orderData) return 0;
     if (orderData.total_amount < coupon.min_order_amount) return 0;
     if (coupon.discount_type === "fixed") return coupon.discount_value;
-    // percent
     const raw = (orderData.total_amount * coupon.discount_value) / 100;
     return coupon.max_discount ? Math.min(raw, coupon.max_discount) : raw;
   };
 
   const discountAmount = selectedCoupon ? calcDiscount(selectedCoupon) : 0;
-  const finalAmount = Math.max(0, orderData.total_amount - discountAmount);
+  const afterCoupon = Math.max(0, (orderData?.total_amount ?? 0) - discountAmount);
+
+  // 积分抵现: 100 积分 = ¥1，单笔订单最多抵 20%
+  const maxPointsByOrder = Math.floor((orderData?.total_amount ?? 0) * MAX_POINTS_RATIO * POINTS_PER_YUAN);
+  const maxPointsByAfterCoupon = Math.floor(afterCoupon * POINTS_PER_YUAN);
+  const maxPointsAvailable = Math.max(0, Math.min(pointsBalance, maxPointsByOrder, maxPointsByAfterCoupon));
+  const effectivePoints = usePoints ? Math.min(pointsToUse, maxPointsAvailable) : 0;
+  const pointsDiscount = effectivePoints / POINTS_PER_YUAN;
+  const finalAmount = Math.max(0, afterCoupon - pointsDiscount);
+
+  // Auto-apply max points when toggled on
+  useEffect(() => {
+    if (usePoints) setPointsToUse(maxPointsAvailable);
+    else setPointsToUse(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usePoints, maxPointsAvailable]);
+
+  if (!orderData) return null;
 
   const applicableCoupons = coupons.filter((c) => orderData.total_amount >= c.min_order_amount);
   const inapplicableCoupons = coupons.filter((c) => orderData.total_amount < c.min_order_amount);
@@ -122,7 +149,7 @@ const PaymentPage = () => {
     setIsPaying(true);
 
     try {
-      const { error } = await supabase.from("orders").insert({
+      const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
         service_type: orderData.service_type ?? null,
@@ -137,9 +164,26 @@ const PaymentPage = () => {
         payment_method: selectedMethod,
         payment_status: "paid",
         order_status: "confirmed",
-      });
+      }).select("id, order_no").single();
 
       if (error) throw error;
+
+      // 扣减爱心积分并写入流水
+      if (effectivePoints > 0 && orderRow) {
+        const { data: spendRes, error: spendErr } = await (supabase as any).rpc("spend_love_points", {
+          _points: effectivePoints,
+          _purpose: "exchange",
+          _related_type: "order",
+          _related_id: orderRow.id,
+          _description: `订单 ${orderRow.order_no} 积分抵现 ¥${pointsDiscount.toFixed(2)}`,
+        });
+        if (spendErr || !spendRes?.success) {
+          // 积分扣减失败不阻塞订单，但提示用户
+          toast({ title: "积分抵扣失败", description: "订单已创建，积分未扣除", variant: "destructive" });
+        } else {
+          await refreshPoints();
+        }
+      }
 
       // Clear cart if shop order
       if (orderData.order_type === "shop") {
@@ -287,6 +331,47 @@ const PaymentPage = () => {
           </button>
         </section>
 
+        {/* Love Points Redemption */}
+        <section className="bg-card rounded-2xl p-5 card-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-foreground text-base flex items-center gap-2">
+              <Heart className="w-4 h-4 text-primary fill-primary" /> 爱心积分抵现
+            </h2>
+            <Switch
+              checked={usePoints}
+              onCheckedChange={setUsePoints}
+              disabled={maxPointsAvailable <= 0}
+              aria-label="使用积分抵现"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            当前余额 <span className="font-bold text-primary">{pointsBalance}</span> 积分 · 100 积分 = ¥1 · 单笔最多抵 20%
+          </p>
+          {maxPointsAvailable <= 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {pointsBalance === 0 ? "暂无可用积分" : "本单不满足积分抵扣条件"}
+            </p>
+          ) : usePoints ? (
+            <div className="space-y-2 pt-1">
+              <Slider
+                value={[Math.min(pointsToUse, maxPointsAvailable)]}
+                min={0}
+                max={maxPointsAvailable}
+                step={10}
+                onValueChange={(v) => setPointsToUse(v[0])}
+              />
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">使用 <span className="font-bold text-foreground">{effectivePoints}</span> 积分</span>
+                <span className="text-primary font-bold">抵扣 ¥{pointsDiscount.toFixed(2)}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              最多可用 <span className="font-bold text-primary">{maxPointsAvailable}</span> 积分，抵扣 ¥{(maxPointsAvailable / POINTS_PER_YUAN).toFixed(2)}
+            </p>
+          )}
+        </section>
+
         {/* Payment Method */}
         <section className="bg-card rounded-2xl p-5 card-shadow">
           <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
@@ -320,16 +405,24 @@ const PaymentPage = () => {
         </section>
 
         {/* Summary */}
-        {discountAmount > 0 && (
+        {(discountAmount > 0 || pointsDiscount > 0) && (
           <div className="bg-card rounded-2xl p-4 card-shadow space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">商品总额</span>
               <span className="text-foreground">¥{orderData.total_amount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-primary">
-              <span>优惠券抵扣</span>
-              <span className="font-bold">-¥{discountAmount.toFixed(2)}</span>
-            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-primary">
+                <span>优惠券抵扣</span>
+                <span className="font-bold">-¥{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {pointsDiscount > 0 && (
+              <div className="flex justify-between text-primary">
+                <span className="flex items-center gap-1"><Heart className="w-3 h-3 fill-primary" />积分抵扣 ({effectivePoints})</span>
+                <span className="font-bold">-¥{pointsDiscount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="border-t border-border pt-2 flex justify-between items-center">
               <span className="font-bold text-foreground">实付金额</span>
               <span className="text-xl font-extrabold text-primary">¥{finalAmount.toFixed(2)}</span>
