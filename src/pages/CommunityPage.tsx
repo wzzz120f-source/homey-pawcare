@@ -315,8 +315,8 @@ const CommunityPage = () => {
 
             {/* 创建动态弹窗 */}
             {showCreate && (
-              <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end sm:items-center justify-center" onClick={() => setShowCreate(false)}>
-                <div className="bg-background w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[88vh] overflow-y-auto animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-[60] bg-foreground/50 flex items-end sm:items-center justify-center" onClick={() => setShowCreate(false)}>
+                <div className="bg-background w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 pb-24 sm:pb-5 max-h-[88vh] overflow-y-auto animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-extrabold text-lg text-foreground">分享你的故事</h3>
                     <button onClick={() => setShowCreate(false)} className="p-1 rounded-lg hover:bg-secondary">
