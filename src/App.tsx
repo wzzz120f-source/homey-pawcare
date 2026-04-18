@@ -20,6 +20,7 @@ const MerchantAppealPage = lazy(() => import("./pages/MerchantAppealPage"));
 const PetHotelPage = lazy(() => import("./pages/PetHotelPage"));
 const HotelDetailPage = lazy(() => import("./pages/HotelDetailPage"));
 const PointsCenterPage = lazy(() => import("./pages/PointsCenterPage"));
+const PostDetailPage = lazy(() => import("./pages/PostDetailPage"));
 
 const queryClient = new QueryClient();
 
