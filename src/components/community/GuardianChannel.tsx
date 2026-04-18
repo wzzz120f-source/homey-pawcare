@@ -228,15 +228,27 @@ const GuardianChannel = () => {
                     </Badge>
                   </div>
 
-                  {/* Before / After */}
+                  {/* Before / After (image / video / Live Photo image) */}
                   {(s.before_image || s.after_image) && (
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-secondary">
-                        {s.before_image ? <img src={s.before_image} alt="救助前" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">救助前</div>}
+                        {s.before_image ? (
+                          /\.(mp4|mov|webm|m4v)(\?|$)/i.test(s.before_image) ? (
+                            <video src={s.before_image} className="w-full h-full object-cover" controls preload="metadata" playsInline />
+                          ) : (
+                            <img src={s.before_image} alt="救助前" className="w-full h-full object-cover" loading="lazy" />
+                          )
+                        ) : <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">救助前</div>}
                         <Badge className="absolute top-1 left-1 text-[9px] bg-foreground/70 text-background">救助前</Badge>
                       </div>
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-secondary">
-                        {s.after_image ? <img src={s.after_image} alt="现在" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">期待 ✨</div>}
+                        {s.after_image ? (
+                          /\.(mp4|mov|webm|m4v)(\?|$)/i.test(s.after_image) ? (
+                            <video src={s.after_image} className="w-full h-full object-cover" controls preload="metadata" playsInline />
+                          ) : (
+                            <img src={s.after_image} alt="现在" className="w-full h-full object-cover" loading="lazy" />
+                          )
+                        ) : <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">期待 ✨</div>}
                         <Badge className="absolute top-1 left-1 text-[9px] bg-status-success text-status-success-foreground">现在</Badge>
                       </div>
                     </div>
@@ -331,18 +343,36 @@ const GuardianChannel = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => beforeRef.current?.click()}
-                className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground border-2 border-dashed border-border hover:border-primary"
+                className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground border-2 border-dashed border-border hover:border-primary relative overflow-hidden"
               >
-                {beforeImg ? <img src={URL.createObjectURL(beforeImg)} className="w-full h-full object-cover rounded-lg" /> : <><ImageIcon className="w-5 h-5" /><span>救助前</span></>}
+                {beforeImg ? (
+                  beforeImg.type.startsWith("video") || /\.mov$/i.test(beforeImg.name) ? (
+                    <>
+                      <video src={URL.createObjectURL(beforeImg)} className="w-full h-full object-cover" muted playsInline />
+                      <span className="absolute bottom-1 left-1 bg-foreground/70 text-background text-[10px] px-1.5 py-0.5 rounded-full">📹 视频</span>
+                    </>
+                  ) : (
+                    <img src={URL.createObjectURL(beforeImg)} className="w-full h-full object-cover rounded-lg" />
+                  )
+                ) : (<><ImageIcon className="w-5 h-5" /><span>救助前 图/视频</span></>)}
               </button>
               <button
                 onClick={() => afterRef.current?.click()}
-                className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground border-2 border-dashed border-border hover:border-primary"
+                className="aspect-square rounded-lg bg-secondary flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground border-2 border-dashed border-border hover:border-primary relative overflow-hidden"
               >
-                {afterImg ? <img src={URL.createObjectURL(afterImg)} className="w-full h-full object-cover rounded-lg" /> : <><ImageIcon className="w-5 h-5" /><span>现在 ✨</span></>}
+                {afterImg ? (
+                  afterImg.type.startsWith("video") || /\.mov$/i.test(afterImg.name) ? (
+                    <>
+                      <video src={URL.createObjectURL(afterImg)} className="w-full h-full object-cover" muted playsInline />
+                      <span className="absolute bottom-1 left-1 bg-foreground/70 text-background text-[10px] px-1.5 py-0.5 rounded-full">📹 视频</span>
+                    </>
+                  ) : (
+                    <img src={URL.createObjectURL(afterImg)} className="w-full h-full object-cover rounded-lg" />
+                  )
+                ) : (<><ImageIcon className="w-5 h-5" /><span>现在 ✨ 图/视频</span></>)}
               </button>
-              <input ref={beforeRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
-              <input ref={afterRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
+              <input ref={beforeRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
+              <input ref={afterRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
             </div>
           </div>
           <DialogFooter>

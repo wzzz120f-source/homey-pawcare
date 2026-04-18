@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Phone, Hotel, Wifi, PawPrint, CalendarDays, Loader2, Camera, X, MessageSquare, Shield, Clock, CheckCircle2, Info, Utensils, Stethoscope, Car, Waves } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Phone, Hotel, Wifi, PawPrint, CalendarDays, Loader2, MessageSquare, Shield, CheckCircle2, Info, Utensils, Stethoscope, Car, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import BottomNav from "@/components/BottomNav";
+import MediaPicker from "@/components/MediaPicker";
+import MediaThumb from "@/components/MediaThumb";
+import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -87,10 +90,8 @@ const HotelDetailPage = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
-  const [reviewImages, setReviewImages] = useState<File[]>([]);
-  const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
+  const [reviewMedia, setReviewMedia] = useState<PreparedMedia[]>([]);
   const [submittingReview, setSubmittingReview] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Carousel state (must be declared before any conditional return)
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
@@ -147,43 +148,48 @@ const HotelDetailPage = () => {
     } finally { setSubmitting(false); }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (reviewImages.length + files.length > 9) { toast.error("最多上传9张图片"); return; }
-    const newFiles = [...reviewImages, ...files].slice(0, 9);
-    setReviewImages(newFiles);
-    setReviewPreviews(newFiles.map(f => URL.createObjectURL(f)));
-  };
-
-  const removeImage = (idx: number) => {
-    const newFiles = reviewImages.filter((_, i) => i !== idx);
-    setReviewImages(newFiles);
-    setReviewPreviews(newFiles.map(f => URL.createObjectURL(f)));
-  };
-
   const submitReview = async () => {
     if (!user) { navigate("/auth"); return; }
     if (!hotel) return;
     if (!reviewContent.trim()) { toast.error("请输入评价内容"); return; }
     setSubmittingReview(true);
     try {
-      const imageUrls: string[] = [];
-      for (const file of reviewImages) {
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("hotel-review-images").upload(path, file);
-        if (uploadErr) throw uploadErr;
-        const { data: urlData } = supabase.storage.from("hotel-review-images").getPublicUrl(path);
-        imageUrls.push(urlData.publicUrl);
+      const mediaUrls: string[] = [];
+      // Skip the live_photo_video sibling; store its url paired with the heic key
+      for (const item of reviewMedia) {
+        if (item.mediaType === "live_photo_video") continue; // pair handled below
+        try {
+          const { url } = await uploadPreparedMedia(
+            supabase,
+            "hotel-review-images",
+            user.id,
+            item,
+            hotel.id
+          );
+          mediaUrls.push(url);
+        } catch (e) {
+          console.warn("酒店评价媒体上传失败", e);
+        }
+      }
+      // Also upload the live_photo_video pieces so they exist on storage even if URL not in images[]
+      for (const item of reviewMedia) {
+        if (item.mediaType !== "live_photo_video") continue;
+        try {
+          await uploadPreparedMedia(supabase, "hotel-review-images", user.id, item, hotel.id);
+        } catch (e) {
+          console.warn("Live Photo 视频上传失败", e);
+        }
       }
       const { error } = await supabase.from("hotel_reviews" as any).insert({
         hotel_id: hotel.id, user_id: user.id, rating: reviewRating,
-        content: reviewContent, images: imageUrls,
+        content: reviewContent, images: mediaUrls,
       });
       if (error) throw error;
       toast.success("评价发表成功！");
       setShowReviewForm(false);
-      setReviewContent(""); setReviewRating(5); setReviewImages([]); setReviewPreviews([]);
+      setReviewContent(""); setReviewRating(5);
+      revokePreviews(reviewMedia);
+      setReviewMedia([]);
       fetchReviews(hotel.id);
     } catch (err: any) { toast.error(err.message || "评价失败"); }
     finally { setSubmittingReview(false); }
@@ -397,9 +403,18 @@ const HotelDetailPage = () => {
                   {review.content && <p className="text-xs text-foreground leading-relaxed">{review.content}</p>}
                   {review.images?.length > 0 && (
                     <div className="flex gap-1.5 flex-wrap">
-                      {review.images.map((img, idx) => (
-                        <img key={idx} src={img} alt="" className="w-16 h-16 rounded-lg object-cover" loading="lazy" />
-                      ))}
+                      {review.images.map((url, idx) => {
+                        const isVideo = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+                        return (
+                          <MediaThumb
+                            key={idx}
+                            url={url}
+                            mediaType={isVideo ? "video" : "image"}
+                            alt="酒店评价"
+                            className="w-16 h-16 rounded-lg"
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -488,24 +503,8 @@ const HotelDetailPage = () => {
                 placeholder="分享您和毛孩子的入住体验..." className="min-h-[100px] rounded-xl bg-secondary border-none" />
             </div>
             <div>
-              <label className="text-sm font-semibold text-foreground mb-2 block">上传图片 ({reviewImages.length}/9)</label>
-              <div className="flex flex-wrap gap-2">
-                {reviewPreviews.map((src, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => removeImage(idx)} className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {reviewImages.length < 9 && (
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-20 rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary">
-                    <Camera className="w-5 h-5 text-muted-foreground" /><span className="text-[10px] text-muted-foreground">添加</span>
-                  </button>
-                )}
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
+              <label className="text-sm font-semibold text-foreground mb-2 block">上传媒体（图片 / 视频 / Live Photo）</label>
+              <MediaPicker value={reviewMedia} onChange={setReviewMedia} maxItems={9} />
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
