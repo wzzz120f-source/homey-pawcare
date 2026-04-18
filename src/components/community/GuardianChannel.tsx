@@ -154,7 +154,12 @@ const GuardianChannel = () => {
           cloud_feed_points: (story.cloud_feed_points || 0) + 1,
         }).eq("id", storyId);
       }
-      toast.success("投喂成功 +1 爱心粮 🍖");
+      await (supabase as any).rpc("award_love_points", {
+        _action: "cloud_feed", _points: 5,
+        _related_type: "rescue_story", _related_id: storyId,
+        _description: "云投喂爱心粮",
+      });
+      toast.success("投喂成功 +5 爱心积分 ❤️");
       load();
     } catch (e: any) { toast.error(e.message || "投喂失败"); }
   };
