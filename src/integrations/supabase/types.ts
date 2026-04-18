@@ -186,7 +186,11 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          mentioned_user_ids: string[] | null
+          parent_id: string | null
           post_id: string
+          reply_to_user_id: string | null
+          reply_to_username: string | null
           updated_at: string
           user_id: string
         }
@@ -194,7 +198,11 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          mentioned_user_ids?: string[] | null
+          parent_id?: string | null
           post_id: string
+          reply_to_user_id?: string | null
+          reply_to_username?: string | null
           updated_at?: string
           user_id: string
         }
@@ -202,11 +210,22 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          mentioned_user_ids?: string[] | null
+          parent_id?: string | null
           post_id?: string
+          reply_to_user_id?: string | null
+          reply_to_username?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_post_id_fkey"
             columns: ["post_id"]
