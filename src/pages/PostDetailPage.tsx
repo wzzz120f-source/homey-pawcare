@@ -194,9 +194,10 @@ const PostDetailPage = () => {
   const submit = async () => {
     if (!user) { navigate("/auth"); return; }
     if (!post) return;
-    const safe = sanitizeContent(text);
-    if (!safe.ok) { toast({ title: "内容不合规", description: safe.reason, variant: "destructive" }); return; }
-    if (!safe.text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const safety = checkTextSafety(trimmed);
+    if (!safety.safe) { toast({ title: "内容不合规", description: safety.violations[0], variant: "destructive" }); return; }
     setSubmitting(true);
     // Resolve mentions present in text from pickedMentions
     const mentionedIds = pickedMentions
