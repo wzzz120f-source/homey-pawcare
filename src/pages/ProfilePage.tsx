@@ -19,6 +19,7 @@ interface Profile {
   username: string;
   avatar_url: string | null;
   bio: string | null;
+  love_points: number;
 }
 
 interface UserPost {
@@ -140,7 +141,7 @@ const ProfilePage = () => {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("username, avatar_url, bio")
+      .select("username, avatar_url, bio, love_points")
       .eq("user_id", user.id)
       .single();
     if (data) {
@@ -443,7 +444,26 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* 爱心积分入口 */}
+        <button
+          onClick={() => navigate("/points")}
+          className="mt-4 w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-2xl p-4 flex items-center justify-between card-shadow hover:opacity-95 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Heart className="w-5 h-5 fill-current" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold">我的爱心积分</p>
+              <p className="text-xs opacity-90">兑换好礼 · 公益捐赠</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-extrabold">{(profile as any)?.love_points ?? 0}</span>
+            <span className="text-xs opacity-80">→</span>
+          </div>
+        </button>
+
         <div className="mt-6 flex gap-1 bg-secondary/50 rounded-xl p-1 overflow-x-auto" role="tablist">
           {TABS.map((tab) => (
             <button

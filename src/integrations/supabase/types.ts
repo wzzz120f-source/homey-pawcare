@@ -297,6 +297,24 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_point_caps: {
+        Row: {
+          cap_date: string
+          points_earned: number
+          user_id: string
+        }
+        Insert: {
+          cap_date?: string
+          points_earned?: number
+          user_id: string
+        }
+        Update: {
+          cap_date?: string
+          points_earned?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -541,6 +559,39 @@ export type Database = {
           updated_at?: string
           user_id?: string
           virtual_phone?: string | null
+        }
+        Relationships: []
+      }
+      love_point_transactions: {
+        Row: {
+          action_type: string
+          created_at: string
+          description: string | null
+          id: string
+          points: number
+          related_id: string | null
+          related_type: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points: number
+          related_id?: string | null
+          related_type?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points?: number
+          related_id?: string | null
+          related_type?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -821,6 +872,75 @@ export type Database = {
           reviews_count?: number
           tags?: string[]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      point_donations: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          points: number
+          target_id: string | null
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          points: number
+          target_id?: string | null
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          points?: number
+          target_id?: string | null
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      point_redeemable_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          points_required: number
+          sort_order: number
+          stock: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          points_required: number
+          sort_order?: number
+          stock?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          points_required?: number
+          sort_order?: number
+          stock?: number
         }
         Relationships: []
       }
@@ -1286,7 +1406,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      award_love_points: {
+        Args: {
+          _action: string
+          _description?: string
+          _points: number
+          _related_id?: string
+          _related_type?: string
+        }
+        Returns: Json
+      }
+      donate_love_points: {
+        Args: {
+          _message?: string
+          _points: number
+          _target_id?: string
+          _target_type: string
+        }
+        Returns: Json
+      }
+      spend_love_points: {
+        Args: {
+          _description?: string
+          _points: number
+          _purpose: string
+          _related_id?: string
+          _related_type?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

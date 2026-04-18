@@ -19,6 +19,7 @@ const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const MerchantAppealPage = lazy(() => import("./pages/MerchantAppealPage"));
 const PetHotelPage = lazy(() => import("./pages/PetHotelPage"));
 const HotelDetailPage = lazy(() => import("./pages/HotelDetailPage"));
+const PointsCenterPage = lazy(() => import("./pages/PointsCenterPage"));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/merchant-appeal" element={<MerchantAppealPage />} />
             <Route path="/pet-hotel" element={<PetHotelPage />} />
             <Route path="/pet-hotel/:id" element={<HotelDetailPage />} />
+            <Route path="/points" element={<PointsCenterPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

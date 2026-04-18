@@ -196,10 +196,15 @@ const CommunityPage = () => {
       }
       if (mediaInserts.length > 0) await supabase.from("post_media").insert(mediaInserts);
 
-      // 自动勋章
+      // 自动勋章 + 爱心积分
       tryAutoAwardBadges(user.id);
+      await (supabase as any).rpc("award_love_points", {
+        _action: "post_create", _points: 10,
+        _related_type: "post", _related_id: post.id,
+        _description: "发布动态",
+      });
 
-      toast.success("发布成功！");
+      toast.success("发布成功！+10 爱心积分 ❤️");
       setNewContent(""); setSelectedImages([]); setImagePreviews([]); setTags([]);
       setShowCreate(false); fetchPosts();
     } catch (e: any) { toast.error(e.message || "发布失败"); }
@@ -213,6 +218,7 @@ const CommunityPage = () => {
     if (post.liked_by_me) {
       await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
     } else {
+      // 触发器自动给作者发 +2 积分
       await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
     }
     fetchPosts();
