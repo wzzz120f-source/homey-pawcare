@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Phone, Hotel, Wifi, PawPrint, CalendarDays, Loader2, Camera, X, MessageSquare, Shield, Clock, CheckCircle2, Info, Utensils, Stethoscope, Car, Waves } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Phone, Hotel, Wifi, PawPrint, CalendarDays, Loader2, MessageSquare, Shield, CheckCircle2, Info, Utensils, Stethoscope, Car, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import BottomNav from "@/components/BottomNav";
+import MediaPicker from "@/components/MediaPicker";
+import MediaThumb from "@/components/MediaThumb";
+import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
