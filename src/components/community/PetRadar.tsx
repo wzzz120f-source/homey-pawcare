@@ -399,10 +399,19 @@ const PetRadar = () => {
           <DialogHeader><DialogTitle>📷 上报线索</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Textarea placeholder="描述你看到的：在哪里、什么时候、宠物状态如何..." rows={4} value={clueDesc} onChange={(e) => setClueDesc(e.target.value)} maxLength={500} />
-            <button onClick={() => clueImgRef.current?.click()} className="w-full aspect-video rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:border-primary">
-              {clueImg ? <img src={URL.createObjectURL(clueImg)} className="w-full h-full object-cover rounded-lg" /> : <><Camera className="w-6 h-6" /><span>拍照上传（可选）</span></>}
+            <button onClick={() => clueImgRef.current?.click()} className="w-full aspect-video rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:border-primary relative overflow-hidden">
+              {clueImg ? (
+                clueImg.type.startsWith("video") || /\.mov$/i.test(clueImg.name) ? (
+                  <>
+                    <video src={URL.createObjectURL(clueImg)} className="w-full h-full object-cover" muted playsInline />
+                    <span className="absolute bottom-1 left-1 bg-foreground/70 text-background text-[10px] px-1.5 py-0.5 rounded-full">📹 视频</span>
+                  </>
+                ) : (
+                  <img src={URL.createObjectURL(clueImg)} className="w-full h-full object-cover rounded-lg" />
+                )
+              ) : (<><Camera className="w-6 h-6" /><span>拍照/视频上传（可选）</span></>)}
             </button>
-            <input ref={clueImgRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setClueImg(e.target.files[0])} />
+            <input ref={clueImgRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setClueImg(e.target.files[0])} />
             <p className="text-[11px] text-muted-foreground">系统会自动附上你的当前坐标，失主将立即收到通知</p>
           </div>
           <DialogFooter>
