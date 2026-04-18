@@ -139,7 +139,12 @@ const PetRadar = () => {
         virtual_phone: generateVirtualPhone(user.id),
       });
       if (error) throw error;
-      toast.success("已发布！将向方圆 5km 内的好心人推送 📡");
+      await (supabase as any).rpc("award_love_points", {
+        _action: "lost_pet_report", _points: 15,
+        _related_type: "lost_pet", _related_id: null,
+        _description: "登记走失宠物",
+      });
+      toast.success("已发布！+15 爱心积分 · 将向方圆 5km 内的好心人推送 📡");
       setShowForm(false);
       setPetName(""); setBreed(""); setFeatures(""); setLastSeen(""); setPetImg(null);
       load();
@@ -161,7 +166,12 @@ const PetRadar = () => {
         latitude: userLocation.lat, longitude: userLocation.lng,
       });
       if (error) throw error;
-      toast.success("线索已提交！失主将立即收到通知 🙏");
+      await (supabase as any).rpc("award_love_points", {
+        _action: "clue_submit", _points: 20,
+        _related_type: "lost_pet", _related_id: showClueForm,
+        _description: "提供寻宠线索",
+      });
+      toast.success("线索已提交！+20 爱心积分 · 失主将立即收到通知 🙏");
       setShowClueForm(null); setClueDesc(""); setClueImg(null);
       load();
     } catch (e: any) { toast.error(e.message || "提交失败"); }
