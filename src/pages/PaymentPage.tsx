@@ -405,16 +405,24 @@ const PaymentPage = () => {
         </section>
 
         {/* Summary */}
-        {discountAmount > 0 && (
+        {(discountAmount > 0 || pointsDiscount > 0) && (
           <div className="bg-card rounded-2xl p-4 card-shadow space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">商品总额</span>
               <span className="text-foreground">¥{orderData.total_amount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-primary">
-              <span>优惠券抵扣</span>
-              <span className="font-bold">-¥{discountAmount.toFixed(2)}</span>
-            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-primary">
+                <span>优惠券抵扣</span>
+                <span className="font-bold">-¥{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {pointsDiscount > 0 && (
+              <div className="flex justify-between text-primary">
+                <span className="flex items-center gap-1"><Heart className="w-3 h-3 fill-primary" />积分抵扣 ({effectivePoints})</span>
+                <span className="font-bold">-¥{pointsDiscount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="border-t border-border pt-2 flex justify-between items-center">
               <span className="font-bold text-foreground">实付金额</span>
               <span className="text-xl font-extrabold text-primary">¥{finalAmount.toFixed(2)}</span>
