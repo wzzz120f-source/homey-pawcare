@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight, Share2 } from "lucide-react";
+import SharePostDialog from "@/components/SharePostDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
