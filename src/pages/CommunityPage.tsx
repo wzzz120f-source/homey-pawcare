@@ -196,24 +196,13 @@ const CommunityPage = () => {
       }
       if (mediaInserts.length > 0) await supabase.from("post_media").insert(mediaInserts);
 
-      // 自动勋章
+      // 自动勋章 + 爱心积分
       tryAutoAwardBadges(user.id);
-
-      // 发放爱心积分
-      try {
-        const { award } = await import("@/hooks/useLovePoints").then((m) => ({
-          award: async () => {
-            await (supabase as any).rpc("award_love_points", {
-              _action: "post_create",
-              _points: 10,
-              _related_type: "post",
-              _related_id: post.id,
-              _description: "发布动态",
-            });
-          },
-        }));
-        await award();
-      } catch {}
+      await (supabase as any).rpc("award_love_points", {
+        _action: "post_create", _points: 10,
+        _related_type: "post", _related_id: post.id,
+        _description: "发布动态",
+      });
 
       toast.success("发布成功！+10 爱心积分 ❤️");
       setNewContent(""); setSelectedImages([]); setImagePreviews([]); setTags([]);
@@ -229,17 +218,8 @@ const CommunityPage = () => {
     if (post.liked_by_me) {
       await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
     } else {
+      // 触发器自动给作者发 +2 积分
       await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
-      // 给被点赞的作者发积分（不能给自己点赞涨分）
-      if (post.user_id !== user.id) {
-        try {
-          // 暂存 auth 上下文：直接用 RPC（SECURITY DEFINER 内基于 auth.uid()），
-          // 但这里需要给"作者"加分。由于 RPC 基于 auth.uid()，我们用 service 模式不可行，
-          // 改为乐观策略：作者本人下一次刷新页面时由后台触发器发放更稳妥；
-          // 此处先在前端给作者加分流水（仅作占位，不影响真实平衡）。
-          // —— 真实积分入账请通过 DB trigger 实现（已规划），此处先 no-op。
-        } catch {}
-      }
     }
     fetchPosts();
   };
