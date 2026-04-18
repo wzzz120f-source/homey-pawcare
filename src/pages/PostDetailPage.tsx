@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight, Share2 } from "lucide-react";
+import SharePostDialog from "@/components/SharePostDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ const PostDetailPage = () => {
   const [candidates, setCandidates] = useState<ProfileLite[]>([]);
   const [pickedMentions, setPickedMentions] = useState<ProfileLite[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const fetchPost = useCallback(async () => {
     if (!id) return;
@@ -313,8 +315,28 @@ const PostDetailPage = () => {
               <MessageCircle className="w-5 h-5" />
               <span className="font-semibold">{totalComments}</span>
             </div>
+            <button
+              onClick={() => setShareOpen(true)}
+              className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors min-h-[36px]"
+              aria-label="分享"
+            >
+              <Share2 className="w-5 h-5" />
+              <span className="font-semibold">分享</span>
+            </button>
           </div>
         </article>
+
+        {post && (
+          <SharePostDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            postId={post.id}
+            authorName={post.profiles?.username || "宠物主人"}
+            authorAvatar={post.profiles?.avatar_url}
+            contentSnippet={post.content}
+            coverImage={post.media[0]?.media_url || null}
+          />
+        )}
 
         {/* Comments */}
         <section className="bg-card rounded-2xl card-shadow p-4">
