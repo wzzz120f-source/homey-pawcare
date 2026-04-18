@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Heart, Plus, ImageIcon, X, MapPin, Users, Calendar, Sparkles, ShieldAlert } from "lucide-react";
+import { Heart, Plus, ImageIcon, X, MapPin, Users, Calendar, Sparkles, ShieldAlert, Share2 } from "lucide-react";
+import ShareCardDialog from "@/components/ShareCardDialog";
 import { toast } from "sonner";
 import { checkTextSafety } from "@/lib/contentSafety";
 import { tryAutoAwardBadges } from "@/hooks/useUserBadges";
@@ -39,6 +40,7 @@ const GuardianChannel = () => {
   const [loading, setLoading] = useState(true);
   const [showRescueForm, setShowRescueForm] = useState(false);
   const [showTnrForm, setShowTnrForm] = useState(false);
+  const [shareStory, setShareStory] = useState<any | null>(null);
 
   // 救助日记表单
   const [petName, setPetName] = useState("");
@@ -246,9 +248,20 @@ const GuardianChannel = () => {
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-status-rescue" /> 已收到 {s.cloud_feed_count || 0} 份爱心粮
                     </div>
-                    <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => cloudFeed(s.id)}>
-                      🍖 投喂
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 rounded-full text-xs gap-1 px-2.5"
+                        onClick={() => setShareStory(s)}
+                        aria-label="分享救助故事"
+                      >
+                        <Share2 className="w-3.5 h-3.5" /> 分享
+                      </Button>
+                      <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => cloudFeed(s.id)}>
+                        🍖 投喂
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>

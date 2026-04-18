@@ -396,6 +396,20 @@ const PetRadar = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 扩散分享卡片 */}
+      {sharePet && (
+        <ShareCardDialog
+          open={!!sharePet}
+          onOpenChange={(o) => !o && setSharePet(null)}
+          kind="lost"
+          targetId={sharePet.id}
+          authorName={sharePet.pet_name}
+          coverImage={sharePet.image_url}
+          contentSnippet={`${sharePet.pet_type === "cat" ? "🐱" : "🐶"} ${sharePet.pet_name} 在「${sharePet.last_seen_location}」走失。特征：${sharePet.features}${sharePet.reward_points ? ` · 悬赏 ${sharePet.reward_points} 爱心积分` : ""}`}
+          badgeText={sharePet.status === "searching" ? "🆘 紧急寻找" : "✅ 已找回"}
+        />
+      )}
     </div>
   );
 };
