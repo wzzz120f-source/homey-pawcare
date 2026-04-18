@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLovePoints } from "@/hooks/useLovePoints";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { sanitizeContent } from "@/lib/contentSafety";
+import { checkTextSafety } from "@/lib/contentSafety";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
