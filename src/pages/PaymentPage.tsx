@@ -77,6 +77,7 @@ const PaymentPage = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { balance: pointsBalance, refresh: refreshPoints } = useLovePoints();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("wechat");
   const [isPaying, setIsPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
@@ -85,6 +86,10 @@ const PaymentPage = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [showCouponPicker, setShowCouponPicker] = useState(false);
+
+  // Love points redemption
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
 
   const orderData = location.state as OrderData | null;
 
@@ -108,13 +113,27 @@ const PaymentPage = () => {
   const calcDiscount = (coupon: Coupon): number => {
     if (orderData.total_amount < coupon.min_order_amount) return 0;
     if (coupon.discount_type === "fixed") return coupon.discount_value;
-    // percent
     const raw = (orderData.total_amount * coupon.discount_value) / 100;
     return coupon.max_discount ? Math.min(raw, coupon.max_discount) : raw;
   };
 
   const discountAmount = selectedCoupon ? calcDiscount(selectedCoupon) : 0;
-  const finalAmount = Math.max(0, orderData.total_amount - discountAmount);
+  const afterCoupon = Math.max(0, orderData.total_amount - discountAmount);
+
+  // 积分抵现: 100 积分 = ¥1，单笔订单最多抵 20%
+  const maxPointsByOrder = Math.floor(orderData.total_amount * MAX_POINTS_RATIO * POINTS_PER_YUAN);
+  const maxPointsByAfterCoupon = Math.floor(afterCoupon * POINTS_PER_YUAN);
+  const maxPointsAvailable = Math.max(0, Math.min(pointsBalance, maxPointsByOrder, maxPointsByAfterCoupon));
+  const effectivePoints = usePoints ? Math.min(pointsToUse, maxPointsAvailable) : 0;
+  const pointsDiscount = effectivePoints / POINTS_PER_YUAN;
+  const finalAmount = Math.max(0, afterCoupon - pointsDiscount);
+
+  // Auto-apply max points when toggled on
+  useEffect(() => {
+    if (usePoints) setPointsToUse(maxPointsAvailable);
+    else setPointsToUse(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usePoints, maxPointsAvailable]);
 
   const applicableCoupons = coupons.filter((c) => orderData.total_amount >= c.min_order_amount);
   const inapplicableCoupons = coupons.filter((c) => orderData.total_amount < c.min_order_amount);
