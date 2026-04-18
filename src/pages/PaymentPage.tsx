@@ -149,7 +149,7 @@ const PaymentPage = () => {
     setIsPaying(true);
 
     try {
-      const { error } = await supabase.from("orders").insert({
+      const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
         service_type: orderData.service_type ?? null,
@@ -164,9 +164,26 @@ const PaymentPage = () => {
         payment_method: selectedMethod,
         payment_status: "paid",
         order_status: "confirmed",
-      });
+      }).select("id, order_no").single();
 
       if (error) throw error;
+
+      // 扣减爱心积分并写入流水
+      if (effectivePoints > 0 && orderRow) {
+        const { data: spendRes, error: spendErr } = await (supabase as any).rpc("spend_love_points", {
+          _points: effectivePoints,
+          _purpose: "exchange",
+          _related_type: "order",
+          _related_id: orderRow.id,
+          _description: `订单 ${orderRow.order_no} 积分抵现 ¥${pointsDiscount.toFixed(2)}`,
+        });
+        if (spendErr || !spendRes?.success) {
+          // 积分扣减失败不阻塞订单，但提示用户
+          toast({ title: "积分抵扣失败", description: "订单已创建，积分未扣除", variant: "destructive" });
+        } else {
+          await refreshPoints();
+        }
+      }
 
       // Clear cart if shop order
       if (orderData.order_type === "shop") {
