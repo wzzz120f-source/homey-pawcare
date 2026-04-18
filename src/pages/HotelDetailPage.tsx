@@ -403,9 +403,18 @@ const HotelDetailPage = () => {
                   {review.content && <p className="text-xs text-foreground leading-relaxed">{review.content}</p>}
                   {review.images?.length > 0 && (
                     <div className="flex gap-1.5 flex-wrap">
-                      {review.images.map((img, idx) => (
-                        <img key={idx} src={img} alt="" className="w-16 h-16 rounded-lg object-cover" loading="lazy" />
-                      ))}
+                      {review.images.map((url, idx) => {
+                        const isVideo = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+                        return (
+                          <MediaThumb
+                            key={idx}
+                            url={url}
+                            mediaType={isVideo ? "video" : "image"}
+                            alt="酒店评价"
+                            className="w-16 h-16 rounded-lg"
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -494,24 +503,8 @@ const HotelDetailPage = () => {
                 placeholder="分享您和毛孩子的入住体验..." className="min-h-[100px] rounded-xl bg-secondary border-none" />
             </div>
             <div>
-              <label className="text-sm font-semibold text-foreground mb-2 block">上传图片 ({reviewImages.length}/9)</label>
-              <div className="flex flex-wrap gap-2">
-                {reviewPreviews.map((src, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden">
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button onClick={() => removeImage(idx)} className="absolute top-0.5 right-0.5 bg-foreground/60 text-background rounded-full p-0.5">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {reviewImages.length < 9 && (
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-20 rounded-lg bg-secondary border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary">
-                    <Camera className="w-5 h-5 text-muted-foreground" /><span className="text-[10px] text-muted-foreground">添加</span>
-                  </button>
-                )}
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
+              <label className="text-sm font-semibold text-foreground mb-2 block">上传媒体（图片 / 视频 / Live Photo）</label>
+              <MediaPicker value={reviewMedia} onChange={setReviewMedia} maxItems={9} />
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
