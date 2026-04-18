@@ -9,6 +9,7 @@ import ServiceCard from "@/components/ServiceCard";
 import TechnicianCard from "@/components/TechnicianCard";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
+import LostPetAlert from "@/components/LostPetAlert";
 import { useServices, useTechnicians } from "@/hooks/useHomeData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -296,6 +297,7 @@ const Index = () => {
       </main>
 
       <BottomNav />
+      <LostPetAlert />
     </div>
   );
 };

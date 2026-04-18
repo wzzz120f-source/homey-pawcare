@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import PetRadarMap from "./PetRadarMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,10 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
 const PetRadar = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [lostPets, setLostPets] = useState<any[]>([]);
   const [clues, setClues] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -83,6 +88,22 @@ const PetRadar = () => {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
+
+  // Deep-link focus: scroll to and highlight the targeted pet card
+  const focusPet = (id: string) => {
+    const el = cardRefs.current[id];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(id);
+      setTimeout(() => setHighlightId(null), 2400);
+    }
+  };
+
+  useEffect(() => {
+    if (!focusId || lostPets.length === 0) return;
+    const t = setTimeout(() => focusPet(focusId), 300);
+    return () => clearTimeout(t);
+  }, [focusId, lostPets]);
 
   const distanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371;
@@ -177,13 +198,22 @@ const PetRadar = () => {
           附近暂无走失宠物
         </div>
       ) : (
-        <div className="space-y-3">
-          {lostPets.map((p) => {
-            const dist = userLocation ? distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) : null;
-            const petClues = clues[p.id] || [];
-            return (
-              <Card key={p.id} className={`overflow-hidden ${p.status === "searching" ? "border-destructive border-2 shadow-lg" : ""}`}>
-                <div className="p-3">
+        <>
+          {/* 高德地图 — 红点标注 */}
+          <PetRadarMap pets={lostPets} userLocation={userLocation} onMarkerClick={focusPet} />
+
+          <div className="space-y-3">
+            {lostPets.map((p) => {
+              const dist = userLocation ? distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) : null;
+              const petClues = clues[p.id] || [];
+              const isHighlighted = highlightId === p.id;
+              return (
+                <Card
+                  key={p.id}
+                  ref={(el) => { cardRefs.current[p.id] = el; }}
+                  className={`overflow-hidden transition-all ${p.status === "searching" ? "border-destructive border-2 shadow-lg" : ""} ${isHighlighted ? "ring-4 ring-destructive ring-offset-2 scale-[1.01]" : ""}`}
+                >
+                  <div className="p-3">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -248,7 +278,8 @@ const PetRadar = () => {
               </Card>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
 
       {/* 走失登记表单 */}

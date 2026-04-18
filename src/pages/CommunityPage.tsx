@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserBadges, tryAutoAwardBadges } from "@/hooks/useUserBadges";
@@ -43,7 +43,11 @@ interface Post {
 const CommunityPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"plaza" | "guardian" | "radar">("plaza");
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as "plaza" | "guardian" | "radar") || "plaza";
+  const [activeTab, setActiveTab] = useState<"plaza" | "guardian" | "radar">(
+    ["plaza", "guardian", "radar"].includes(initialTab) ? initialTab : "plaza"
+  );
 
   // ===== 爱心广场 state =====
   const [posts, setPosts] = useState<Post[]>([]);
