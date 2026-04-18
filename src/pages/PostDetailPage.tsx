@@ -201,12 +201,12 @@ const PostDetailPage = () => {
     setSubmitting(true);
     // Resolve mentions present in text from pickedMentions
     const mentionedIds = pickedMentions
-      .filter((p) => safe.text.includes(`@${p.username}`))
+      .filter((p) => trimmed.includes(`@${p.username}`))
       .map((p) => p.user_id);
     const { error } = await supabase.from("comments").insert({
       post_id: post.id,
       user_id: user.id,
-      content: safe.text.trim(),
+      content: trimmed,
       parent_id: replyTarget?.commentId ?? null,
       reply_to_user_id: replyTarget?.userId ?? null,
       reply_to_username: replyTarget?.username ?? null,
