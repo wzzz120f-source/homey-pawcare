@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import PetRadarMap from "./PetRadarMap";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,10 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
 const PetRadar = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [lostPets, setLostPets] = useState<any[]>([]);
   const [clues, setClues] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
