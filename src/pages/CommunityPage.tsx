@@ -6,6 +6,9 @@ import { useUserBadges, tryAutoAwardBadges } from "@/hooks/useUserBadges";
 import { UserBadgeRow } from "@/components/community/UserBadgeChip";
 import { POST_CATEGORIES, HOT_TAGS, type PostCategory } from "@/config/communityCategories";
 import { checkTextSafety, checkImageHint } from "@/lib/contentSafety";
+import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
+import MediaPicker from "@/components/MediaPicker";
+import MediaThumb from "@/components/MediaThumb";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,8 +58,7 @@ const CommunityPage = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [newCategory, setNewCategory] = useState<PostCategory>("life");
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [mediaItems, setMediaItems] = useState<PreparedMedia[]>([]);
   const [posting, setPosting] = useState(false);
   const [expandedComments, setExpandedComments] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
@@ -135,37 +137,21 @@ const CommunityPage = () => {
     if (!tags.includes(tag) && tags.length < 5) setTags((p) => [...p, tag]);
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length + selectedImages.length > 9) { toast.error("最多 9 张图片"); return; }
-
-    // 安全检测 - 文件名暗示
-    for (const f of files) {
-      const r = checkImageHint(f);
+  const onMediaChange = (next: PreparedMedia[]) => {
+    // 文件名暗示检测（限制收款码）
+    for (const m of next) {
+      const r = checkImageHint(m.file);
       if (!r.safe) {
         toast.error(`图片被拦截：${r.violations.join("，")}。严禁个人收款码。`);
         return;
       }
     }
-    setSelectedImages((prev) => [...prev, ...files]);
-    setImagePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
-  };
-  const removeImage = (i: number) => {
-    setSelectedImages((p) => p.filter((_, idx) => idx !== i));
-    setImagePreviews((p) => { URL.revokeObjectURL(p[i]); return p.filter((_, idx) => idx !== i); });
-  };
-
-  const uploadFile = async (file: File, folder: string) => {
-    const ext = file.name.split(".").pop();
-    const path = `${user!.id}/${folder}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("community-media").upload(path, file);
-    if (error) throw error;
-    return supabase.storage.from("community-media").getPublicUrl(path).data.publicUrl;
+    setMediaItems(next);
   };
 
   const handlePost = async () => {
     if (!user) { navigate("/auth"); return; }
-    if (!newContent.trim() && selectedImages.length === 0) { toast.error("请输入内容或添加图片"); return; }
+    if (!newContent.trim() && mediaItems.length === 0) { toast.error("请输入内容或添加媒体"); return; }
 
     // 文本安全检测
     const safety = checkTextSafety(newContent);
@@ -189,10 +175,10 @@ const CommunityPage = () => {
         .single();
       if (error) throw error;
 
-      const mediaInserts = [];
-      for (const img of selectedImages) {
-        const url = await uploadFile(img, "images");
-        mediaInserts.push({ post_id: post.id, media_url: url, media_type: "image" });
+      const mediaInserts: { post_id: string; media_url: string; media_type: string }[] = [];
+      for (const item of mediaItems) {
+        const { url, mediaType } = await uploadPreparedMedia(supabase, "community-media", user.id, item, "media");
+        mediaInserts.push({ post_id: post.id, media_url: url, media_type: mediaType });
       }
       if (mediaInserts.length > 0) await supabase.from("post_media").insert(mediaInserts);
 
@@ -205,7 +191,8 @@ const CommunityPage = () => {
       });
 
       toast.success("发布成功！+10 爱心积分 ❤️");
-      setNewContent(""); setSelectedImages([]); setImagePreviews([]); setTags([]);
+      revokePreviews(mediaItems);
+      setNewContent(""); setMediaItems([]); setTags([]);
       setShowCreate(false); fetchPosts();
     } catch (e: any) { toast.error(e.message || "发布失败"); }
     finally { setPosting(false); }
@@ -393,18 +380,9 @@ const CommunityPage = () => {
                     )}
                   </div>
 
-                  {imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      {imagePreviews.map((src, i) => (
-                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden">
-                          <img src={src} alt="" className="w-full h-full object-cover" />
-                          <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-foreground/60 rounded-full p-0.5">
-                            <X className="w-3 h-3 text-background" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="mt-3">
+                    <MediaPicker value={mediaItems} onChange={onMediaChange} maxItems={9} thumbClassName="w-20 h-20" />
+                  </div>
 
                   {/* 安全提示 */}
                   <div className="mt-3 flex items-start gap-2 text-[11px] text-status-warn-foreground bg-status-warn border border-status-warn-border rounded-lg p-2">
@@ -413,10 +391,6 @@ const CommunityPage = () => {
                   </div>
 
                   <div className="flex items-center gap-2 mt-4">
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1 px-3 py-2 rounded-xl bg-secondary text-sm text-foreground hover:bg-muted transition-colors min-h-[44px]">
-                      <ImageIcon className="w-4 h-4 text-primary" /> 图片
-                    </button>
                     <Button variant="hero" size="sm" className="ml-auto rounded-xl gap-1 min-h-[44px]" onClick={handlePost} disabled={posting}>
                       <Send className="w-4 h-4" /> {posting ? "发布中..." : "发布"}
                     </Button>
@@ -439,11 +413,12 @@ const CommunityPage = () => {
               ) : (
                 <div className="columns-2 gap-2 [&>*]:mb-2 [&>*]:break-inside-avoid">
                   {posts.map((post) => {
-                    const images = post.media.filter((m) => m.media_type === "image");
-                    const cover = images[0];
+                    // Live Photo 视频片段折叠在主图上，不参与封面
+                    const visible = post.media.filter((m) => m.media_type !== "live_photo_video");
+                    const cover = visible[0];
                     return (
                       <article key={post.id} className="bg-card rounded-2xl overflow-hidden card-shadow animate-fade-in-up">
-                        {/* 封面图 */}
+                        {/* 封面图 / 视频 */}
                         {cover && (
                           <button
                             type="button"
@@ -451,15 +426,21 @@ const CommunityPage = () => {
                             className="relative block w-full text-left"
                             aria-label="查看动态详情"
                           >
-                            <img src={cover.media_url} alt="" className="w-full object-cover" loading="lazy" />
+                            <MediaThumb
+                              url={cover.media_url}
+                              mediaType={cover.media_type}
+                              alt=""
+                              className="w-full aspect-square"
+                              videoControls={false}
+                            />
                             {post.is_featured && (
                               <Badge className="absolute top-2 left-2 bg-status-featured text-status-featured-foreground text-[10px] gap-0.5">
                                 <Sparkles className="w-3 h-3" /> 加精
                               </Badge>
                             )}
-                            {images.length > 1 && (
+                            {visible.length > 1 && (
                               <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] bg-foreground/60 text-background">
-                                {images.length} 图
+                                {visible.length} 个
                               </Badge>
                             )}
                           </button>
