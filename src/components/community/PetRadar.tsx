@@ -198,13 +198,22 @@ const PetRadar = () => {
           附近暂无走失宠物
         </div>
       ) : (
-        <div className="space-y-3">
-          {lostPets.map((p) => {
-            const dist = userLocation ? distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) : null;
-            const petClues = clues[p.id] || [];
-            return (
-              <Card key={p.id} className={`overflow-hidden ${p.status === "searching" ? "border-destructive border-2 shadow-lg" : ""}`}>
-                <div className="p-3">
+        <>
+          {/* 高德地图 — 红点标注 */}
+          <PetRadarMap pets={lostPets} userLocation={userLocation} onMarkerClick={focusPet} />
+
+          <div className="space-y-3">
+            {lostPets.map((p) => {
+              const dist = userLocation ? distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) : null;
+              const petClues = clues[p.id] || [];
+              const isHighlighted = highlightId === p.id;
+              return (
+                <Card
+                  key={p.id}
+                  ref={(el) => { cardRefs.current[p.id] = el; }}
+                  className={`overflow-hidden transition-all ${p.status === "searching" ? "border-destructive border-2 shadow-lg" : ""} ${isHighlighted ? "ring-4 ring-destructive ring-offset-2 scale-[1.01]" : ""}`}
+                >
+                  <div className="p-3">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
