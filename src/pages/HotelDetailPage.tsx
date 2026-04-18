@@ -90,10 +90,8 @@ const HotelDetailPage = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
-  const [reviewImages, setReviewImages] = useState<File[]>([]);
-  const [reviewPreviews, setReviewPreviews] = useState<string[]>([]);
+  const [reviewMedia, setReviewMedia] = useState<PreparedMedia[]>([]);
   const [submittingReview, setSubmittingReview] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Carousel state (must be declared before any conditional return)
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
@@ -150,43 +148,48 @@ const HotelDetailPage = () => {
     } finally { setSubmitting(false); }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (reviewImages.length + files.length > 9) { toast.error("最多上传9张图片"); return; }
-    const newFiles = [...reviewImages, ...files].slice(0, 9);
-    setReviewImages(newFiles);
-    setReviewPreviews(newFiles.map(f => URL.createObjectURL(f)));
-  };
-
-  const removeImage = (idx: number) => {
-    const newFiles = reviewImages.filter((_, i) => i !== idx);
-    setReviewImages(newFiles);
-    setReviewPreviews(newFiles.map(f => URL.createObjectURL(f)));
-  };
-
   const submitReview = async () => {
     if (!user) { navigate("/auth"); return; }
     if (!hotel) return;
     if (!reviewContent.trim()) { toast.error("请输入评价内容"); return; }
     setSubmittingReview(true);
     try {
-      const imageUrls: string[] = [];
-      for (const file of reviewImages) {
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("hotel-review-images").upload(path, file);
-        if (uploadErr) throw uploadErr;
-        const { data: urlData } = supabase.storage.from("hotel-review-images").getPublicUrl(path);
-        imageUrls.push(urlData.publicUrl);
+      const mediaUrls: string[] = [];
+      // Skip the live_photo_video sibling; store its url paired with the heic key
+      for (const item of reviewMedia) {
+        if (item.mediaType === "live_photo_video") continue; // pair handled below
+        try {
+          const { url } = await uploadPreparedMedia(
+            supabase,
+            "hotel-review-images",
+            user.id,
+            item,
+            hotel.id
+          );
+          mediaUrls.push(url);
+        } catch (e) {
+          console.warn("酒店评价媒体上传失败", e);
+        }
+      }
+      // Also upload the live_photo_video pieces so they exist on storage even if URL not in images[]
+      for (const item of reviewMedia) {
+        if (item.mediaType !== "live_photo_video") continue;
+        try {
+          await uploadPreparedMedia(supabase, "hotel-review-images", user.id, item, hotel.id);
+        } catch (e) {
+          console.warn("Live Photo 视频上传失败", e);
+        }
       }
       const { error } = await supabase.from("hotel_reviews" as any).insert({
         hotel_id: hotel.id, user_id: user.id, rating: reviewRating,
-        content: reviewContent, images: imageUrls,
+        content: reviewContent, images: mediaUrls,
       });
       if (error) throw error;
       toast.success("评价发表成功！");
       setShowReviewForm(false);
-      setReviewContent(""); setReviewRating(5); setReviewImages([]); setReviewPreviews([]);
+      setReviewContent(""); setReviewRating(5);
+      revokePreviews(reviewMedia);
+      setReviewMedia([]);
       fetchReviews(hotel.id);
     } catch (err: any) { toast.error(err.message || "评价失败"); }
     finally { setSubmittingReview(false); }
