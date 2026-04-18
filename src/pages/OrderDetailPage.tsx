@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, ImagePlus, X, Play, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, AlertTriangle, XCircle } from "lucide-react";
+import MediaPicker from "@/components/MediaPicker";
+import MediaThumb from "@/components/MediaThumb";
+import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
 import { toast } from "sonner";
@@ -90,11 +93,9 @@ const OrderDetailPage = () => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewContent, setReviewContent] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: string }[]>([]);
+  const [media, setMedia] = useState<PreparedMedia[]>([]);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -114,26 +115,6 @@ const OrderDetailPage = () => {
     fetchData();
   }, [user, id]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (mediaFiles.length + files.length > 9) {
-      toast.error("最多上传9张图片/视频");
-      return;
-    }
-    const newPreviews = files.map((f) => ({
-      url: URL.createObjectURL(f),
-      type: f.type.startsWith("video") ? "video" : "image",
-    }));
-    setMediaFiles((prev) => [...prev, ...files]);
-    setMediaPreviews((prev) => [...prev, ...newPreviews]);
-  };
-
-  const removeMedia = (idx: number) => {
-    URL.revokeObjectURL(mediaPreviews[idx].url);
-    setMediaFiles((prev) => prev.filter((_, i) => i !== idx));
-    setMediaPreviews((prev) => prev.filter((_, i) => i !== idx));
-  };
-
   const handleSubmitReview = async () => {
     if (!user || !order) return;
     setSubmittingReview(true);
@@ -146,27 +127,35 @@ const OrderDetailPage = () => {
       } as any).select().single();
       if (error) throw error;
 
-      // Upload media files
+      // Upload media (images / videos / Live Photo pairs)
       const mediaResults: { id: string; media_url: string; media_type: string }[] = [];
-      for (const file of mediaFiles) {
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${(data as any).id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("review-media").upload(path, file);
-        if (uploadError) continue;
-        const { data: urlData } = supabase.storage.from("review-media").getPublicUrl(path);
-        const mediaType = file.type.startsWith("video") ? "video" : "image";
-        const { data: mediaRow } = await (supabase.from("review_media") as any).insert({
-          review_id: (data as any).id,
-          media_url: urlData.publicUrl,
-          media_type: mediaType,
-        }).select().single();
-        if (mediaRow) mediaResults.push(mediaRow as any);
+      for (const item of media) {
+        try {
+          const { url, mediaType } = await uploadPreparedMedia(
+            supabase,
+            "review-media",
+            user.id,
+            item,
+            (data as any).id
+          );
+          const { data: mediaRow } = await (supabase.from("review_media") as any)
+            .insert({
+              review_id: (data as any).id,
+              media_url: url,
+              media_type: mediaType,
+            })
+            .select()
+            .single();
+          if (mediaRow) mediaResults.push(mediaRow as any);
+        } catch (e) {
+          console.warn("评价媒体上传失败", e);
+        }
       }
 
       setReview({ ...(data as any), media: mediaResults });
       setShowReviewForm(false);
-      setMediaFiles([]);
-      setMediaPreviews([]);
+      revokePreviews(media);
+      setMedia([]);
       toast.success("评价提交成功！");
     } catch (err: any) {
       toast.error(err.message || "提交失败");
@@ -330,15 +319,17 @@ const OrderDetailPage = () => {
               {review.content && <p className="text-sm text-foreground mb-2">{review.content}</p>}
               {review.media && review.media.length > 0 && (
                 <div className="flex gap-2 flex-wrap">
-                  {review.media.map((m) => (
-                    <div key={m.id} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative">
-                      {m.media_type === "video" ? (
-                        <video src={m.media_url} className="w-full h-full object-cover" controls />
-                      ) : (
-                        <img src={m.media_url} alt="评价图片" className="w-full h-full object-cover" />
-                      )}
-                    </div>
-                  ))}
+                  {review.media
+                    .filter((m) => m.media_type !== "live_photo_video")
+                    .map((m) => (
+                      <MediaThumb
+                        key={m.id}
+                        url={m.media_url}
+                        mediaType={m.media_type}
+                        alt="评价媒体"
+                        className="w-20 h-20 rounded-lg"
+                      />
+                    ))}
                 </div>
               )}
             </div>
@@ -360,29 +351,7 @@ const OrderDetailPage = () => {
                   rows={3}
                   maxLength={500}
                 />
-                <div>
-                  <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileSelect} />
-                  <div className="flex gap-2 flex-wrap">
-                    {mediaPreviews.map((p, i) => (
-                      <div key={i} className="w-20 h-20 rounded-lg overflow-hidden bg-muted relative group">
-                        {p.type === "video" ? (
-                          <video src={p.url} className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={p.url} alt="" className="w-full h-full object-cover" />
-                        )}
-                        <button type="button" onClick={() => removeMedia(i)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-foreground/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <X className="w-3 h-3 text-primary-foreground" />
-                        </button>
-                      </div>
-                    ))}
-                    {mediaPreviews.length < 9 && (
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors">
-                        <ImagePlus className="w-5 h-5" />
-                        <span className="text-[10px] mt-0.5">图片/视频</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <MediaPicker value={media} onChange={setMedia} maxItems={9} />
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowReviewForm(false)}>取消</Button>
                   <Button variant="hero" size="sm" className="flex-1" onClick={handleSubmitReview} disabled={submittingReview}>
