@@ -298,11 +298,29 @@ const PostDetailPage = () => {
             </div>
           )}
 
-          {post.media.length > 0 && (
-            <div className={cn("grid gap-1", post.media.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
-              {post.media.map((m) => (
-                <img key={m.id} src={m.media_url} alt="" className="w-full object-cover" loading="lazy" />
-              ))}
+          {post.media.filter((m) => m.media_type !== "live_photo_video").length > 0 && (
+            <div className={cn("grid gap-1", post.media.filter((m) => m.media_type !== "live_photo_video").length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+              {post.media
+                .filter((m) => m.media_type !== "live_photo_video")
+                .map((m) => {
+                  const isVid = m.media_type === "video" || m.media_type === "live_photo_video";
+                  const isLive = m.media_type === "live_photo_image";
+                  return (
+                    <div key={m.id} className="relative">
+                      {isVid ? (
+                        <video src={m.media_url} className="w-full object-cover" controls playsInline preload="metadata" />
+                      ) : (
+                        <img src={m.media_url} alt="" className="w-full object-cover" loading="lazy" />
+                      )}
+                      {m.media_type === "video" && (
+                        <span className="absolute bottom-1 left-1 bg-foreground/70 text-background text-[10px] px-1.5 py-0.5 rounded-full">视频</span>
+                      )}
+                      {isLive && (
+                        <span className="absolute bottom-1 left-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-semibold">✨ Live</span>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
 

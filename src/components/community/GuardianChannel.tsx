@@ -341,8 +341,8 @@ const GuardianChannel = () => {
               >
                 {afterImg ? <img src={URL.createObjectURL(afterImg)} className="w-full h-full object-cover rounded-lg" /> : <><ImageIcon className="w-5 h-5" /><span>现在 ✨</span></>}
               </button>
-              <input ref={beforeRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
-              <input ref={afterRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
+              <input ref={beforeRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
+              <input ref={afterRef} type="file" accept="image/*,video/mp4,video/quicktime,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
             </div>
           </div>
           <DialogFooter>
