@@ -383,6 +383,20 @@ const GuardianChannel = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 分享救助故事卡片 */}
+      {shareStory && (
+        <ShareCardDialog
+          open={!!shareStory}
+          onOpenChange={(o) => !o && setShareStory(null)}
+          kind="rescue"
+          targetId={shareStory.id}
+          authorName={shareStory.pet_name}
+          coverImage={shareStory.after_image || shareStory.before_image}
+          contentSnippet={`${shareStory.pet_type === "cat" ? "🐱" : "🐶"} ${shareStory.pet_name}${shareStory.location ? ` · ${shareStory.location}` : ""}：${shareStory.story}`}
+          badgeText={STATUS_LABELS[shareStory.status]?.text || shareStory.status}
+        />
+      )}
     </div>
   );
 };
