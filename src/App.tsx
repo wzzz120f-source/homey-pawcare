@@ -21,6 +21,7 @@ const PetHotelPage = lazy(() => import("./pages/PetHotelPage"));
 const HotelDetailPage = lazy(() => import("./pages/HotelDetailPage"));
 const PointsCenterPage = lazy(() => import("./pages/PointsCenterPage"));
 const PostDetailPage = lazy(() => import("./pages/PostDetailPage"));
+const CharityFootprintPage = lazy(() => import("./pages/CharityFootprintPage"));
 
 const queryClient = new QueryClient();
 
