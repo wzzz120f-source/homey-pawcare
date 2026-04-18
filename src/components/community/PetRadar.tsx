@@ -89,6 +89,22 @@ const PetRadar = () => {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
+  // Deep-link focus: scroll to and highlight the targeted pet card
+  const focusPet = (id: string) => {
+    const el = cardRefs.current[id];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(id);
+      setTimeout(() => setHighlightId(null), 2400);
+    }
+  };
+
+  useEffect(() => {
+    if (!focusId || lostPets.length === 0) return;
+    const t = setTimeout(() => focusPet(focusId), 300);
+    return () => clearTimeout(t);
+  }, [focusId, lostPets]);
+
   const distanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
