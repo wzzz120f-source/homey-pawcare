@@ -108,9 +108,8 @@ const PaymentPage = () => {
     fetchCoupons();
   }, []);
 
-  if (!orderData) return null;
-
   const calcDiscount = (coupon: Coupon): number => {
+    if (!orderData) return 0;
     if (orderData.total_amount < coupon.min_order_amount) return 0;
     if (coupon.discount_type === "fixed") return coupon.discount_value;
     const raw = (orderData.total_amount * coupon.discount_value) / 100;
@@ -118,10 +117,10 @@ const PaymentPage = () => {
   };
 
   const discountAmount = selectedCoupon ? calcDiscount(selectedCoupon) : 0;
-  const afterCoupon = Math.max(0, orderData.total_amount - discountAmount);
+  const afterCoupon = Math.max(0, (orderData?.total_amount ?? 0) - discountAmount);
 
   // 积分抵现: 100 积分 = ¥1，单笔订单最多抵 20%
-  const maxPointsByOrder = Math.floor(orderData.total_amount * MAX_POINTS_RATIO * POINTS_PER_YUAN);
+  const maxPointsByOrder = Math.floor((orderData?.total_amount ?? 0) * MAX_POINTS_RATIO * POINTS_PER_YUAN);
   const maxPointsByAfterCoupon = Math.floor(afterCoupon * POINTS_PER_YUAN);
   const maxPointsAvailable = Math.max(0, Math.min(pointsBalance, maxPointsByOrder, maxPointsByAfterCoupon));
   const effectivePoints = usePoints ? Math.min(pointsToUse, maxPointsAvailable) : 0;
@@ -134,6 +133,8 @@ const PaymentPage = () => {
     else setPointsToUse(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usePoints, maxPointsAvailable]);
+
+  if (!orderData) return null;
 
   const applicableCoupons = coupons.filter((c) => orderData.total_amount >= c.min_order_amount);
   const inapplicableCoupons = coupons.filter((c) => orderData.total_amount < c.min_order_amount);
