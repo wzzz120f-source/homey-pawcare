@@ -466,7 +466,28 @@ const ProfilePage = () => {
           </div>
         </button>
 
-        {/* 公益足迹入口 */}
+        {/* 商家中心入口 - 仅商家可见 */}
+        {isMerchant && (
+          <button
+            onClick={() => navigate("/merchant")}
+            className="mt-3 w-full bg-card border border-primary/30 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-primary/5 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Store className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-foreground">商家中心</p>
+                <p className="text-xs text-muted-foreground">
+                  {ownedMerchants.length === 1
+                    ? `管理「${ownedMerchants[0].name}」的产品与图片`
+                    : `管理 ${ownedMerchants.length} 家店铺`}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">→</span>
+          </button>
+        )}
         <button
           onClick={() => navigate("/charity-footprint")}
           className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
