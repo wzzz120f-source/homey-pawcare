@@ -661,6 +661,63 @@ export type Database = {
           },
         ]
       }
+      merchant_applications: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          created_merchant_id: string | null
+          description: string | null
+          id: string
+          license_image_url: string | null
+          license_number: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          store_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          created_merchant_id?: string | null
+          description?: string | null
+          id?: string
+          license_image_url?: string | null
+          license_number: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          store_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          created_merchant_id?: string | null
+          description?: string | null
+          id?: string
+          license_image_url?: string | null
+          license_number?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          store_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       merchant_owners: {
         Row: {
           created_at: string
@@ -764,6 +821,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      order_items: {
+        Row: {
+          cover_image: string | null
+          created_at: string
+          id: string
+          merchant_id: string | null
+          order_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          cover_image?: string | null
+          created_at?: string
+          id?: string
+          merchant_id?: string | null
+          order_id: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          cover_image?: string | null
+          created_at?: string
+          id?: string
+          merchant_id?: string | null
+          order_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_reviews: {
         Row: {
@@ -1475,6 +1590,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_merchant_application: {
+        Args: { _application_id: string; _note?: string }
+        Returns: Json
+      }
       award_love_points: {
         Args: {
           _action: string
@@ -1504,6 +1623,10 @@ export type Database = {
       is_merchant_owner: {
         Args: { _merchant_id: string; _user_id: string }
         Returns: boolean
+      }
+      reject_merchant_application: {
+        Args: { _application_id: string; _note?: string }
+        Returns: Json
       }
       spend_love_points: {
         Args: {

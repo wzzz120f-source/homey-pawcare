@@ -26,6 +26,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, ImagePlus, Loader2, Plus, Store, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import MerchantDashboard from "@/components/merchant/MerchantDashboard";
+import MerchantOrders from "@/components/merchant/MerchantOrders";
 
 interface MerchantProduct {
   id: string;
@@ -327,11 +329,21 @@ const MerchantCenterPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4">
-        <Tabs defaultValue="products">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="products">产品管理</TabsTrigger>
-            <TabsTrigger value="info">店铺信息</TabsTrigger>
+        <Tabs defaultValue="dashboard">
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="dashboard" className="text-xs">看板</TabsTrigger>
+            <TabsTrigger value="products" className="text-xs">产品</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs">订单</TabsTrigger>
+            <TabsTrigger value="info" className="text-xs">店铺</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard" className="mt-4">
+            <MerchantDashboard merchantId={activeMerchantId} />
+          </TabsContent>
+
+          <TabsContent value="orders" className="mt-4">
+            <MerchantOrders merchantId={activeMerchantId} />
+          </TabsContent>
 
           <TabsContent value="products" className="mt-4 space-y-3">
             <div className="flex items-center justify-between">

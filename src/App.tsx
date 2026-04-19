@@ -23,6 +23,8 @@ const PointsCenterPage = lazy(() => import("./pages/PointsCenterPage"));
 const PostDetailPage = lazy(() => import("./pages/PostDetailPage"));
 const CharityFootprintPage = lazy(() => import("./pages/CharityFootprintPage"));
 const MerchantCenterPage = lazy(() => import("./pages/MerchantCenterPage"));
+const MerchantApplyPage = lazy(() => import("./pages/MerchantApplyPage"));
+const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 
 const queryClient = new QueryClient();
 
@@ -58,6 +60,8 @@ const App = () => (
             <Route path="/post/:id" element={<PostDetailPage />} />
             <Route path="/charity-footprint" element={<CharityFootprintPage />} />
             <Route path="/merchant" element={<MerchantCenterPage />} />
+            <Route path="/merchant/apply" element={<MerchantApplyPage />} />
+            <Route path="/merchant/admin" element={<MerchantAdminPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
