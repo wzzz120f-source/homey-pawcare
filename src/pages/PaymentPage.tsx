@@ -168,6 +168,30 @@ const PaymentPage = () => {
 
       if (error) throw error;
 
+      // 写入订单明细，便于商家在「商家中心 → 订单」查看
+      if (orderRow && orderData.cart_items && orderData.cart_items.length > 0) {
+        const productIds = orderData.cart_items.map((c) => c.id);
+        const { data: prodRows } = await supabase
+          .from("products")
+          .select("id, merchant_id, cover_image")
+          .in("id", productIds);
+        const prodMap = new Map((prodRows || []).map((p: any) => [p.id, p]));
+        const items = orderData.cart_items.map((c) => {
+          const p = prodMap.get(c.id);
+          return {
+            order_id: orderRow.id,
+            product_id: c.id,
+            merchant_id: p?.merchant_id ?? null,
+            product_name: c.name,
+            unit_price: c.price,
+            quantity: c.quantity,
+            cover_image: p?.cover_image ?? null,
+          };
+        });
+        const { error: itemsErr } = await supabase.from("order_items").insert(items);
+        if (itemsErr) console.error("insert order_items failed", itemsErr);
+      }
+
       // 扣减爱心积分并写入流水
       if (effectivePoints > 0 && orderRow) {
         const { data: spendRes, error: spendErr } = await (supabase as any).rpc("spend_love_points", {
