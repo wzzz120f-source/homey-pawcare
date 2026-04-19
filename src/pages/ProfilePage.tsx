@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package } from "lucide-react";
+import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store } from "lucide-react";
+import { useMerchantOwnership } from "@/hooks/useMerchantOwnership";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
@@ -115,6 +116,7 @@ const ORDER_STATUS_MAP: Record<string, { label: string; color: string }> = {
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
+  const { isMerchant, merchants: ownedMerchants } = useMerchantOwnership(user?.id);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -464,7 +466,28 @@ const ProfilePage = () => {
           </div>
         </button>
 
-        {/* 公益足迹入口 */}
+        {/* 商家中心入口 - 仅商家可见 */}
+        {isMerchant && (
+          <button
+            onClick={() => navigate("/merchant")}
+            className="mt-3 w-full bg-card border border-primary/30 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-primary/5 transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Store className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-foreground">商家中心</p>
+                <p className="text-xs text-muted-foreground">
+                  {ownedMerchants.length === 1
+                    ? `管理「${ownedMerchants[0].name}」的产品与图片`
+                    : `管理 ${ownedMerchants.length} 家店铺`}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">→</span>
+          </button>
+        )}
         <button
           onClick={() => navigate("/charity-footprint")}
           className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
