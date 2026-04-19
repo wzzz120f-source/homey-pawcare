@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package } from "lucide-react";
+import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store } from "lucide-react";
+import { useMerchantOwnership } from "@/hooks/useMerchantOwnership";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
@@ -115,6 +116,7 @@ const ORDER_STATUS_MAP: Record<string, { label: string; color: string }> = {
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
+  const { isMerchant, merchants: ownedMerchants } = useMerchantOwnership(user?.id);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
