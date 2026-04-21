@@ -387,15 +387,15 @@ const ShopPage = () => {
         </div>
       )}
 
-      {/* Cart Drawer */}
-      <Dialog open={showCart} onOpenChange={setShowCart}>
-        <DialogContent className="max-w-md max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      {/* Cart Drawer - bottom sheet */}
+      <Sheet open={showCart} onOpenChange={setShowCart}>
+        <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0 rounded-t-2xl">
+          <SheetHeader className="shrink-0 px-5 pt-5 pb-3 border-b border-border">
+            <SheetTitle className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" /> 购物车 ({cart.totalItems})
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
             {cart.items.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">购物车是空的</p>
             ) : (
@@ -441,7 +441,7 @@ const ShopPage = () => {
             )}
           </div>
           {cart.items.length > 0 && (
-            <div className="pt-3 border-t border-border space-y-3">
+            <div className="shrink-0 px-5 py-4 border-t border-border bg-card space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">合计</span>
                 <span className="text-xl font-extrabold text-primary">¥{cart.totalAmount.toFixed(2)}</span>
@@ -456,8 +456,8 @@ const ShopPage = () => {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Product Detail Dialog */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
