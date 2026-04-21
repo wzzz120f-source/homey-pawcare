@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ArrowUpDown, Loader2, Search, ShieldCheck, X, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -42,6 +43,7 @@ const MerchantAdminPage = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
+  const [licenseFilter, setLicenseFilter] = useState<"all" | "with" | "without" | "pending_image">("all");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
