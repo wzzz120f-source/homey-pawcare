@@ -92,8 +92,8 @@ const MerchantAdminPage = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === items.length) setSelected(new Set());
-    else setSelected(new Set(items.map((i) => i.id)));
+    if (selected.size === filteredItems.length) setSelected(new Set());
+    else setSelected(new Set(filteredItems.map((i) => i.id)));
   };
 
   const handleApprove = async (id: string) => {
@@ -179,7 +179,7 @@ const MerchantAdminPage = () => {
   }
 
   const isPending = tab === "pending";
-  const allSelected = items.length > 0 && selected.size === items.length;
+  const allSelected = filteredItems.length > 0 && selected.size === filteredItems.length;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -201,12 +201,33 @@ const MerchantAdminPage = () => {
           </TabsList>
 
           <TabsContent value={tab} className="mt-4 space-y-3">
-            {isPending && items.length > 0 && (
+            <div className="bg-card rounded-2xl p-3 card-shadow flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-8 h-9"
+                  placeholder="搜索店铺名 / 手机号"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSortDesc((v) => !v)}
+                className="shrink-0"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 mr-1" />
+                {sortDesc ? "最新优先" : "最早优先"}
+              </Button>
+            </div>
+
+            {isPending && filteredItems.length > 0 && (
               <div className="bg-card rounded-2xl p-3 card-shadow space-y-2 sticky top-14 z-30">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                     <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
-                    全选（已选 {selected.size}/{items.length}）
+                    全选（已选 {selected.size}/{filteredItems.length}）
                   </label>
                 </div>
                 {selected.size > 0 && (
@@ -242,10 +263,12 @@ const MerchantAdminPage = () => {
 
             {loading ? (
               <div className="py-12 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-primary" /></div>
-            ) : items.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">暂无申请</div>
+            ) : filteredItems.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                {search ? "没有匹配的申请" : "暂无申请"}
+              </div>
             ) : (
-              items.map((app) => (
+              filteredItems.map((app) => (
                 <div key={app.id} className="bg-card rounded-2xl p-4 card-shadow space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2 min-w-0 flex-1">
