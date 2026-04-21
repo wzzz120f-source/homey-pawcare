@@ -1,43 +1,38 @@
 
-The user wants two things:
-1. **Build**: Add a "公益足迹" (Charity Footprint) section to the Profile page with three tabs: 我的勋章 / 我的救助 / 我的走失登记.
-2. **Test**: After implementation, end-to-end test the post detail page (click post → like → top-level comment → reply with @mention → verify notifications).
 
-Let me check ProfilePage structure briefly to plan the integration.
+## 修复结账时购物车下拉看不全
 
-## Plan
+**问题**：在商城点购物车图标后弹出的"购物车抽屉"是一个**居中 Dialog**（`max-w-md max-h-[80vh]`），里面又嵌了一层 `max-h-[50vh] overflow-y-auto` 的商品列表。当商品较多 / 视口较小 / 移动端浏览器地址栏占位时：
 
-### 1. Add "公益足迹" entry to ProfilePage
-- Add a new card/section in `src/pages/ProfilePage.tsx` linking to `/charity-footprint` (or render inline as tabs).
-- Decision: Create a dedicated page `CharityFootprintPage.tsx` at route `/charity-footprint` for clarity and code splitting, with an entry card in profile next to "我的爱心积分".
+1. Dialog 居中定位 + `translate(-50%, -50%)`，内容超过视口高度时**底部"去结算"按钮和合计金额被裁掉**且无法滚动到（外层蒙层吞掉滚动手势）。
+2. 内层 `50vh` + 头部 + 底部按钮加起来可能超过外层 `80vh`，footer 被挤出 Dialog 边界。
 
-### 2. Create `src/pages/CharityFootprintPage.tsx`
-Three Tabs (using existing `Tabs` component):
-- **我的勋章**: Query `user_badges` where `user_id = auth.uid()`, show badge grid (icon + name + level + awarded_at). Empty state with link to community.
-- **我的救助**: Query `rescue_stories` where `user_id = auth.uid()`, show cards with pet name, status, before/after thumbnails, cloud_feed_count, cloud_feed_points. Click → navigate to community guardian tab.
-- **我的走失登记**: Query `lost_pets` where `user_id = auth.uid()`, show cards with pet name, status (searching/found), last_seen_location, lost_at, reward_points, clue count. Allow status toggle to "found" (UPDATE allowed by RLS).
+## 修改方案（仅 1 个文件）
 
-Stats header: total badges / total rescues / total lost pets / total cloud feed points received.
+**文件**：`src/pages/ShopPage.tsx` —— 购物车抽屉部分（约 389-459 行）
 
-### 3. Wire route in `src/App.tsx`
-- Lazy import `CharityFootprintPage`, add `<Route path="/charity-footprint" element={...} />`.
+把居中 Dialog 改成**底部弹起的 Sheet（bottom sheet）**，更符合移动端"购物车"交互习惯，并用 flex 列布局让中间商品区自适应填充剩余空间，保证标题和"去结算"按钮永远固定可见可点。
 
-### 4. End-to-end test (after build, in default mode)
-After switching to default mode, use browser tools to:
-1. Navigate to `/community?tab=plaza`, click first post card → assert URL `/post/:id`.
-2. Click like button, verify count increments.
-3. Type top-level comment "测试评论 e2e", submit.
-4. Click "回复" on an existing comment from another user, type "@" → select a user from popover → add text → submit.
-5. Open notification bell, verify new "有人回复了你" / "有人@了你" entries appear.
-6. Also verify charity footprint page loads with three tabs.
+具体改动：
 
-### Files to create/edit
-- **Create**: `src/pages/CharityFootprintPage.tsx`
-- **Edit**: `src/App.tsx` (add route), `src/pages/ProfilePage.tsx` (add entry card)
+1. 引入 `@/components/ui/sheet`（项目已存在）。
+2. 将购物车抽屉从 `<Dialog>/<DialogContent>` 替换为 `<Sheet>/<SheetContent side="bottom">`。
+3. `SheetContent` 使用 `h-[85vh] flex flex-col p-0`，结构为：
+   - `SheetHeader`（固定高度，`shrink-0`，含标题和数量）
+   - 商品列表容器：`flex-1 overflow-y-auto px-5 py-3 space-y-3`（自适应剩余高度，唯一滚动区）
+   - 底部结算栏：`shrink-0 px-5 py-4 border-t bg-card`，含合计 + 清空 + 去结算按钮，并加 `pb-[env(safe-area-inset-bottom)]` 适配 iPhone 小白条
+4. 移除内层 `max-h-[50vh]` 限制，改由 flex 布局接管。
+5. 商品列表条目本身样式保持不变（图标 / 数量 +/- / 删除按钮）。
 
-### Notes
-- No DB schema changes needed — all required tables (`user_badges`, `rescue_stories`, `lost_pets`, `lost_pet_clues`) already exist with proper RLS.
-- For lost pet clue count, use a count subquery on `lost_pet_clues`.
-- Reuse warm orange/cream design tokens, mobile-first, 44px touch targets, Skeleton loaders.
-- Handle unauthenticated state (redirect to `/auth`).
+## 验证方式
+
+改完后：
+- 桌面端 904×681：购物车从底部弹起，占 85% 视口高，"去结算"按钮始终可见。
+- 加 6+ 件商品：中间列表内部滚动，标题和底部按钮固定。
+- 点"去结算"跳转 `/payment` 流程不变。
+
+## 不影响范围
+
+- 商品详情 Dialog、商家详情 Dialog、PaymentPage 优惠券 Dialog 都不动。
+- `useCart` hook、结算跳转参数、订单写入逻辑全部保持原样。
 
