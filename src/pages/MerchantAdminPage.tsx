@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ArrowUpDown, Loader2, Search, ShieldCheck, X, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -42,6 +43,7 @@ const MerchantAdminPage = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortDesc, setSortDesc] = useState(true);
+  const [licenseFilter, setLicenseFilter] = useState<"all" | "with" | "without" | "pending_image">("all");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -75,6 +77,9 @@ const MerchantAdminPage = () => {
   }, [isAdmin, tab, sortDesc]);
 
   const filteredItems = items.filter((app) => {
+    if (licenseFilter === "with" && !app.license_image_url) return false;
+    if (licenseFilter === "without" && app.license_image_url) return false;
+    if (licenseFilter === "pending_image" && (!app.license_image_url || app.status !== "pending")) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return (
@@ -220,6 +225,20 @@ const MerchantAdminPage = () => {
                 <ArrowUpDown className="w-3.5 h-3.5 mr-1" />
                 {sortDesc ? "最新优先" : "最早优先"}
               </Button>
+            </div>
+
+            <div className="bg-card rounded-2xl p-3 card-shadow">
+              <Select value={licenseFilter} onValueChange={(v) => setLicenseFilter(v as typeof licenseFilter)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="营业执照筛选" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部申请</SelectItem>
+                  <SelectItem value="with">已上传营业执照</SelectItem>
+                  <SelectItem value="without">缺失营业执照</SelectItem>
+                  <SelectItem value="pending_image">图片待审核</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {isPending && filteredItems.length > 0 && (
