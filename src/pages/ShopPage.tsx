@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShieldCheck, MessageCircle, ChevronRight, Search, ShoppingCart, Plus, Minus, Trash2, Heart, ArrowUpDown } from "lucide-react";
 import BannerCarousel from "@/components/BannerCarousel";
