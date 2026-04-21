@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, ShieldCheck, X, ZoomIn } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, Loader2, Search, ShieldCheck, X, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -40,6 +40,8 @@ const MerchantAdminPage = () => {
   const [batchNote, setBatchNote] = useState("");
   const [batchActing, setBatchActing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortDesc, setSortDesc] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -61,7 +63,7 @@ const MerchantAdminPage = () => {
       .from("merchant_applications")
       .select("*")
       .eq("status", tab)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: !sortDesc });
     if (error) toast.error(error.message);
     else setItems((data || []) as Application[]);
     setLoading(false);
@@ -69,7 +71,17 @@ const MerchantAdminPage = () => {
 
   useEffect(() => {
     if (isAdmin) load();
-  }, [isAdmin, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, tab, sortDesc]);
+
+  const filteredItems = items.filter((app) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (
+      app.store_name.toLowerCase().includes(q) ||
+      app.contact_phone.toLowerCase().includes(q)
+    );
+  });
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
