@@ -441,7 +441,12 @@ const ShopPage = () => {
             )}
           </div>
           {cart.items.length > 0 && (
-            <div className="shrink-0 px-5 py-4 border-t border-border bg-card space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div
+              className="shrink-0 px-5 pt-4 border-t border-border bg-card space-y-3"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+              }}
+            >
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">合计</span>
                 <span className="text-xl font-extrabold text-primary">¥{cart.totalAmount.toFixed(2)}</span>
