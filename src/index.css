@@ -178,3 +178,13 @@
   100% { transform: scale(2.4); opacity: 0; }
 }
 
+
+/* iOS 安全区底部 padding 渐进增强：
+   1) 默认固定 1rem，老浏览器/不支持 env() 也保证有底部空间；
+   2) 支持 env(safe-area-inset-bottom) 时叠加刘海机型避让；
+   3) 任何情况都不小于 1rem。 */
+.safe-pb {
+  padding-bottom: 1rem;
+  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  padding-bottom: max(1rem, calc(constant(safe-area-inset-bottom, 0px) + 1rem));
+}
