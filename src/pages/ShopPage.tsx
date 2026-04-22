@@ -83,6 +83,29 @@ const ShopPage = () => {
     fetchMerchants();
   }, []);
 
+  // 检测 env(safe-area-inset-bottom) 与 CSS 变量支持情况，不可用时打印降级日志
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.CSS || typeof CSS.supports !== "function") {
+      console.warn("[SafeArea] CSS.supports 不可用，已启用固定 padding 1.5rem 降级方案");
+      return;
+    }
+    try {
+      const supportsEnv =
+        CSS.supports("padding-bottom: env(safe-area-inset-bottom)") ||
+        CSS.supports("padding-bottom: constant(safe-area-inset-bottom)");
+      const supportsVar = CSS.supports("color", "var(--fake, #000)");
+      if (!supportsEnv || !supportsVar) {
+        console.warn(
+          "[SafeArea] 降级生效 — env() 支持:", supportsEnv,
+          "| CSS 变量支持:", supportsVar,
+          "→ 使用固定 padding 1.5rem 兜底，确保「去结算」按钮可点击"
+        );
+      }
+    } catch (err) {
+      console.warn("[SafeArea] 检测异常，启用固定 padding 兜底:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
   }, [selectedCategory, searchQuery, brandFilter, sortBy]);
