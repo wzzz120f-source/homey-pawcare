@@ -219,7 +219,7 @@ const ShopPage = () => {
           >
             <ShoppingCart className="w-5 h-5 text-foreground" />
             {cart.totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center leading-none ring-2 ring-background">
                 {cart.totalItems > 99 ? "99+" : cart.totalItems}
               </span>
             )}
