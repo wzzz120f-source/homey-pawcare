@@ -198,7 +198,7 @@ const ShopPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-32">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 pt-3 pb-2">
         <div className="flex items-center gap-2 mb-3">
@@ -219,7 +219,7 @@ const ShopPage = () => {
           >
             <ShoppingCart className="w-5 h-5 text-foreground" />
             {cart.totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center leading-none ring-2 ring-background">
                 {cart.totalItems > 99 ? "99+" : cart.totalItems}
               </span>
             )}
@@ -387,17 +387,17 @@ const ShopPage = () => {
 
       {/* Cart Floating Bar */}
       {cart.totalItems > 0 && !showCart && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pb-2">
+        <div className="fixed bottom-20 left-0 right-0 z-30 px-4 pb-2">
           <div className="max-w-lg mx-auto bg-card rounded-2xl card-shadow p-3 flex items-center gap-3 border border-border">
             <button
               type="button"
               onClick={() => setShowCart(true)}
-              className="relative"
+              className="relative p-1"
               aria-label="打开购物车"
             >
               <ShoppingCart className="w-6 h-6 text-primary" />
-              <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {cart.totalItems}
+              <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center leading-none ring-2 ring-card">
+                {cart.totalItems > 99 ? "99+" : cart.totalItems}
               </span>
             </button>
             <div className="flex-1">
