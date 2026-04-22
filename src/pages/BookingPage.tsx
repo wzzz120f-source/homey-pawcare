@@ -32,7 +32,7 @@ const BookingPage = () => {
   const [activeTab, setActiveTab] = useState<BookingTab>("home");
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">

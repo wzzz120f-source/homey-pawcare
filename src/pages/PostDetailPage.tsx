@@ -250,7 +250,7 @@ const PostDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-screen bg-background pb-nav">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-border/50">
         <div className="max-w-2xl mx-auto h-14 flex items-center gap-3 px-4">

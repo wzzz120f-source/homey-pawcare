@@ -132,7 +132,7 @@ const Index = () => {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-nav">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between px-5 h-14 max-w-lg mx-auto">
