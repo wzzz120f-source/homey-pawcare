@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AMapLoader from "@amap/amap-jsapi-loader";
 import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, PawPrint, Car, Loader2, MessageSquare, SlidersHorizontal, ArrowUpDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -79,10 +80,16 @@ const PetHotelPage = () => {
   useEffect(() => {
     if (window.AMap) { setLoaded(true); return; }
     window._AMapSecurityConfig = { securityJsCode: AMAP_SECURITY_KEY };
-    const script = document.createElement("script");
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geolocation,AMap.Geocoder,AMap.Driving`;
-    script.onload = () => setLoaded(true);
-    document.head.appendChild(script);
+    AMapLoader.load({
+      key: AMAP_KEY,
+      version: "2.0",
+      plugins: ["AMap.Geolocation", "AMap.Geocoder", "AMap.Driving"],
+    })
+      .then((AMap) => {
+        window.AMap = AMap;
+        setLoaded(true);
+      })
+      .catch((e) => console.error("[AMap] 加载失败", e));
   }, []);
 
   useEffect(() => {
