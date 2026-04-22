@@ -180,11 +180,19 @@
 
 
 /* iOS 安全区底部 padding 渐进增强：
-   1) 默认固定 1rem，老浏览器/不支持 env() 也保证有底部空间；
-   2) 支持 env(safe-area-inset-bottom) 时叠加刘海机型避让；
-   3) 任何情况都不小于 1rem。 */
+   1) 默认固定 1.25rem 兜底，老浏览器/不支持 env()/CSS 变量异常时也保证可点；
+   2) iOS 11.0–11.2 的 constant() 兼容；
+   3) 现代浏览器使用 env() + max() 叠加刘海避让，至少 1.25rem。 */
 .safe-pb {
-  padding-bottom: 1rem;
-  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
-  padding-bottom: max(1rem, calc(constant(safe-area-inset-bottom, 0px) + 1rem));
+  padding-bottom: 1.25rem;
+  padding-bottom: calc(constant(safe-area-inset-bottom, 0px) + 1.25rem);
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
+}
+
+/* @supports 检测：当浏览器既不支持 env() 也不支持 CSS 变量时，
+   强制使用更大的固定 padding 保证“去结算”按钮不被遮挡。 */
+@supports not (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-pb {
+    padding-bottom: 1.5rem;
+  }
 }
