@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AMapLoader from "@amap/amap-jsapi-loader";
 import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, PawPrint, Car, Loader2, MessageSquare, SlidersHorizontal, ArrowUpDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
