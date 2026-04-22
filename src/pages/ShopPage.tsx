@@ -464,16 +464,26 @@ const ShopPage = () => {
             )}
           </div>
           {cart.items.length > 0 && (
-            <div className="safe-pb shrink-0 px-5 pt-4 border-t border-border bg-card space-y-3">
+            <div className="safe-pb shrink-0 px-5 pt-4 border-t border-border bg-card space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">合计</span>
-                <span className="text-xl font-extrabold text-primary">¥{cart.totalAmount.toFixed(2)}</span>
+                <span className="text-2xl font-extrabold text-primary">¥{cart.totalAmount.toFixed(2)}</span>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => cart.clearCart()} className="flex-1">
-                  清空购物车
+              <div className="flex gap-3 items-stretch">
+                <Button
+                  variant="outline"
+                  onClick={() => cart.clearCart()}
+                  className="flex-1 min-h-[52px] text-base"
+                  aria-label="清空购物车"
+                >
+                  清空
                 </Button>
-                <Button variant="hero" size="lg" onClick={handleCheckout} className="flex-[2]">
+                <Button
+                  variant="hero"
+                  onClick={handleCheckout}
+                  className="flex-[2] min-h-[52px] text-base font-bold shadow-lg active:scale-[0.98] transition-transform"
+                  aria-label={`去结算，共 ${cart.totalItems} 件商品`}
+                >
                   去结算 ({cart.totalItems}件)
                 </Button>
               </div>
