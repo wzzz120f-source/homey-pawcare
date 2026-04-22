@@ -197,7 +197,7 @@ const HotelDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
+      <div className="min-h-screen bg-background pb-nav">
         <Skeleton className="w-full h-56" />
         <div className="p-4 space-y-3"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-20 w-full" /></div>
       </div>
@@ -220,7 +220,7 @@ const HotelDetailPage = () => {
   ]));
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       {/* Hero Image Carousel */}
       <div className="relative">
         <Carousel

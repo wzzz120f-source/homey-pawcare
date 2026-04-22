@@ -148,7 +148,7 @@ const MerchantApplyPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center gap-2 px-4 h-14 max-w-lg mx-auto">
           <Button size="icon" variant="ghost" onClick={() => navigate("/profile")}>

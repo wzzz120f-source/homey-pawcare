@@ -196,3 +196,20 @@
     padding-bottom: 1.5rem;
   }
 }
+
+/* 列表底部安全间距：为底部导航栏（约 64px nav + 36px 版权条 ≈ 104px）+ iPhone 安全区留白
+   渐进增强：
+   1) 默认固定 7rem（112px）兜底，覆盖 BottomNav 高度；
+   2) constant() 兼容 iOS 11.0–11.2；
+   3) env() + max() 在现代浏览器叠加安全区，最少 7rem。 */
+.pb-nav {
+  padding-bottom: 7rem;
+  padding-bottom: calc(constant(safe-area-inset-bottom, 0px) + 7rem);
+  padding-bottom: max(7rem, calc(env(safe-area-inset-bottom, 0px) + 7rem));
+}
+
+@supports not (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-nav {
+    padding-bottom: 7.5rem;
+  }
+}

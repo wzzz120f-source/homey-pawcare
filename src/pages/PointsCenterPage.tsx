@@ -101,7 +101,7 @@ const PointsCenterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       {/* 顶部余额卡 */}
       <div className="bg-gradient-to-br from-primary via-primary/90 to-secondary text-primary-foreground px-4 pt-12 pb-8 rounded-b-3xl shadow-lg">
         <div className="flex items-center gap-3 mb-6">
