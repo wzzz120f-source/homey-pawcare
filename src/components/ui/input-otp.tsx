@@ -21,12 +21,33 @@ const InputOTPGroup = React.forwardRef<React.ElementRef<"div">, React.ComponentP
 );
 InputOTPGroup.displayName = "InputOTPGroup";
 
+type OTPSlot = {
+  char: string | null;
+  hasFakeCaret: boolean;
+  isActive: boolean;
+};
+
+type OTPInputContextValue = {
+  slots: OTPSlot[];
+};
+
+const EMPTY_SLOT: OTPSlot = { char: null, hasFakeCaret: false, isActive: false };
+
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div"> & { index: number }
 >(({ index, className, ...props }, ref) => {
-  const inputOTPContext = React.useContext(OTPInputContext) as any;
-  const { char, hasFakeCaret, isActive } = inputOTPContext?.slots?.[index] ?? {};
+  const inputOTPContext = React.useContext(
+    OTPInputContext as unknown as React.Context<OTPInputContextValue | null>,
+  );
+
+  const slot = inputOTPContext?.slots?.[index];
+  if (!slot && process.env.NODE_ENV !== "production") {
+    console.warn(
+      `[InputOTPSlot] Missing slot at index ${index}. Ensure this component is rendered inside <InputOTP>.`,
+    );
+  }
+  const { char, hasFakeCaret, isActive } = slot ?? EMPTY_SLOT;
 
   return (
     <div
