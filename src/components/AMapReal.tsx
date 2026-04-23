@@ -33,18 +33,34 @@ const AMapReal = ({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string; fee: number } | null>(null);
 
-  // Load AMap SDK
+  // Load AMap SDK via official loader (ensures plugins are ready)
   useEffect(() => {
-    if (window.AMap) { setLoaded(true); return; }
+    if (window.AMap?.AutoComplete) { setLoaded(true); return; }
 
     window._AMapSecurityConfig = { securityJsCode: AMAP_SECURITY_KEY };
 
-    const script = document.createElement("script");
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geolocation,AMap.Geocoder,AMap.AutoComplete,AMap.Driving`;
-    script.onload = () => setLoaded(true);
-    document.head.appendChild(script);
+    let cancelled = false;
+    import("@amap/amap-jsapi-loader").then(({ default: AMapLoader }) => {
+      AMapLoader.load({
+        key: AMAP_KEY,
+        version: "2.0",
+        plugins: [
+          "AMap.Geolocation",
+          "AMap.Geocoder",
+          "AMap.AutoComplete",
+          "AMap.Driving",
+          "AMap.PlaceSearch",
+        ],
+      })
+        .then((AMap) => {
+          if (cancelled) return;
+          window.AMap = AMap;
+          setLoaded(true);
+        })
+        .catch((e) => console.error("[AMapReal] loader error:", e));
+    });
 
-    return () => { document.head.removeChild(script); };
+    return () => { cancelled = true; };
   }, []);
 
   // Init map
