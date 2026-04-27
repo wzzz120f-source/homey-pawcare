@@ -130,6 +130,8 @@ const BookingPage = () => {
 
   // ─── Submit handler ──────────────────────────────────────────────────────
   const handleSubmit = () => {
+    setSubmitAttempted(true);
+    if (isDisabled) return;
     const petInfo = PET_TYPES.find((p) => p.id === selectedPet);
     const serviceInfo = SERVICE_TYPES.find((s) => s.id === selectedService);
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
