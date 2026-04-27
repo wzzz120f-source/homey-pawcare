@@ -113,14 +113,20 @@ const BookingPage = () => {
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
   const [routeKm, setRouteKm] = useState<number | null>(null);
+  const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
+  const [routeError, setRouteError] = useState<string>("");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
   const genderOption = GENDER_OPTIONS.find((g) => g.value === driverGender)!;
-  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价
-  const distanceSurcharge = routeKm ? Math.max(0, Math.ceil(routeKm) * 2) : 0;
+  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价（fallback）
+  const PER_KM = 2;
+  const distanceSurcharge = routeKm !== null ? Math.max(0, Math.ceil(routeKm) * PER_KM) : 0;
   const tierDynamicPrice = (price: number) => price + distanceSurcharge;
-  const pickupTotal = tierDynamicPrice(currentTier.price) + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  const addOnsTotal = (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  const pickupTotal = tierDynamicPrice(currentTier.price) + addOnsTotal;
+  const isFallbackPrice = routeKm === null;
 
   // ─── Submit handler ──────────────────────────────────────────────────────
   const handleSubmit = () => {
