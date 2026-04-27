@@ -7,8 +7,13 @@ interface AMapRealProps {
   onPickupAddressChange: (addr: string) => void;
   dropoffAddress: string;
   onDropoffAddressChange: (addr: string) => void;
-  /** 路径规划完成后回调（公里、分钟） */
-  onRouteChange?: (info: { distanceKm: number; durationMin: number } | null) => void;
+  /** 路径规划结果回调；失败/过期时 distanceKm 为 null 并附带 error 或 outdated 标记 */
+  onRouteChange?: (info: {
+    distanceKm: number | null;
+    durationMin: number | null;
+    error?: string;
+    outdated?: boolean;
+  }) => void;
 }
 
 declare global {
