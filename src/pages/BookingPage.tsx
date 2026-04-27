@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -116,6 +116,13 @@ const BookingPage = () => {
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const planRouteRef = useRef<(() => void) | null>(null);
+
+  // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
+  useEffect(() => {
+    setSelectedTime("");
+    setSubmitAttempted(false);
+  }, [timeMode]);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
