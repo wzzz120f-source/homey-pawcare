@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -116,6 +116,13 @@ const BookingPage = () => {
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const planRouteRef = useRef<(() => void) | null>(null);
+
+  // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
+  useEffect(() => {
+    setSelectedTime("");
+    setSubmitAttempted(false);
+  }, [timeMode]);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
@@ -357,6 +364,9 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
+                onPlanRouteReady={(fn) => {
+                  planRouteRef.current = fn;
+                }}
                 onRouteChange={(info) => {
                   setRouteKm(info.distanceKm);
                   if (info.error) {
@@ -377,14 +387,34 @@ const BookingPage = () => {
                 </p>
               )}
               {routeStatus === "error" && (
-                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
-                  ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。请检查地址或重试「查看路线规划」。
-                </p>
+                <div className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2 flex items-start justify-between gap-2">
+                  <span className="flex-1">
+                    ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => planRouteRef.current?.()}
+                    disabled={!pickupAddress || !dropoffAddress}
+                    className="shrink-0 px-2.5 py-1 rounded-md bg-amber-500 text-white font-semibold text-[11px] hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    🔄 重试规划
+                  </button>
+                </div>
               )}
               {routeStatus === "outdated" && (
-                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
-                  ⚠️ 地址已修改，路线已失效，请重新点击「查看路线规划」。当前 <span className="font-semibold">按起步价估算</span>。
-                </p>
+                <div className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2 flex items-start justify-between gap-2">
+                  <span className="flex-1">
+                    ⚠️ 地址已修改，路线已失效。当前 <span className="font-semibold">按起步价估算</span>。
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => planRouteRef.current?.()}
+                    disabled={!pickupAddress || !dropoffAddress}
+                    className="shrink-0 px-2.5 py-1 rounded-md bg-amber-500 text-white font-semibold text-[11px] hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    🔄 重新规划
+                  </button>
+                </div>
               )}
             </section>
 
@@ -759,6 +789,11 @@ const BookingPage = () => {
                   +¥{distanceSurcharge}
                 </span>
               </li>
+              {isFallbackPrice && (
+                <li className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug bg-amber-500/5 rounded-md px-2 py-1.5 -mx-1">
+                  ℹ️ {routeStatus === "outdated" ? "路线已失效" : "暂无路线"}：按 <span className="font-semibold">起步价估算</span>，距离加价 = ⌈距离 km⌉ × ¥{PER_KM}；当前距离未知，加价记 ¥0，待重新规划后自动更新。
+                </li>
+              )}
               {addInsurance && (
                 <li className="flex justify-between">
                   <span className="text-muted-foreground">宠物意外险</span>
