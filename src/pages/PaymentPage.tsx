@@ -30,6 +30,14 @@ interface OrderData {
   service_label?: string;
   pet_label?: string;
   cart_items?: CartItem[];
+  pickup_tier?: {
+    id: string;
+    label: string;
+    desc?: string;
+    price: number;
+    priceLabel?: string;
+    recommended?: boolean;
+  };
 }
 
 interface Coupon {
@@ -286,6 +294,27 @@ const PaymentPage = () => {
                   <span className="text-muted-foreground">服务类型</span>
                   <span className="font-semibold text-foreground">{orderData.service_label || orderData.order_type}</span>
                 </div>
+                {orderData.pickup_tier && (
+                  <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-xs">接送方案</span>
+                      {orderData.pickup_tier.recommended && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          ⭐ 推荐
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground text-sm">{orderData.pickup_tier.label}</span>
+                      <span className="font-semibold text-primary text-sm">
+                        {orderData.pickup_tier.priceLabel || `¥${orderData.pickup_tier.price}`}
+                      </span>
+                    </div>
+                    {orderData.pickup_tier.desc && (
+                      <p className="text-xs text-muted-foreground">{orderData.pickup_tier.desc}</p>
+                    )}
+                  </div>
+                )}
                 {orderData.pet_label && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">宠物类型</span>

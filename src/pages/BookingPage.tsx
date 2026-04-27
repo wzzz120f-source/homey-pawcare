@@ -144,6 +144,17 @@ const BookingPage = () => {
         driver_gender: activeTab === "pickup" ? driverGender : undefined,
         add_insurance: activeTab === "pickup" ? addInsurance : undefined,
         add_photo: activeTab === "pickup" ? addPhoto : undefined,
+        pickup_tier:
+          activeTab === "pickup"
+            ? {
+                id: currentTier.id,
+                label: currentTier.label,
+                desc: currentTier.desc,
+                price: currentTier.price,
+                priceLabel: currentTier.priceLabel,
+                recommended: currentTier.recommended === true,
+              }
+            : undefined,
       },
     });
   };
