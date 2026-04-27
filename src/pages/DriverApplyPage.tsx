@@ -612,10 +612,16 @@ const DriverApplyPage = () => {
               variant="hero"
               size="xl"
               className="w-full"
-              disabled={submitting}
+              disabled={submitting || latestApp?.status === "pending"}
               onClick={handleSubmit}
             >
-              {submitting ? "提交中…" : "提交审核"}
+              {submitting
+                ? "提交中…"
+                : latestApp?.status === "pending"
+                  ? "审核中，请耐心等待"
+                  : latestApp?.status === "rejected"
+                    ? "重新提交审核"
+                    : "提交审核"}
             </Button>
           </TabsContent>
         </Tabs>
