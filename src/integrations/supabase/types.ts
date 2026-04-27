@@ -334,6 +334,72 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_applications: {
+        Row: {
+          created_at: string
+          driver_license_url: string | null
+          driving_years: number
+          full_name: string
+          gender: string
+          handheld_id_url: string | null
+          id: string
+          id_card_back_url: string | null
+          id_card_front_url: string | null
+          pet_experience: string[]
+          phone: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle_license_url: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          created_at?: string
+          driver_license_url?: string | null
+          driving_years?: number
+          full_name: string
+          gender: string
+          handheld_id_url?: string | null
+          id?: string
+          id_card_back_url?: string | null
+          id_card_front_url?: string | null
+          pet_experience?: string[]
+          phone: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vehicle_license_url?: string | null
+          vehicle_type: string
+        }
+        Update: {
+          created_at?: string
+          driver_license_url?: string | null
+          driving_years?: number
+          full_name?: string
+          gender?: string
+          handheld_id_url?: string | null
+          id?: string
+          id_card_back_url?: string | null
+          id_card_front_url?: string | null
+          pet_experience?: string[]
+          phone?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_license_url?: string | null
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
