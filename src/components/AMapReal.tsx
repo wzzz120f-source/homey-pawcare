@@ -258,10 +258,7 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
       <div className="bg-card rounded-xl p-4 card-shadow space-y-3">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-2">🚗 接送方式</h3>
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "专车接送", desc: "司机上门接宠", price: "¥25起", emoji: "🚙" },
-            { label: "顺路拼单", desc: "与其他宠物同行", price: "¥15起", emoji: "🚐" },
-          ].map((option) => (
+         
             <button
               key={option.label}
               className="flex flex-col items-center gap-1 p-3 rounded-xl bg-secondary hover:bg-muted transition-all text-center"
