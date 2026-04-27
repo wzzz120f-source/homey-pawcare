@@ -656,18 +656,37 @@ const BookingPage = () => {
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
               </p>
               {activeTab === "pickup" && timeMode === "scheduled" ? (
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger className="w-full" aria-label="预约时段">
-                    <SelectValue placeholder="选择预约时段" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {TIME_SLOTS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger
+                      className={cn(
+                        "w-full",
+                        submitAttempted && !selectedTime && "border-destructive ring-1 ring-destructive",
+                      )}
+                      aria-label="预约时段"
+                      aria-invalid={submitAttempted && !selectedTime}
+                      aria-describedby="scheduled-time-error"
+                    >
+                      <SelectValue placeholder="选择预约时段" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {TIME_SLOTS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {submitAttempted && !selectedTime && (
+                    <p
+                      id="scheduled-time-error"
+                      role="alert"
+                      className="mt-1.5 text-xs text-destructive flex items-center gap-1"
+                    >
+                      ⚠️ 请选择预约时段后再提交
+                    </p>
+                  )}
+                </>
               ) : (
                 <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
                   {TIME_SLOTS.map((t) => (
