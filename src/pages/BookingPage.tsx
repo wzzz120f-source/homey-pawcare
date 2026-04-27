@@ -27,7 +27,16 @@ type BookingTab = "home" | "store" | "pickup";
 type DriverGender = "any" | "male" | "female";
 
 // ─── Pickup service tiers (滴滴风格) ─────────────────────────────────────────
-const PICKUP_TIERS = [
+const PICKUP_TIERS: ReadonlyArray<{
+  id: string;
+  icon: string;
+  label: string;
+  desc: string;
+  tags: readonly string[];
+  price: number;
+  priceLabel: string;
+  recommended?: boolean;
+}> = [
   {
     id: "share",
     icon: "🚐",
