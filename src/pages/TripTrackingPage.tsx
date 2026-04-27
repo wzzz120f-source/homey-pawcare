@@ -330,12 +330,30 @@ const TripTrackingPage = () => {
           </Button>
         </section>
 
-        {/* 演示控件 */}
-        <Button variant="ghost" size="sm" onClick={advanceStage} className="w-full">
-          ▶ 演示：推进到下一阶段
-        </Button>
+        {/* 回放控件 */}
+        {isReplaying && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 flex items-center justify-between">
+            <div className="text-sm">
+              <Badge variant="secondary" className="mr-2">回放中</Badge>
+              第 {(replayIdx ?? 0) + 1} / {history.length} 帧 ·{" "}
+              {tracking?.updated_at && new Date(tracking.updated_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </div>
+            <Button size="sm" variant="outline" onClick={stopReplay}>
+              <Square className="w-3.5 h-3.5 mr-1" /> 停止
+            </Button>
+          </div>
+        )}
 
-        {tracking?.stage === "delivered" && orderId && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" onClick={startReplay} disabled={isReplaying}>
+            <Rewind className="w-4 h-4 mr-1" /> 回放最近10分钟
+          </Button>
+          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying}>
+            ▶ 推进阶段（演示）
+          </Button>
+        </div>
+
+        {tracking?.stage === "delivered" && orderId && !isReplaying && (
           <Button className="w-full" onClick={() => navigate(`/rate/${orderId}`)}>
             行程已结束 · 去评价 ⭐
           </Button>
