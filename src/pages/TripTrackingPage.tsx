@@ -1,0 +1,278 @@
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+const STAGES = [
+  { key: "departed", label: "已出发", emoji: "🚗" },
+  { key: "picking_up", label: "接宠途中", emoji: "📍" },
+  { key: "picked_up", label: "已接收", emoji: "🐾" },
+  { key: "delivered", label: "已送达", emoji: "🏠" },
+] as const;
+
+interface Tracking {
+  id: string;
+  order_id: string;
+  stage: string;
+  driver_lat: number | null;
+  driver_lng: number | null;
+  distance_km: number | null;
+  eta_minutes: number | null;
+  cabin_temperature: number | null;
+  photo_urls: string[];
+  message: string | null;
+  updated_at: string;
+}
+
+const TripTrackingPage = () => {
+  const navigate = useNavigate();
+  const { id: orderId } = useParams<{ id: string }>();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  const [order, setOrder] = useState<any>(null);
+  const [tracking, setTracking] = useState<Tracking | null>(null);
+  const [progress, setProgress] = useState(0);
+  const simRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!orderId) return;
+    let active = true;
+
+    const load = async () => {
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (!active) return;
+      setOrder(ord);
+
+      const { data: tr } = await supabase
+        .from("trip_tracking")
+        .select("*")
+        .eq("order_id", orderId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!active) return;
+
+      if (tr) {
+        setTracking(tr as any);
+      } else {
+        // 演示：自动创建一条初始追踪记录
+        const { data: created } = await supabase
+          .from("trip_tracking")
+          .insert({
+            order_id: orderId,
+            stage: "departed",
+            driver_lat: 31.2304,
+            driver_lng: 121.4737,
+            distance_km: 5.2,
+            eta_minutes: 15,
+            cabin_temperature: 24,
+            message: "司机已出发，预计 15 分钟到达",
+          })
+          .select()
+          .single();
+        if (created) setTracking(created as any);
+      }
+    };
+
+    load();
+
+    // Realtime 订阅
+    const channel = supabase
+      .channel(`trip-tracking-${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trip_tracking", filter: `order_id=eq.${orderId}` },
+        (payload) => {
+          if (payload.new) setTracking(payload.new as any);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+      if (simRef.current) window.clearInterval(simRef.current);
+    };
+  }, [orderId, user, authLoading]);
+
+  // 司机位置进度动画（演示用）
+  useEffect(() => {
+    if (!tracking) return;
+    const target =
+      tracking.stage === "departed" ? 25 : tracking.stage === "picking_up" ? 50 : tracking.stage === "picked_up" ? 75 : 100;
+    const step = () => setProgress((p) => (p < target ? Math.min(p + 1, target) : p));
+    const id = window.setInterval(step, 50);
+    return () => window.clearInterval(id);
+  }, [tracking?.stage]);
+
+  const advanceStage = async () => {
+    if (!tracking) return;
+    const idx = STAGES.findIndex((s) => s.key === tracking.stage);
+    if (idx < 0 || idx >= STAGES.length - 1) return;
+    const next = STAGES[idx + 1].key;
+    await supabase
+      .from("trip_tracking")
+      .update({
+        stage: next,
+        eta_minutes: Math.max(0, (tracking.eta_minutes || 15) - 5),
+        distance_km: Math.max(0, Number(tracking.distance_km || 5) - 2),
+      })
+      .eq("id", tracking.id);
+  };
+
+  const stageIdx = tracking ? STAGES.findIndex((s) => s.key === tracking.stage) : 0;
+  const pet = order?.pet_snapshot;
+
+  return (
+    <div className="min-h-screen bg-background pb-24">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
+        <div className="max-w-md mx-auto flex items-center gap-3 px-4 h-14">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2" aria-label="返回">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-semibold">实时追踪</h1>
+        </div>
+      </header>
+
+      <main className="max-w-md mx-auto px-4 py-4 space-y-4">
+        {pet && (
+          <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-3 text-sm flex items-start gap-2">
+            <Share2 className="w-4 h-4 text-orange-500 mt-0.5" />
+            <div>
+              <p className="font-medium">已发送给司机：{pet.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {pet.allergies?.length > 0 && `过敏：${pet.allergies.join("、")} · `}
+                {pet.behavior_notes?.length > 0 && `禁忌：${pet.behavior_notes.join("、")}`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* SVG 地图 */}
+        <section className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+          <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900">
+            {/* 道路 */}
+            <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--muted-foreground))" strokeWidth="3" fill="none" strokeDasharray="6 4" opacity="0.4" />
+            <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--primary))" strokeWidth="3" fill="none"
+              strokeDasharray="600"
+              strokeDashoffset={600 - (progress / 100) * 600} />
+            {/* 起点 */}
+            <circle cx="30" cy="170" r="8" fill="hsl(var(--primary))" />
+            <text x="42" y="174" fontSize="10" fill="hsl(var(--foreground))">起</text>
+            {/* 终点 */}
+            <circle cx="330" cy="30" r="8" fill="hsl(var(--destructive))" />
+            <text x="305" y="22" fontSize="10" fill="hsl(var(--foreground))">终</text>
+            {/* 司机车辆位置 */}
+            {(() => {
+              const t = progress / 100;
+              const x = 30 + (330 - 30) * t;
+              const y = 170 - Math.sin(t * Math.PI) * 100;
+              return (
+                <g>
+                  <circle cx={x} cy={y} r="14" fill="hsl(var(--primary))" opacity="0.2">
+                    <animate attributeName="r" from="14" to="22" dur="1.5s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" from="0.4" to="0" dur="1.5s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="10" fill="hsl(var(--primary))" />
+                  <text x={x} y={y + 4} fontSize="12" textAnchor="middle">🚗</text>
+                </g>
+              );
+            })()}
+          </svg>
+
+          {/* 四步进度 */}
+          <div className="p-4 space-y-3">
+            <Progress value={((stageIdx + 1) / STAGES.length) * 100} />
+            <div className="grid grid-cols-4 gap-1 text-center text-[11px]">
+              {STAGES.map((s, i) => (
+                <div key={s.key} className={cn(i <= stageIdx ? "text-primary font-medium" : "text-muted-foreground")}>
+                  <div className="text-base">{s.emoji}</div>
+                  {s.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 实时数值 */}
+        <section className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <Navigation className="w-4 h-4 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">距离</p>
+            <p className="text-sm font-semibold">{tracking?.distance_km?.toFixed(1) ?? "—"} km</p>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <Clock className="w-4 h-4 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">预计到达</p>
+            <p className="text-sm font-semibold">{tracking?.eta_minutes ?? "—"} 分钟</p>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <Thermometer className="w-4 h-4 mx-auto text-primary mb-1" />
+            <p className="text-xs text-muted-foreground">车内温度</p>
+            <p className="text-sm font-semibold">{tracking?.cabin_temperature ?? "—"}°C</p>
+          </div>
+        </section>
+
+        {/* 行程照片 */}
+        <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1">
+            <Camera className="w-4 h-4" /> 行程照片更新
+          </h3>
+          {tracking?.photo_urls && tracking.photo_urls.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {tracking.photo_urls.map((u) => (
+                <img key={u} src={u} alt="行程照片" className="aspect-square rounded-lg object-cover" />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground py-4 text-center">司机还未上传照片</p>
+          )}
+        </section>
+
+        {/* 快捷按钮 */}
+        <section className="grid grid-cols-3 gap-2">
+          <Button variant="outline" className="flex-col h-auto py-3" onClick={() => toast({ title: "拨打司机电话" })}>
+            <Phone className="w-5 h-5 mb-1" />
+            <span className="text-xs">电话</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3" onClick={() => toast({ title: "进入会话" })}>
+            <MessageCircle className="w-5 h-5 mb-1" />
+            <span className="text-xs">消息</span>
+          </Button>
+          <Button variant="destructive" className="flex-col h-auto py-3" onClick={() => toast({ title: "已通知客服紧急介入", variant: "destructive" })}>
+            <AlertOctagon className="w-5 h-5 mb-1" />
+            <span className="text-xs">紧急</span>
+          </Button>
+        </section>
+
+        {/* 演示控件 */}
+        <Button variant="ghost" size="sm" onClick={advanceStage} className="w-full">
+          ▶ 演示：推进到下一阶段
+        </Button>
+
+        {tracking?.stage === "delivered" && orderId && (
+          <Button className="w-full" onClick={() => navigate(`/rate/${orderId}`)}>
+            行程已结束 · 去评价 ⭐
+          </Button>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default TripTrackingPage;
