@@ -162,6 +162,8 @@ const PaymentPage = () => {
         order_type: orderData.order_type,
         service_type: orderData.service_type ?? null,
         pet_type: orderData.pet_type ?? null,
+        pet_id: orderData.pet_id ?? null,
+        pet_snapshot: orderData.pet_snapshot ?? null,
         booking_date: orderData.booking_date ?? null,
         booking_time: orderData.booking_time ?? null,
         store_name: orderData.store_name ?? null,
