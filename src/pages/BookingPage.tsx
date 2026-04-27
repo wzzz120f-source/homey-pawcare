@@ -145,6 +145,7 @@ const BookingPage = () => {
         driver_gender: activeTab === "pickup" ? driverGender : undefined,
         add_insurance: activeTab === "pickup" ? addInsurance : undefined,
         add_photo: activeTab === "pickup" ? addPhoto : undefined,
+        time_mode: activeTab === "pickup" ? timeMode : undefined,
         pickup_tier:
           activeTab === "pickup"
             ? {
