@@ -291,6 +291,50 @@ const BookingPage = () => {
           ))}
         </div>
 
+        {/* ── 我的宠物档案 ── */}
+        {savedPets.length > 0 && (
+          <section className="mb-4 animate-fade-in-up">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-bold text-foreground flex items-center gap-2">
+                <PawPrint className="w-4 h-4 text-primary" /> 我的宠物
+              </h2>
+              <button onClick={() => navigate("/pets")} className="text-xs text-primary">管理档案 →</button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {savedPets.map((p) => {
+                const active = selectedSavedPetId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedSavedPetId(p.id);
+                      setSelectedPet(p.pet_type);
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-xl border px-3 py-2 text-left min-w-[120px]",
+                      active ? "bg-primary/10 border-primary" : "bg-card",
+                    )}
+                  >
+                    <div className="text-sm font-medium truncate">🐾 {p.name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {p.allergies?.length > 0 ? `过敏:${p.allergies[0]}` : "档案完整"}
+                    </div>
+                    {p.auto_share && active && (
+                      <div className="text-[10px] text-orange-500 mt-0.5">自动共享给司机</div>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => navigate("/pets")}
+                className="shrink-0 rounded-xl border border-dashed px-3 py-2 text-xs text-muted-foreground min-w-[80px]"
+              >
+                + 新增
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* ── Pet Type ── */}
         <section className="mb-6 animate-fade-in-up" aria-label="宠物类型">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
