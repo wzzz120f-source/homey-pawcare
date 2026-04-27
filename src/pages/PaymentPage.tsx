@@ -30,6 +30,8 @@ interface OrderData {
   service_label?: string;
   pet_label?: string;
   cart_items?: CartItem[];
+  pet_id?: string;
+  pet_snapshot?: any;
   pickup_tier?: {
     id: string;
     label: string;
