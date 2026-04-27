@@ -127,13 +127,24 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
   const planRoute = () => {
     if (!loaded || !pickupAddress || !dropoffAddress || !mapInstance.current) return;
 
+    const fail = (msg: string) => {
+      setRouteInfo(null);
+      onRouteChange?.({ distanceKm: null, durationMin: null, error: msg });
+    };
+
     const geocoder = new window.AMap.Geocoder();
     geocoder.getLocation(pickupAddress, (s1: string, r1: any) => {
-      if (s1 !== "complete" || !r1.geocodes[0]) return;
+      if (s1 !== "complete" || !r1.geocodes?.[0]) {
+        fail("取宠地址解析失败");
+        return;
+      }
       const start = r1.geocodes[0].location;
 
       geocoder.getLocation(dropoffAddress, (s2: string, r2: any) => {
-        if (s2 !== "complete" || !r2.geocodes[0]) return;
+        if (s2 !== "complete" || !r2.geocodes?.[0]) {
+          fail("送达地址解析失败");
+          return;
+        }
         const end = r2.geocodes[0].location;
 
         mapInstance.current.clearMap();
@@ -148,11 +159,22 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
             const fee = Math.max(15, Math.round(km * 5));
             setRouteInfo({ distance: `${distKm}公里`, duration: `${durMin}分钟`, fee });
             onRouteChange?.({ distanceKm: km, durationMin: durMin });
+          } else {
+            fail("路线规划失败");
           }
         });
       });
     });
   };
+
+  // Mark route as outdated when addresses change after a successful plan
+  useEffect(() => {
+    if (routeInfo) {
+      setRouteInfo(null);
+      onRouteChange?.({ distanceKm: null, durationMin: null, outdated: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickupAddress, dropoffAddress]);
 
   return (
     <div className="space-y-4">
