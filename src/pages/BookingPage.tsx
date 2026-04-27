@@ -105,6 +105,7 @@ const BookingPage = () => {
   const [selectedPet, setSelectedPet] = useState("");
   const [savedPets, setSavedPets] = useState<any[]>([]);
   const [selectedSavedPetId, setSelectedSavedPetId] = useState<string>("");
+  const [tripPetNote, setTripPetNote] = useState<string>("");
   const [selectedService, setSelectedService] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
@@ -191,6 +192,7 @@ const BookingPage = () => {
           allergies: savedPet.allergies || [],
           behavior_notes: savedPet.behavior_notes || [],
           vaccinations: savedPet.vaccinations || [],
+          trip_note: tripPetNote || null,
         }
       : null;
 
