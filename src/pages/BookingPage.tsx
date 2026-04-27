@@ -626,25 +626,40 @@ const BookingPage = () => {
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
               </p>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
-                {TIME_SLOTS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedTime === t}
-                    onClick={() => setSelectedTime(t)}
-                    className={cn(
-                      "py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]",
-                      selectedTime === t
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-muted",
-                    )}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {activeTab === "pickup" && timeMode === "scheduled" ? (
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger className="w-full" aria-label="预约时段">
+                    <SelectValue placeholder="选择预约时段" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-popover">
+                    {TIME_SLOTS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
+                  {TIME_SLOTS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedTime === t}
+                      onClick={() => setSelectedTime(t)}
+                      className={cn(
+                        "py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]",
+                        selectedTime === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-muted",
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
