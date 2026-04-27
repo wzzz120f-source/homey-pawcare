@@ -526,10 +526,49 @@ const BookingPage = () => {
                 </label>
               </div>
             </section>
+
+            {/* ── Time Mode (DiDi-style) ── */}
+            <section className="mb-6 animate-fade-in-up" aria-label="出发时间">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">⏱️ 出发时间</h2>
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时间模式">
+                {([
+                  { v: "now", label: "立即预约", desc: "5 分钟内派单" },
+                  { v: "scheduled", label: "预约时段", desc: "选择具体时间" },
+                  { v: "habit", label: "我的习惯", desc: "每周三 10:00" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    role="radio"
+                    aria-checked={timeMode === opt.v}
+                    onClick={() => setTimeMode(opt.v)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 py-3 px-2 rounded-xl transition-all text-sm font-medium border min-h-[44px]",
+                      timeMode === opt.v
+                        ? "bg-primary/10 border-primary ring-2 ring-primary ring-offset-1 ring-offset-background"
+                        : "bg-card border-border card-shadow hover:bg-secondary",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-xs font-semibold",
+                        timeMode === opt.v ? "text-primary" : "text-foreground",
+                      )}
+                    >
+                      {opt.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight text-center">
+                      {opt.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           </>
         )}
 
-        {/* ── Date & Time ── */}
+        {/* ── Date & Time (skipped for pickup unless 预约时段 selected) ── */}
+        {needsDateTime && (
         <section className="mb-6 animate-fade-in-up" aria-label="预约时间">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-primary" aria-hidden="true" /> 预约时间
