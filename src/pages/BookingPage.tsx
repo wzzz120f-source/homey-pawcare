@@ -789,6 +789,11 @@ const BookingPage = () => {
                   +¥{distanceSurcharge}
                 </span>
               </li>
+              {isFallbackPrice && (
+                <li className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug bg-amber-500/5 rounded-md px-2 py-1.5 -mx-1">
+                  ℹ️ {routeStatus === "outdated" ? "路线已失效" : "暂无路线"}：按 <span className="font-semibold">起步价估算</span>，距离加价 = ⌈距离 km⌉ × ¥{PER_KM}；当前距离未知，加价记 ¥0，待重新规划后自动更新。
+                </li>
+              )}
               {addInsurance && (
                 <li className="flex justify-between">
                   <span className="text-muted-foreground">宠物意外险</span>
