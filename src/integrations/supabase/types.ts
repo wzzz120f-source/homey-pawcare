@@ -986,6 +986,7 @@ export type Database = {
           booking_date: string | null
           booking_time: string | null
           created_at: string
+          driver_id: string | null
           dropoff_address: string | null
           id: string
           notes: string | null
@@ -994,6 +995,8 @@ export type Database = {
           order_type: string
           payment_method: string | null
           payment_status: string
+          pet_id: string | null
+          pet_snapshot: Json | null
           pet_type: string | null
           pickup_address: string | null
           service_type: string | null
@@ -1006,6 +1009,7 @@ export type Database = {
           booking_date?: string | null
           booking_time?: string | null
           created_at?: string
+          driver_id?: string | null
           dropoff_address?: string | null
           id?: string
           notes?: string | null
@@ -1014,6 +1018,8 @@ export type Database = {
           order_type?: string
           payment_method?: string | null
           payment_status?: string
+          pet_id?: string | null
+          pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
           service_type?: string | null
@@ -1026,6 +1032,7 @@ export type Database = {
           booking_date?: string | null
           booking_time?: string | null
           created_at?: string
+          driver_id?: string | null
           dropoff_address?: string | null
           id?: string
           notes?: string | null
@@ -1034,6 +1041,8 @@ export type Database = {
           order_type?: string
           payment_method?: string | null
           payment_status?: string
+          pet_id?: string | null
+          pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
           service_type?: string | null
@@ -1101,6 +1110,63 @@ export type Database = {
           reviews_count?: number
           tags?: string[]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      pets: {
+        Row: {
+          allergies: string[]
+          auto_share: boolean
+          avatar_url: string | null
+          behavior_notes: string[]
+          birthday: string | null
+          breed: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          notes: string | null
+          pet_type: string
+          updated_at: string
+          user_id: string
+          vaccinations: Json
+          weight_kg: number | null
+        }
+        Insert: {
+          allergies?: string[]
+          auto_share?: boolean
+          avatar_url?: string | null
+          behavior_notes?: string[]
+          birthday?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          notes?: string | null
+          pet_type?: string
+          updated_at?: string
+          user_id: string
+          vaccinations?: Json
+          weight_kg?: number | null
+        }
+        Update: {
+          allergies?: string[]
+          auto_share?: boolean
+          avatar_url?: string | null
+          behavior_notes?: string[]
+          birthday?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          notes?: string | null
+          pet_type?: string
+          updated_at?: string
+          user_id?: string
+          vaccinations?: Json
+          weight_kg?: number | null
         }
         Relationships: []
       }
@@ -1559,6 +1625,99 @@ export type Database = {
           user_id?: string
           volunteers_joined?: number
           volunteers_needed?: number
+        }
+        Relationships: []
+      }
+      trip_ratings: {
+        Row: {
+          communication_rating: number | null
+          created_at: string
+          driver_id: string | null
+          feedback: string | null
+          id: string
+          order_id: string
+          overall_rating: number
+          pet_care_rating: number | null
+          punctuality_rating: number | null
+          quick_tags: string[]
+          safety_rating: number | null
+          user_id: string
+        }
+        Insert: {
+          communication_rating?: number | null
+          created_at?: string
+          driver_id?: string | null
+          feedback?: string | null
+          id?: string
+          order_id: string
+          overall_rating: number
+          pet_care_rating?: number | null
+          punctuality_rating?: number | null
+          quick_tags?: string[]
+          safety_rating?: number | null
+          user_id: string
+        }
+        Update: {
+          communication_rating?: number | null
+          created_at?: string
+          driver_id?: string | null
+          feedback?: string | null
+          id?: string
+          order_id?: string
+          overall_rating?: number
+          pet_care_rating?: number | null
+          punctuality_rating?: number | null
+          quick_tags?: string[]
+          safety_rating?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trip_tracking: {
+        Row: {
+          cabin_temperature: number | null
+          created_at: string
+          distance_km: number | null
+          driver_id: string | null
+          driver_lat: number | null
+          driver_lng: number | null
+          eta_minutes: number | null
+          id: string
+          message: string | null
+          order_id: string
+          photo_urls: string[]
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          cabin_temperature?: number | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_lat?: number | null
+          driver_lng?: number | null
+          eta_minutes?: number | null
+          id?: string
+          message?: string | null
+          order_id: string
+          photo_urls?: string[]
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          cabin_temperature?: number | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_lat?: number | null
+          driver_lng?: number | null
+          eta_minutes?: number | null
+          id?: string
+          message?: string | null
+          order_id?: string
+          photo_urls?: string[]
+          stage?: string
+          updated_at?: string
         }
         Relationships: []
       }
