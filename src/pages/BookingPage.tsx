@@ -412,14 +412,19 @@ const BookingPage = () => {
 
                     {/* Price + radio */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={cn(
-                          "text-sm font-bold",
-                          selectedTier === tier.id ? "text-primary" : "text-foreground",
+                      <div className="text-right leading-tight">
+                        <div
+                          className={cn(
+                            "text-sm font-bold",
+                            selectedTier === tier.id ? "text-primary" : "text-foreground",
+                          )}
+                        >
+                          ¥{tierDynamicPrice(tier.price)}
+                        </div>
+                        {routeKm !== null && distanceSurcharge > 0 && (
+                          <div className="text-[10px] text-muted-foreground">起 ¥{tier.price} +距离</div>
                         )}
-                      >
-                        {tier.priceLabel}
-                      </span>
+                      </div>
                       <span
                         className={cn(
                           "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
