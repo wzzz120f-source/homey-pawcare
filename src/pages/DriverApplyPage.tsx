@@ -114,8 +114,19 @@ const DriverApplyPage = () => {
     vehicle_license_url: "",
     handheld_id_url: "",
   });
+  /** key → blob/objectURL（本地预览）或 signed URL（已存在的） */
+  const [previews, setPreviews] = useState<Record<DocKey, string>>({
+    id_card_front_url: "",
+    id_card_back_url: "",
+    driver_license_url: "",
+    vehicle_license_url: "",
+    handheld_id_url: "",
+  });
   const [uploading, setUploading] = useState<DocKey | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
+  const [latestApp, setLatestApp] = useState<LatestApplication | null>(null);
+  const [loadingApp, setLoadingApp] = useState(true);
   const fileRefs = useRef<Record<DocKey, HTMLInputElement | null>>({
     id_card_front_url: null,
     id_card_back_url: null,
@@ -124,36 +135,122 @@ const DriverApplyPage = () => {
     handheld_id_url: null,
   });
 
+  // ─── Auto-fetch latest application ──────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!user) {
+        setLoadingApp(false);
+        return;
+      }
+      setLoadingApp(true);
+      const { data, error } = await supabase
+        .from("driver_applications")
+        .select("id,status,review_note,created_at,reviewed_at,id_card_front_url,id_card_back_url,driver_license_url,vehicle_license_url,handheld_id_url")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        toast.error("加载申请记录失败");
+      } else if (data) {
+        setLatestApp({
+          id: data.id,
+          status: data.status as ApplicationStatus,
+          review_note: data.review_note,
+          created_at: data.created_at,
+          reviewed_at: data.reviewed_at,
+        });
+        // pre-fill doc paths + signed urls for previews
+        const docKeys: DocKey[] = [
+          "id_card_front_url",
+          "id_card_back_url",
+          "driver_license_url",
+          "vehicle_license_url",
+          "handheld_id_url",
+        ];
+        const nextDocs: Record<DocKey, string> = { ...docs };
+        const nextPrev: Record<DocKey, string> = { ...previews };
+        for (const k of docKeys) {
+          const path = (data as Record<string, unknown>)[k] as string | null;
+          if (path) {
+            nextDocs[k] = path;
+            const { data: signed } = await supabase.storage
+              .from("driver-documents")
+              .createSignedUrl(path, 3600);
+            if (signed?.signedUrl) nextPrev[k] = signed.signedUrl;
+          }
+        }
+        if (!cancelled) {
+          setDocs(nextDocs);
+          setPreviews(nextPrev);
+        }
+      }
+      if (!cancelled) setLoadingApp(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const togglePetExp = (id: string) => {
     setPetExp((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
   };
 
   const handleUpload = async (key: DocKey, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-uploading same file
     if (!file) return;
     if (!user) {
       toast.error("请先登录");
       navigate("/auth");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("图片不能大于 5MB");
+    // Type validation
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error("仅支持 JPG / PNG / WEBP 图片");
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error(`图片不能大于 ${(MAX_FILE_BYTES / 1024 / 1024).toFixed(0)}MB`);
       return;
     }
     setUploading(key);
+    setUploadProgress(8);
+    // Local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPreviews((p) => {
+      if (p[key]?.startsWith("blob:")) URL.revokeObjectURL(p[key]);
+      return { ...p, [key]: localUrl };
+    });
+    // Simulated progress (Supabase JS doesn't expose upload progress events)
+    const tick = window.setInterval(() => {
+      setUploadProgress((p) => (p < 85 ? p + 7 : p));
+    }, 120);
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${user.id}/${key}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("driver-documents").upload(path, file, {
         upsert: true,
+        contentType: file.type,
       });
       if (error) throw error;
       setDocs((d) => ({ ...d, [key]: path }));
+      setUploadProgress(100);
       toast.success("上传成功");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "上传失败");
+      // revert preview
+      setPreviews((p) => ({ ...p, [key]: "" }));
     } finally {
-      setUploading(null);
+      window.clearInterval(tick);
+      setTimeout(() => {
+        setUploading(null);
+        setUploadProgress(0);
+      }, 300);
     }
   };
 
