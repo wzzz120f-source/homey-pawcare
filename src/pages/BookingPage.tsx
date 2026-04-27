@@ -730,8 +730,56 @@ const BookingPage = () => {
       </main>
 
       {/* ── Fixed Submit Bar ── */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50 px-5 py-3">
-        <div className="max-w-lg mx-auto flex items-center gap-4">
+      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50">
+        {/* Pickup price breakdown */}
+        {activeTab === "pickup" && (
+          <details className="max-w-lg mx-auto px-5 pt-2 group">
+            <summary className="cursor-pointer text-xs text-muted-foreground flex items-center gap-1 select-none list-none [&::-webkit-details-marker]:hidden">
+              <span className="font-semibold text-foreground">费用明细</span>
+              <span className="text-[10px] opacity-70 group-open:rotate-180 transition-transform">▾</span>
+              {isFallbackPrice && (
+                <span className="ml-2 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                  按起步价估算
+                </span>
+              )}
+            </summary>
+            <ul className="mt-2 space-y-1 text-xs bg-secondary/60 rounded-lg p-3">
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">{currentTier.label} · 起步价</span>
+                <span className="font-medium text-foreground">¥{currentTier.price}</span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">
+                  距离加价
+                  {routeKm !== null
+                    ? ` (${routeKm.toFixed(1)} km × ¥${PER_KM} ⌈⌉)`
+                    : "（暂无路线）"}
+                </span>
+                <span className={cn("font-medium", distanceSurcharge > 0 ? "text-foreground" : "text-muted-foreground")}>
+                  +¥{distanceSurcharge}
+                </span>
+              </li>
+              {addInsurance && (
+                <li className="flex justify-between">
+                  <span className="text-muted-foreground">宠物意外险</span>
+                  <span className="font-medium text-foreground">+¥8</span>
+                </li>
+              )}
+              {addPhoto && (
+                <li className="flex justify-between">
+                  <span className="text-muted-foreground">行程照片记录</span>
+                  <span className="font-medium text-foreground">+¥5</span>
+                </li>
+              )}
+              <li className="flex justify-between border-t border-border/60 pt-1.5 mt-1.5">
+                <span className="font-bold text-foreground">合计</span>
+                <span className="font-extrabold text-primary">¥{pickupTotal}</span>
+              </li>
+            </ul>
+          </details>
+        )}
+
+        <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-4">
           {/* Price summary for pickup */}
           {activeTab === "pickup" && (
             <div className="flex-shrink-0">
@@ -740,10 +788,11 @@ const BookingPage = () => {
                 {currentTier.label}
                 {addInsurance ? " + 保险" : ""}
                 {addPhoto ? " + 照片" : ""}
+                {isFallbackPrice && <span className="text-amber-600 dark:text-amber-400"> · 起步价</span>}
               </div>
             </div>
           )}
-          <Button variant="hero" size="xl" className="flex-1" disabled={isDisabled} onClick={handleSubmit}>
+          <Button variant="hero" size="xl" className="flex-1" onClick={handleSubmit}>
             确认预约
           </Button>
         </div>
