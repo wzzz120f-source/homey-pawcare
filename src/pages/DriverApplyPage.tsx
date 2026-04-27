@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -21,10 +21,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
+const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+type ApplicationStatus = "pending" | "approved" | "rejected";
+interface LatestApplication {
+  id: string;
+  status: ApplicationStatus;
+  review_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const INCOME_STATS = [
