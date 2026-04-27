@@ -152,14 +152,19 @@ const BookingPage = () => {
         add_insurance: activeTab === "pickup" ? addInsurance : undefined,
         add_photo: activeTab === "pickup" ? addPhoto : undefined,
         time_mode: activeTab === "pickup" ? timeMode : undefined,
+        scheduled_time:
+          activeTab === "pickup" && timeMode === "scheduled" && selectedDate && selectedTime
+            ? `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`
+            : undefined,
+        route_distance_km: activeTab === "pickup" ? routeKm ?? undefined : undefined,
         pickup_tier:
           activeTab === "pickup"
             ? {
                 id: currentTier.id,
                 label: currentTier.label,
                 desc: currentTier.desc,
-                price: currentTier.price,
-                priceLabel: currentTier.priceLabel,
+                price: tierDynamicPrice(currentTier.price),
+                priceLabel: `¥${tierDynamicPrice(currentTier.price)}`,
                 recommended: currentTier.recommended === true,
               }
             : undefined,
