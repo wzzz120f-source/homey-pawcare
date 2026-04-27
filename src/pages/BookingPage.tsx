@@ -625,6 +625,7 @@ const BookingPage = () => {
             </div>
           </div>
         </section>
+        )}
 
         {/* ── Notes ── */}
         <section className="mb-6 animate-fade-in-up" aria-label="备注信息">
