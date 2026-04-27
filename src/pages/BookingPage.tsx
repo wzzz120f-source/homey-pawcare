@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import { PET_TYPES, SERVICE_TYPES, TIME_SLOTS, NEARBY_STORES } from "@/config/booking";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
@@ -111,11 +112,16 @@ const BookingPage = () => {
   const [addInsurance, setAddInsurance] = useState(true);
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
+  const [scheduledSlot, setScheduledSlot] = useState<string>("");
+  const [routeKm, setRouteKm] = useState<number | null>(null);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
   const genderOption = GENDER_OPTIONS.find((g) => g.value === driverGender)!;
-  const pickupTotal = currentTier.price + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价
+  const distanceSurcharge = routeKm ? Math.max(0, Math.ceil(routeKm) * 2) : 0;
+  const tierDynamicPrice = (price: number) => price + distanceSurcharge;
+  const pickupTotal = tierDynamicPrice(currentTier.price) + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
 
   // ─── Submit handler ──────────────────────────────────────────────────────
   const handleSubmit = () => {
