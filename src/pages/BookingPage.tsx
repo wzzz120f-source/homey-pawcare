@@ -112,7 +112,6 @@ const BookingPage = () => {
   const [addInsurance, setAddInsurance] = useState(true);
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
-  const [scheduledSlot, setScheduledSlot] = useState<string>("");
   const [routeKm, setRouteKm] = useState<number | null>(null);
 
   // ─── Derived values ──────────────────────────────────────────────────────
