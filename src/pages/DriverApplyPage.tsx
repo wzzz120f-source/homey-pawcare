@@ -534,45 +534,68 @@ const DriverApplyPage = () => {
               {DOC_FIELDS.map((f) => {
                 const uploaded = !!docs[f.key];
                 const isUploading = uploading === f.key;
+                const previewUrl = previews[f.key];
                 return (
-                  <button
+                  <div
                     key={f.key}
-                    type="button"
-                    onClick={() => fileRefs.current[f.key]?.click()}
                     className={cn(
-                      "relative w-full bg-card card-shadow rounded-xl p-4 text-left border-2 border-dashed transition-all",
+                      "relative w-full bg-card card-shadow rounded-xl p-3 border-2 border-dashed transition-all",
                       uploaded ? "border-green-500/60" : "border-border hover:border-primary/40",
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                          uploaded ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        {uploaded ? <CheckCircle2 className="w-5 h-5" /> : <f.icon className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-foreground">{f.label}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {uploaded ? "已上传 · 点击重新上传" : "点击上传 · JPG/PNG · ≤5MB"}
+                    <button
+                      type="button"
+                      onClick={() => fileRefs.current[f.key]?.click()}
+                      className="w-full flex items-center gap-3 text-left"
+                      disabled={isUploading}
+                    >
+                      {/* Thumbnail or icon */}
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt={f.label + " 预览"}
+                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border"
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            "w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0",
+                            uploaded ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary",
+                          )}
+                        >
+                          <f.icon className="w-6 h-6" />
                         </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                          {f.label}
+                          {uploaded && <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {isUploading
+                            ? `上传中 ${uploadProgress}%`
+                            : uploaded
+                              ? "已上传 · 点击重新上传"
+                              : "点击上传 · JPG/PNG/WEBP · ≤5MB"}
+                        </div>
+                        {isUploading && (
+                          <Progress value={uploadProgress} className="h-1.5 mt-2" />
+                        )}
                       </div>
                       {isUploading ? (
-                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                        <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
                       ) : (
-                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <Upload className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       )}
-                    </div>
+                    </button>
                     <input
                       ref={(el) => (fileRefs.current[f.key] = el)}
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={(e) => handleUpload(f.key, e)}
                     />
-                  </button>
+                  </div>
                 );
               })}
             </div>
