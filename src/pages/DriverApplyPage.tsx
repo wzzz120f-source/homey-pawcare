@@ -351,6 +351,40 @@ const DriverApplyPage = () => {
           </div>
         ) : null}
 
+        {/* ── Latest rejection review note ── */}
+        {!loadingApp && latestApp?.status === "rejected" && (
+          <section
+            className="mb-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+            aria-label="最近一次审核反馈"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                ❌ 未通过
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                审核于{" "}
+                {(latestApp.reviewed_at
+                  ? new Date(latestApp.reviewed_at)
+                  : new Date(latestApp.created_at)
+                ).toLocaleString("zh-CN", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+            <h3 className="text-sm font-semibold text-foreground mb-1">审核反馈</h3>
+            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+              {latestApp.review_note?.trim() || "审核员未填写具体原因，请补充资料后重新提交。"}
+            </p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              💡 修改完成后，可在「上传证件」标签下点击「重新提交审核」。
+            </p>
+          </section>
+        )}
+
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="intro">成为司机</TabsTrigger>

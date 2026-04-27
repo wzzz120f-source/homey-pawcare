@@ -113,17 +113,25 @@ const BookingPage = () => {
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
   const [routeKm, setRouteKm] = useState<number | null>(null);
+  const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
+  const [routeError, setRouteError] = useState<string>("");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
   const genderOption = GENDER_OPTIONS.find((g) => g.value === driverGender)!;
-  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价
-  const distanceSurcharge = routeKm ? Math.max(0, Math.ceil(routeKm) * 2) : 0;
+  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价（fallback）
+  const PER_KM = 2;
+  const distanceSurcharge = routeKm !== null ? Math.max(0, Math.ceil(routeKm) * PER_KM) : 0;
   const tierDynamicPrice = (price: number) => price + distanceSurcharge;
-  const pickupTotal = tierDynamicPrice(currentTier.price) + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  const addOnsTotal = (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  const pickupTotal = tierDynamicPrice(currentTier.price) + addOnsTotal;
+  const isFallbackPrice = routeKm === null;
 
   // ─── Submit handler ──────────────────────────────────────────────────────
   const handleSubmit = () => {
+    setSubmitAttempted(true);
+    if (isDisabled) return;
     const petInfo = PET_TYPES.find((p) => p.id === selectedPet);
     const serviceInfo = SERVICE_TYPES.find((s) => s.id === selectedService);
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
@@ -349,11 +357,33 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
-                onRouteChange={(info) => setRouteKm(info?.distanceKm ?? null)}
+                onRouteChange={(info) => {
+                  setRouteKm(info.distanceKm);
+                  if (info.error) {
+                    setRouteStatus("error");
+                    setRouteError(info.error);
+                  } else if (info.outdated) {
+                    setRouteStatus("outdated");
+                    setRouteError("");
+                  } else if (info.distanceKm !== null) {
+                    setRouteStatus("ok");
+                    setRouteError("");
+                  }
+                }}
               />
-              {routeKm !== null && (
+              {routeStatus === "ok" && routeKm !== null && (
                 <p className="mt-2 text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-2">
-                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥2）
+                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥{PER_KM}）
+                </p>
+              )}
+              {routeStatus === "error" && (
+                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
+                  ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。请检查地址或重试「查看路线规划」。
+                </p>
+              )}
+              {routeStatus === "outdated" && (
+                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
+                  ⚠️ 地址已修改，路线已失效，请重新点击「查看路线规划」。当前 <span className="font-semibold">按起步价估算</span>。
                 </p>
               )}
             </section>
@@ -626,18 +656,37 @@ const BookingPage = () => {
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
               </p>
               {activeTab === "pickup" && timeMode === "scheduled" ? (
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger className="w-full" aria-label="预约时段">
-                    <SelectValue placeholder="选择预约时段" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {TIME_SLOTS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger
+                      className={cn(
+                        "w-full",
+                        submitAttempted && !selectedTime && "border-destructive ring-1 ring-destructive",
+                      )}
+                      aria-label="预约时段"
+                      aria-invalid={submitAttempted && !selectedTime}
+                      aria-describedby="scheduled-time-error"
+                    >
+                      <SelectValue placeholder="选择预约时段" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {TIME_SLOTS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {submitAttempted && !selectedTime && (
+                    <p
+                      id="scheduled-time-error"
+                      role="alert"
+                      className="mt-1.5 text-xs text-destructive flex items-center gap-1"
+                    >
+                      ⚠️ 请选择预约时段后再提交
+                    </p>
+                  )}
+                </>
               ) : (
                 <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
                   {TIME_SLOTS.map((t) => (
@@ -681,8 +730,56 @@ const BookingPage = () => {
       </main>
 
       {/* ── Fixed Submit Bar ── */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50 px-5 py-3">
-        <div className="max-w-lg mx-auto flex items-center gap-4">
+      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50">
+        {/* Pickup price breakdown */}
+        {activeTab === "pickup" && (
+          <details className="max-w-lg mx-auto px-5 pt-2 group">
+            <summary className="cursor-pointer text-xs text-muted-foreground flex items-center gap-1 select-none list-none [&::-webkit-details-marker]:hidden">
+              <span className="font-semibold text-foreground">费用明细</span>
+              <span className="text-[10px] opacity-70 group-open:rotate-180 transition-transform">▾</span>
+              {isFallbackPrice && (
+                <span className="ml-2 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                  按起步价估算
+                </span>
+              )}
+            </summary>
+            <ul className="mt-2 space-y-1 text-xs bg-secondary/60 rounded-lg p-3">
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">{currentTier.label} · 起步价</span>
+                <span className="font-medium text-foreground">¥{currentTier.price}</span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">
+                  距离加价
+                  {routeKm !== null
+                    ? ` (${routeKm.toFixed(1)} km × ¥${PER_KM} ⌈⌉)`
+                    : "（暂无路线）"}
+                </span>
+                <span className={cn("font-medium", distanceSurcharge > 0 ? "text-foreground" : "text-muted-foreground")}>
+                  +¥{distanceSurcharge}
+                </span>
+              </li>
+              {addInsurance && (
+                <li className="flex justify-between">
+                  <span className="text-muted-foreground">宠物意外险</span>
+                  <span className="font-medium text-foreground">+¥8</span>
+                </li>
+              )}
+              {addPhoto && (
+                <li className="flex justify-between">
+                  <span className="text-muted-foreground">行程照片记录</span>
+                  <span className="font-medium text-foreground">+¥5</span>
+                </li>
+              )}
+              <li className="flex justify-between border-t border-border/60 pt-1.5 mt-1.5">
+                <span className="font-bold text-foreground">合计</span>
+                <span className="font-extrabold text-primary">¥{pickupTotal}</span>
+              </li>
+            </ul>
+          </details>
+        )}
+
+        <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-4">
           {/* Price summary for pickup */}
           {activeTab === "pickup" && (
             <div className="flex-shrink-0">
@@ -691,10 +788,11 @@ const BookingPage = () => {
                 {currentTier.label}
                 {addInsurance ? " + 保险" : ""}
                 {addPhoto ? " + 照片" : ""}
+                {isFallbackPrice && <span className="text-amber-600 dark:text-amber-400"> · 起步价</span>}
               </div>
             </div>
           )}
-          <Button variant="hero" size="xl" className="flex-1" disabled={isDisabled} onClick={handleSubmit}>
+          <Button variant="hero" size="xl" className="flex-1" onClick={handleSubmit}>
             确认预约
           </Button>
         </div>
