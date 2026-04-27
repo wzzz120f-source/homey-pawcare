@@ -25,6 +25,7 @@ const CharityFootprintPage = lazy(() => import("./pages/CharityFootprintPage"));
 const MerchantCenterPage = lazy(() => import("./pages/MerchantCenterPage"));
 const MerchantApplyPage = lazy(() => import("./pages/MerchantApplyPage"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
+const DriverApplyPage = lazy(() => import("./pages/DriverApplyPage"));
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/merchant" element={<MerchantCenterPage />} />
             <Route path="/merchant/apply" element={<MerchantApplyPage />} />
             <Route path="/merchant/admin" element={<MerchantAdminPage />} />
+            <Route path="/driver/apply" element={<DriverApplyPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
