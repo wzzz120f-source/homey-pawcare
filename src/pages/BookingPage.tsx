@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft,
   Clock,
@@ -95,8 +97,14 @@ const TAB_OPTIONS: readonly { key: BookingTab; label: string; icon: typeof PawPr
 const BookingPage = () => {
   const navigate = useNavigate();
 
+  const location = useLocation();
+  const { user } = useAuth();
+  const prefill = (location.state as any)?.prefill;
+
   // Shared state
   const [selectedPet, setSelectedPet] = useState("");
+  const [savedPets, setSavedPets] = useState<any[]>([]);
+  const [selectedSavedPetId, setSelectedSavedPetId] = useState<string>("");
   const [selectedService, setSelectedService] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
@@ -123,6 +131,35 @@ const BookingPage = () => {
     setSelectedTime("");
     setSubmitAttempted(false);
   }, [timeMode]);
+
+  // 加载用户的宠物档案
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("pets")
+      .select("id,name,pet_type,breed,allergies,behavior_notes,vaccinations,auto_share,is_default")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        const list = data || [];
+        setSavedPets(list);
+        const def = list.find((p: any) => p.is_default) || list[0];
+        if (def && !selectedSavedPetId) {
+          setSelectedSavedPetId(def.id);
+          setSelectedPet(def.pet_type);
+        }
+      });
+  }, [user]);
+
+  // 历史订单复用：预填地址 + 宠物快照
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.pickup_address) setPickupAddress(prefill.pickup_address);
+    if (prefill.dropoff_address) setDropoffAddress(prefill.dropoff_address);
+    if (prefill.pet_snapshot?.pet_type) setSelectedPet(prefill.pet_snapshot.pet_type);
+    if ((prefill.pickup_address || prefill.dropoff_address) && activeTab !== "pickup") setActiveTab("pickup");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
