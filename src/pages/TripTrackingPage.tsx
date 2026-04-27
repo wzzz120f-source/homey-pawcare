@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation } from "lucide-react";
+import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +38,11 @@ const TripTrackingPage = () => {
 
   const [order, setOrder] = useState<any>(null);
   const [tracking, setTracking] = useState<Tracking | null>(null);
+  const [liveTracking, setLiveTracking] = useState<Tracking | null>(null);
   const [progress, setProgress] = useState(0);
+  const [history, setHistory] = useState<Tracking[]>([]);
+  const [replayIdx, setReplayIdx] = useState<number | null>(null);
+  const replayRef = useRef<number | null>(null);
   const simRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -98,7 +103,11 @@ const TripTrackingPage = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "trip_tracking", filter: `order_id=eq.${orderId}` },
         (payload) => {
-          if (payload.new) setTracking(payload.new as any);
+          if (payload.new) {
+            setLiveTracking(payload.new as any);
+            // 回放期间不打断画面
+            setTracking((prev) => (replayRef.current ? prev : (payload.new as any)));
+          }
         },
       )
       .subscribe();
@@ -107,36 +116,97 @@ const TripTrackingPage = () => {
       active = false;
       supabase.removeChannel(channel);
       if (simRef.current) window.clearInterval(simRef.current);
+      if (replayRef.current) window.clearInterval(replayRef.current);
     };
   }, [orderId, user, authLoading]);
+
+  // 同步 liveTracking 初值
+  useEffect(() => {
+    if (tracking && !liveTracking) setLiveTracking(tracking);
+  }, [tracking]);
 
   // 司机位置进度动画（演示用）
   useEffect(() => {
     if (!tracking) return;
     const target =
       tracking.stage === "departed" ? 25 : tracking.stage === "picking_up" ? 50 : tracking.stage === "picked_up" ? 75 : 100;
+    setProgress(0);
     const step = () => setProgress((p) => (p < target ? Math.min(p + 1, target) : p));
     const id = window.setInterval(step, 50);
     return () => window.clearInterval(id);
   }, [tracking?.stage]);
 
+  // 推进阶段：插入新记录（保留历史轨迹用于回放）
   const advanceStage = async () => {
-    if (!tracking) return;
-    const idx = STAGES.findIndex((s) => s.key === tracking.stage);
+    const base = liveTracking || tracking;
+    if (!base) return;
+    const idx = STAGES.findIndex((s) => s.key === base.stage);
     if (idx < 0 || idx >= STAGES.length - 1) return;
     const next = STAGES[idx + 1].key;
-    await supabase
+    const { error } = await supabase.from("trip_tracking").insert({
+      order_id: orderId,
+      stage: next,
+      driver_lat: (base.driver_lat ?? 31.23) + 0.005,
+      driver_lng: (base.driver_lng ?? 121.47) + 0.008,
+      distance_km: Math.max(0, Number(base.distance_km || 5) - 1.5),
+      eta_minutes: Math.max(0, (base.eta_minutes || 15) - 5),
+      cabin_temperature: base.cabin_temperature ?? 24,
+      message: STAGES[idx + 1].label,
+    });
+    if (error) toast({ title: "推进失败", description: error.message, variant: "destructive" });
+  };
+
+  // 回放最近 10 分钟
+  const startReplay = async () => {
+    if (!orderId) return;
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
       .from("trip_tracking")
-      .update({
-        stage: next,
-        eta_minutes: Math.max(0, (tracking.eta_minutes || 15) - 5),
-        distance_km: Math.max(0, Number(tracking.distance_km || 5) - 2),
-      })
-      .eq("id", tracking.id);
+      .select("*")
+      .eq("order_id", orderId)
+      .gte("updated_at", since)
+      .order("updated_at", { ascending: true });
+    if (error) {
+      toast({ title: "加载历史失败", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (!data || data.length < 2) {
+      toast({ title: "最近 10 分钟历史不足", description: "请先推进几次阶段再回放" });
+      return;
+    }
+    setHistory(data as any);
+    setReplayIdx(0);
+    setTracking(data[0] as any);
+    if (replayRef.current) window.clearInterval(replayRef.current);
+    replayRef.current = window.setInterval(() => {
+      setReplayIdx((i) => {
+        if (i === null) return null;
+        const ni = i + 1;
+        if (ni >= data.length) {
+          if (replayRef.current) {
+            window.clearInterval(replayRef.current);
+            replayRef.current = null;
+          }
+          return i;
+        }
+        setTracking(data[ni] as any);
+        return ni;
+      });
+    }, 1500);
+  };
+
+  const stopReplay = () => {
+    if (replayRef.current) {
+      window.clearInterval(replayRef.current);
+      replayRef.current = null;
+    }
+    setReplayIdx(null);
+    if (liveTracking) setTracking(liveTracking);
   };
 
   const stageIdx = tracking ? STAGES.findIndex((s) => s.key === tracking.stage) : 0;
   const pet = order?.pet_snapshot;
+  const isReplaying = replayIdx !== null;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -159,6 +229,9 @@ const TripTrackingPage = () => {
                 {pet.allergies?.length > 0 && `过敏：${pet.allergies.join("、")} · `}
                 {pet.behavior_notes?.length > 0 && `禁忌：${pet.behavior_notes.join("、")}`}
               </p>
+              {pet.trip_note && (
+                <p className="text-xs mt-1 text-orange-600 dark:text-orange-400">📝 本次备注：{pet.trip_note}</p>
+              )}
             </div>
           </div>
         )}
@@ -260,12 +333,30 @@ const TripTrackingPage = () => {
           </Button>
         </section>
 
-        {/* 演示控件 */}
-        <Button variant="ghost" size="sm" onClick={advanceStage} className="w-full">
-          ▶ 演示：推进到下一阶段
-        </Button>
+        {/* 回放控件 */}
+        {isReplaying && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 flex items-center justify-between">
+            <div className="text-sm">
+              <Badge variant="secondary" className="mr-2">回放中</Badge>
+              第 {(replayIdx ?? 0) + 1} / {history.length} 帧 ·{" "}
+              {tracking?.updated_at && new Date(tracking.updated_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </div>
+            <Button size="sm" variant="outline" onClick={stopReplay}>
+              <Square className="w-3.5 h-3.5 mr-1" /> 停止
+            </Button>
+          </div>
+        )}
 
-        {tracking?.stage === "delivered" && orderId && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" onClick={startReplay} disabled={isReplaying}>
+            <Rewind className="w-4 h-4 mr-1" /> 回放最近10分钟
+          </Button>
+          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying}>
+            ▶ 推进阶段（演示）
+          </Button>
+        </div>
+
+        {tracking?.stage === "delivered" && orderId && !isReplaying && (
           <Button className="w-full" onClick={() => navigate(`/rate/${orderId}`)}>
             行程已结束 · 去评价 ⭐
           </Button>
