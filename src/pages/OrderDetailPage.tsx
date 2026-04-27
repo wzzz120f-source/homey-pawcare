@@ -396,6 +396,18 @@ const OrderDetailPage = () => {
           </section>
         )}
 
+        {/* Quick links */}
+        {["confirmed", "in_progress"].includes(order.order_status) && (
+          <Button variant="hero" className="w-full" onClick={() => navigate(`/track/${order.id}`)}>
+            📍 实时追踪司机位置
+          </Button>
+        )}
+        {order.order_status === "completed" && (
+          <Button variant="warm" className="w-full" onClick={() => navigate(`/rate/${order.id}`)}>
+            ⭐ 评价本次行程
+          </Button>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3">
           {canCancel && !showCancelConfirm && (
