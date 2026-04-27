@@ -357,11 +357,33 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
-                onRouteChange={(info) => setRouteKm(info?.distanceKm ?? null)}
+                onRouteChange={(info) => {
+                  setRouteKm(info.distanceKm);
+                  if (info.error) {
+                    setRouteStatus("error");
+                    setRouteError(info.error);
+                  } else if (info.outdated) {
+                    setRouteStatus("outdated");
+                    setRouteError("");
+                  } else if (info.distanceKm !== null) {
+                    setRouteStatus("ok");
+                    setRouteError("");
+                  }
+                }}
               />
-              {routeKm !== null && (
+              {routeStatus === "ok" && routeKm !== null && (
                 <p className="mt-2 text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-2">
-                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥2）
+                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥{PER_KM}）
+                </p>
+              )}
+              {routeStatus === "error" && (
+                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
+                  ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。请检查地址或重试「查看路线规划」。
+                </p>
+              )}
+              {routeStatus === "outdated" && (
+                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
+                  ⚠️ 地址已修改，路线已失效，请重新点击「查看路线规划」。当前 <span className="font-semibold">按起步价估算</span>。
                 </p>
               )}
             </section>
