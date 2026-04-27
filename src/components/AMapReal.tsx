@@ -19,12 +19,7 @@ declare global {
 const AMAP_KEY = "f1be18c642140d1114b326946ab357cc";
 const AMAP_SECURITY_KEY = "99a72147fee06b466b18e76ded5cc55c";
 
-const AMapReal = ({
-  pickupAddress,
-  onPickupAddressChange,
-  dropoffAddress,
-  onDropoffAddressChange,
-}: AMapRealProps) => {
+const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDropoffAddressChange }: AMapRealProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
@@ -35,7 +30,10 @@ const AMapReal = ({
 
   // Load AMap SDK via official loader (ensures plugins are ready)
   useEffect(() => {
-    if (window.AMap?.AutoComplete) { setLoaded(true); return; }
+    if (window.AMap?.AutoComplete) {
+      setLoaded(true);
+      return;
+    }
 
     window._AMapSecurityConfig = { securityJsCode: AMAP_SECURITY_KEY };
 
@@ -44,13 +42,7 @@ const AMapReal = ({
       AMapLoader.load({
         key: AMAP_KEY,
         version: "2.0",
-        plugins: [
-          "AMap.Geolocation",
-          "AMap.Geocoder",
-          "AMap.AutoComplete",
-          "AMap.Driving",
-          "AMap.PlaceSearch",
-        ],
+        plugins: ["AMap.Geolocation", "AMap.Geocoder", "AMap.AutoComplete", "AMap.Driving", "AMap.PlaceSearch"],
       })
         .then((AMap) => {
           if (cancelled) return;
@@ -60,7 +52,9 @@ const AMapReal = ({
         .catch((e) => console.error("[AMapReal] loader error:", e));
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Init map
@@ -95,9 +89,15 @@ const AMapReal = ({
 
   // Autocomplete search
   useEffect(() => {
-    if (!loaded || !focusedInput) { setSuggestions([]); return; }
+    if (!loaded || !focusedInput) {
+      setSuggestions([]);
+      return;
+    }
     const query = focusedInput === "pickup" ? pickupAddress : dropoffAddress;
-    if (!query || query.length < 2) { setSuggestions([]); return; }
+    if (!query || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
 
     const auto = new window.AMap.AutoComplete({ city: "上海" });
     auto.search(query, (status: string, result: any) => {
@@ -142,7 +142,7 @@ const AMapReal = ({
             const route = result.routes[0];
             const distKm = (route.distance / 1000).toFixed(1);
             const durMin = Math.ceil(route.time / 60);
-            const fee = Math.max(15, Math.round(route.distance / 1000 * 5));
+            const fee = Math.max(15, Math.round((route.distance / 1000) * 5));
             setRouteInfo({ distance: `${distKm}公里`, duration: `${durMin}分钟`, fee });
           }
         });
@@ -168,7 +168,11 @@ const AMapReal = ({
               placeholder="输入取宠地址"
               className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all"
             />
-            <button onClick={useCurrentLocation} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-muted transition-colors" title="使用当前定位">
+            <button
+              onClick={useCurrentLocation}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-muted transition-colors"
+              title="使用当前定位"
+            >
               <LocateFixed className="w-4 h-4 text-primary" />
             </button>
           </div>
@@ -216,7 +220,10 @@ const AMapReal = ({
               <LocateFixed className="w-4 h-4 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{tip.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{tip.district}{tip.address}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {tip.district}
+                  {tip.address}
+                </p>
               </div>
             </button>
           ))}
@@ -224,11 +231,7 @@ const AMapReal = ({
       )}
 
       {/* Map */}
-      <div
-        ref={mapRef}
-        className="rounded-xl overflow-hidden border border-border"
-        style={{ height: 250 }}
-      />
+      <div ref={mapRef} className="rounded-xl overflow-hidden border border-border" style={{ height: 250 }} />
 
       {/* Route info */}
       {routeInfo && (
@@ -240,10 +243,7 @@ const AMapReal = ({
               <p className="text-[10px] text-muted-foreground">预计用时 {routeInfo.duration}</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-extrabold text-primary">¥{routeInfo.fee}</p>
-            <p className="text-[10px] text-muted-foreground">接送费</p>
-          </div>
+          <div className="text-right"></div>
         </div>
       )}
 
