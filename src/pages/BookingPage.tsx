@@ -334,6 +334,56 @@ const BookingPage = () => {
                 + 新增
               </button>
             </div>
+
+            {/* 宠物快照预览（将写入订单的内容） */}
+            {(() => {
+              const sp = savedPets.find((p) => p.id === selectedSavedPetId);
+              if (!sp) return null;
+              if (!sp.auto_share) {
+                return (
+                  <div className="mt-2 rounded-xl border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
+                    🔒 该宠物未开启「自动共享」，本次订单不会把档案推给司机。
+                  </div>
+                );
+              }
+              const activeVac = (sp.vaccinations || []).filter((v: any) => v?.expires_at && new Date(v.expires_at) > new Date());
+              return (
+                <div className="mt-2 rounded-xl border bg-card p-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">📋 将发送给司机：{sp.name}</span>
+                    <span className="text-orange-500 text-[10px]">下单后写入订单快照</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-emerald-500/10 p-2">
+                      <p className="text-emerald-600 dark:text-emerald-400 font-medium">💉 有效疫苗</p>
+                      <p className="text-muted-foreground">
+                        {activeVac.length > 0 ? activeVac.map((v: any) => v.name).filter(Boolean).join("、") || `${activeVac.length} 项` : "无"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-amber-500/10 p-2">
+                      <p className="text-amber-600 dark:text-amber-400 font-medium">⚠️ 过敏</p>
+                      <p className="text-muted-foreground">{sp.allergies?.length ? sp.allergies.join("、") : "无"}</p>
+                    </div>
+                    <div className="rounded-lg bg-rose-500/10 p-2 col-span-2">
+                      <p className="text-rose-600 dark:text-rose-400 font-medium">🚫 行为禁忌</p>
+                      <p className="text-muted-foreground">{sp.behavior_notes?.length ? sp.behavior_notes.join("、") : "无"}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground text-[11px] block mb-1">
+                      ✏️ 本次订单临时备注（仅影响本次，不修改档案）
+                    </label>
+                    <input
+                      value={tripPetNote}
+                      onChange={(e) => setTripPetNote(e.target.value)}
+                      placeholder="例如：今天比较紧张，请轻声说话"
+                      className="w-full h-8 px-2 rounded-md border bg-background text-xs"
+                      maxLength={120}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         )}
 
