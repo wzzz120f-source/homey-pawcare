@@ -311,6 +311,7 @@ const BookingPage = () => {
                     onClick={() => {
                       setSelectedSavedPetId(p.id);
                       setSelectedPet(p.pet_type);
+                      setTripPetNote("");
                     }}
                     className={cn(
                       "shrink-0 rounded-xl border px-3 py-2 text-left min-w-[120px]",
