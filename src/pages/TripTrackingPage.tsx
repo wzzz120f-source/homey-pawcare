@@ -229,6 +229,9 @@ const TripTrackingPage = () => {
                 {pet.allergies?.length > 0 && `过敏：${pet.allergies.join("、")} · `}
                 {pet.behavior_notes?.length > 0 && `禁忌：${pet.behavior_notes.join("、")}`}
               </p>
+              {pet.trip_note && (
+                <p className="text-xs mt-1 text-orange-600 dark:text-orange-400">📝 本次备注：{pet.trip_note}</p>
+              )}
             </div>
           </div>
         )}
