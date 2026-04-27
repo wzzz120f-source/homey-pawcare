@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation } from "lucide-react";
+import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +38,11 @@ const TripTrackingPage = () => {
 
   const [order, setOrder] = useState<any>(null);
   const [tracking, setTracking] = useState<Tracking | null>(null);
+  const [liveTracking, setLiveTracking] = useState<Tracking | null>(null);
   const [progress, setProgress] = useState(0);
+  const [history, setHistory] = useState<Tracking[]>([]);
+  const [replayIdx, setReplayIdx] = useState<number | null>(null);
+  const replayRef = useRef<number | null>(null);
   const simRef = useRef<number | null>(null);
 
   useEffect(() => {
