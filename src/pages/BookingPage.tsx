@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import { PET_TYPES, SERVICE_TYPES, TIME_SLOTS, NEARBY_STORES } from "@/config/booking";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
@@ -111,11 +112,15 @@ const BookingPage = () => {
   const [addInsurance, setAddInsurance] = useState(true);
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
+  const [routeKm, setRouteKm] = useState<number | null>(null);
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
   const genderOption = GENDER_OPTIONS.find((g) => g.value === driverGender)!;
-  const pickupTotal = currentTier.price + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
+  // 距离动态加价：每公里 2 元，向上取整；无路线则按起步价
+  const distanceSurcharge = routeKm ? Math.max(0, Math.ceil(routeKm) * 2) : 0;
+  const tierDynamicPrice = (price: number) => price + distanceSurcharge;
+  const pickupTotal = tierDynamicPrice(currentTier.price) + (addInsurance ? 8 : 0) + (addPhoto ? 5 : 0);
 
   // ─── Submit handler ──────────────────────────────────────────────────────
   const handleSubmit = () => {
@@ -146,14 +151,19 @@ const BookingPage = () => {
         add_insurance: activeTab === "pickup" ? addInsurance : undefined,
         add_photo: activeTab === "pickup" ? addPhoto : undefined,
         time_mode: activeTab === "pickup" ? timeMode : undefined,
+        scheduled_time:
+          activeTab === "pickup" && timeMode === "scheduled" && selectedDate && selectedTime
+            ? `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`
+            : undefined,
+        route_distance_km: activeTab === "pickup" ? routeKm ?? undefined : undefined,
         pickup_tier:
           activeTab === "pickup"
             ? {
                 id: currentTier.id,
                 label: currentTier.label,
                 desc: currentTier.desc,
-                price: currentTier.price,
-                priceLabel: currentTier.priceLabel,
+                price: tierDynamicPrice(currentTier.price),
+                priceLabel: `¥${tierDynamicPrice(currentTier.price)}`,
                 recommended: currentTier.recommended === true,
               }
             : undefined,
@@ -339,7 +349,13 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
+                onRouteChange={(info) => setRouteKm(info?.distanceKm ?? null)}
               />
+              {routeKm !== null && (
+                <p className="mt-2 text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-2">
+                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥2）
+                </p>
+              )}
             </section>
 
             {/* ── Service Tiers (DiDi-style) ── */}
@@ -395,14 +411,19 @@ const BookingPage = () => {
 
                     {/* Price + radio */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={cn(
-                          "text-sm font-bold",
-                          selectedTier === tier.id ? "text-primary" : "text-foreground",
+                      <div className="text-right leading-tight">
+                        <div
+                          className={cn(
+                            "text-sm font-bold",
+                            selectedTier === tier.id ? "text-primary" : "text-foreground",
+                          )}
+                        >
+                          ¥{tierDynamicPrice(tier.price)}
+                        </div>
+                        {routeKm !== null && distanceSurcharge > 0 && (
+                          <div className="text-[10px] text-muted-foreground">起 ¥{tier.price} +距离</div>
                         )}
-                      >
-                        {tier.priceLabel}
-                      </span>
+                      </div>
                       <span
                         className={cn(
                           "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
@@ -604,25 +625,40 @@ const BookingPage = () => {
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
               </p>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
-                {TIME_SLOTS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedTime === t}
-                    onClick={() => setSelectedTime(t)}
-                    className={cn(
-                      "py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]",
-                      selectedTime === t
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-muted",
-                    )}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {activeTab === "pickup" && timeMode === "scheduled" ? (
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger className="w-full" aria-label="预约时段">
+                    <SelectValue placeholder="选择预约时段" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-popover">
+                    {TIME_SLOTS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t} - {String(Number(t.split(":")[0]) + 1).padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
+                  {TIME_SLOTS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedTime === t}
+                      onClick={() => setSelectedTime(t)}
+                      className={cn(
+                        "py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]",
+                        selectedTime === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-muted",
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>

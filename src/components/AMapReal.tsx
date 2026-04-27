@@ -7,6 +7,8 @@ interface AMapRealProps {
   onPickupAddressChange: (addr: string) => void;
   dropoffAddress: string;
   onDropoffAddressChange: (addr: string) => void;
+  /** 路径规划完成后回调（公里、分钟） */
+  onRouteChange?: (info: { distanceKm: number; durationMin: number } | null) => void;
 }
 
 declare global {
@@ -19,7 +21,7 @@ declare global {
 const AMAP_KEY = "f1be18c642140d1114b326946ab357cc";
 const AMAP_SECURITY_KEY = "99a72147fee06b466b18e76ded5cc55c";
 
-const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDropoffAddressChange }: AMapRealProps) => {
+const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDropoffAddressChange, onRouteChange }: AMapRealProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
@@ -140,10 +142,12 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
         driving.search(start, end, (status: string, result: any) => {
           if (status === "complete" && result.routes?.length > 0) {
             const route = result.routes[0];
-            const distKm = (route.distance / 1000).toFixed(1);
+            const km = route.distance / 1000;
+            const distKm = km.toFixed(1);
             const durMin = Math.ceil(route.time / 60);
-            const fee = Math.max(15, Math.round((route.distance / 1000) * 5));
+            const fee = Math.max(15, Math.round(km * 5));
             setRouteInfo({ distance: `${distKm}公里`, duration: `${durMin}分钟`, fee });
+            onRouteChange?.({ distanceKm: km, durationMin: durMin });
           }
         });
       });
@@ -254,26 +258,6 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
         </Button>
       )}
 
-      {/* Pickup options */}
-      <div className="bg-card rounded-xl p-4 card-shadow space-y-3">
-        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">🚗 接送方式</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "专车接送", emoji: "🚐", desc: "1对1专属服务", price: "¥30 起" },
-            { label: "顺路拼单", emoji: "🚕", desc: "经济实惠", price: "¥15 起" },
-          ].map((option) => (
-            <button
-              key={option.label}
-              className="flex flex-col items-center gap-1 p-3 rounded-xl bg-secondary hover:bg-muted transition-all text-center"
-            >
-              <span className="text-2xl">{option.emoji}</span>
-              <span className="text-sm font-bold text-foreground">{option.label}</span>
-              <span className="text-[10px] text-muted-foreground">{option.desc}</span>
-              <span className="text-xs font-bold text-primary mt-1">{option.price}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

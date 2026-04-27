@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -21,10 +21,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
+const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+type ApplicationStatus = "pending" | "approved" | "rejected";
+interface LatestApplication {
+  id: string;
+  status: ApplicationStatus;
+  review_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const INCOME_STATS = [
@@ -101,8 +114,19 @@ const DriverApplyPage = () => {
     vehicle_license_url: "",
     handheld_id_url: "",
   });
+  /** key → blob/objectURL（本地预览）或 signed URL（已存在的） */
+  const [previews, setPreviews] = useState<Record<DocKey, string>>({
+    id_card_front_url: "",
+    id_card_back_url: "",
+    driver_license_url: "",
+    vehicle_license_url: "",
+    handheld_id_url: "",
+  });
   const [uploading, setUploading] = useState<DocKey | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
+  const [latestApp, setLatestApp] = useState<LatestApplication | null>(null);
+  const [loadingApp, setLoadingApp] = useState(true);
   const fileRefs = useRef<Record<DocKey, HTMLInputElement | null>>({
     id_card_front_url: null,
     id_card_back_url: null,
@@ -111,36 +135,122 @@ const DriverApplyPage = () => {
     handheld_id_url: null,
   });
 
+  // ─── Auto-fetch latest application ──────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!user) {
+        setLoadingApp(false);
+        return;
+      }
+      setLoadingApp(true);
+      const { data, error } = await supabase
+        .from("driver_applications")
+        .select("id,status,review_note,created_at,reviewed_at,id_card_front_url,id_card_back_url,driver_license_url,vehicle_license_url,handheld_id_url")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        toast.error("加载申请记录失败");
+      } else if (data) {
+        setLatestApp({
+          id: data.id,
+          status: data.status as ApplicationStatus,
+          review_note: data.review_note,
+          created_at: data.created_at,
+          reviewed_at: data.reviewed_at,
+        });
+        // pre-fill doc paths + signed urls for previews
+        const docKeys: DocKey[] = [
+          "id_card_front_url",
+          "id_card_back_url",
+          "driver_license_url",
+          "vehicle_license_url",
+          "handheld_id_url",
+        ];
+        const nextDocs: Record<DocKey, string> = { ...docs };
+        const nextPrev: Record<DocKey, string> = { ...previews };
+        for (const k of docKeys) {
+          const path = (data as Record<string, unknown>)[k] as string | null;
+          if (path) {
+            nextDocs[k] = path;
+            const { data: signed } = await supabase.storage
+              .from("driver-documents")
+              .createSignedUrl(path, 3600);
+            if (signed?.signedUrl) nextPrev[k] = signed.signedUrl;
+          }
+        }
+        if (!cancelled) {
+          setDocs(nextDocs);
+          setPreviews(nextPrev);
+        }
+      }
+      if (!cancelled) setLoadingApp(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const togglePetExp = (id: string) => {
     setPetExp((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
   };
 
   const handleUpload = async (key: DocKey, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-uploading same file
     if (!file) return;
     if (!user) {
       toast.error("请先登录");
       navigate("/auth");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("图片不能大于 5MB");
+    // Type validation
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error("仅支持 JPG / PNG / WEBP 图片");
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error(`图片不能大于 ${(MAX_FILE_BYTES / 1024 / 1024).toFixed(0)}MB`);
       return;
     }
     setUploading(key);
+    setUploadProgress(8);
+    // Local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPreviews((p) => {
+      if (p[key]?.startsWith("blob:")) URL.revokeObjectURL(p[key]);
+      return { ...p, [key]: localUrl };
+    });
+    // Simulated progress (Supabase JS doesn't expose upload progress events)
+    const tick = window.setInterval(() => {
+      setUploadProgress((p) => (p < 85 ? p + 7 : p));
+    }, 120);
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${user.id}/${key}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("driver-documents").upload(path, file, {
         upsert: true,
+        contentType: file.type,
       });
       if (error) throw error;
       setDocs((d) => ({ ...d, [key]: path }));
+      setUploadProgress(100);
       toast.success("上传成功");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "上传失败");
+      // revert preview
+      setPreviews((p) => ({ ...p, [key]: "" }));
     } finally {
-      setUploading(null);
+      window.clearInterval(tick);
+      setTimeout(() => {
+        setUploading(null);
+        setUploadProgress(0);
+      }, 300);
     }
   };
 
@@ -210,6 +320,37 @@ const DriverApplyPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-5 pt-4">
+        {/* ── Application status banner ── */}
+        {loadingApp ? (
+          <div className="mb-4 rounded-xl border border-border bg-card p-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> 正在加载我的申请记录…
+          </div>
+        ) : latestApp ? (
+          <div
+            className={cn(
+              "mb-4 rounded-xl border p-4",
+              latestApp.status === "pending" && "border-amber-500/40 bg-amber-500/10",
+              latestApp.status === "approved" && "border-green-500/40 bg-green-500/10",
+              latestApp.status === "rejected" && "border-destructive/40 bg-destructive/10",
+            )}
+            role="status"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {latestApp.status === "pending" && <><Loader2 className="w-4 h-4 animate-spin text-amber-600" /><span className="text-amber-700 dark:text-amber-400">审核中</span></>}
+              {latestApp.status === "approved" && <><CheckCircle2 className="w-4 h-4 text-green-600" /><span className="text-green-700 dark:text-green-400">已通过</span></>}
+              {latestApp.status === "rejected" && <><ShieldCheck className="w-4 h-4 text-destructive" /><span className="text-destructive">未通过</span></>}
+              <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+                提交于 {new Date(latestApp.created_at).toLocaleDateString("zh-CN")}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+              {latestApp.status === "pending" && "我们已收到您的申请，1–3 个工作日内完成审核。"}
+              {latestApp.status === "approved" && "恭喜！您已成为认证萌宠司机，可前往「我的」开始接单。"}
+              {latestApp.status === "rejected" && (latestApp.review_note || "请根据审核反馈修改资料后重新提交。")}
+            </p>
+          </div>
+        ) : null}
+
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="intro">成为司机</TabsTrigger>
@@ -393,45 +534,68 @@ const DriverApplyPage = () => {
               {DOC_FIELDS.map((f) => {
                 const uploaded = !!docs[f.key];
                 const isUploading = uploading === f.key;
+                const previewUrl = previews[f.key];
                 return (
-                  <button
+                  <div
                     key={f.key}
-                    type="button"
-                    onClick={() => fileRefs.current[f.key]?.click()}
                     className={cn(
-                      "relative w-full bg-card card-shadow rounded-xl p-4 text-left border-2 border-dashed transition-all",
+                      "relative w-full bg-card card-shadow rounded-xl p-3 border-2 border-dashed transition-all",
                       uploaded ? "border-green-500/60" : "border-border hover:border-primary/40",
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                          uploaded ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        {uploaded ? <CheckCircle2 className="w-5 h-5" /> : <f.icon className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-foreground">{f.label}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {uploaded ? "已上传 · 点击重新上传" : "点击上传 · JPG/PNG · ≤5MB"}
+                    <button
+                      type="button"
+                      onClick={() => fileRefs.current[f.key]?.click()}
+                      className="w-full flex items-center gap-3 text-left"
+                      disabled={isUploading}
+                    >
+                      {/* Thumbnail or icon */}
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt={f.label + " 预览"}
+                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border"
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            "w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0",
+                            uploaded ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary",
+                          )}
+                        >
+                          <f.icon className="w-6 h-6" />
                         </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                          {f.label}
+                          {uploaded && <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {isUploading
+                            ? `上传中 ${uploadProgress}%`
+                            : uploaded
+                              ? "已上传 · 点击重新上传"
+                              : "点击上传 · JPG/PNG/WEBP · ≤5MB"}
+                        </div>
+                        {isUploading && (
+                          <Progress value={uploadProgress} className="h-1.5 mt-2" />
+                        )}
                       </div>
                       {isUploading ? (
-                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                        <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
                       ) : (
-                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <Upload className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       )}
-                    </div>
+                    </button>
                     <input
                       ref={(el) => (fileRefs.current[f.key] = el)}
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={(e) => handleUpload(f.key, e)}
                     />
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -448,10 +612,16 @@ const DriverApplyPage = () => {
               variant="hero"
               size="xl"
               className="w-full"
-              disabled={submitting}
+              disabled={submitting || latestApp?.status === "pending"}
               onClick={handleSubmit}
             >
-              {submitting ? "提交中…" : "提交审核"}
+              {submitting
+                ? "提交中…"
+                : latestApp?.status === "pending"
+                  ? "审核中，请耐心等待"
+                  : latestApp?.status === "rejected"
+                    ? "重新提交审核"
+                    : "提交审核"}
             </Button>
           </TabsContent>
         </Tabs>
