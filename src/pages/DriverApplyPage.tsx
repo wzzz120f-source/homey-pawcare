@@ -320,6 +320,37 @@ const DriverApplyPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-5 pt-4">
+        {/* ── Application status banner ── */}
+        {loadingApp ? (
+          <div className="mb-4 rounded-xl border border-border bg-card p-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> 正在加载我的申请记录…
+          </div>
+        ) : latestApp ? (
+          <div
+            className={cn(
+              "mb-4 rounded-xl border p-4",
+              latestApp.status === "pending" && "border-amber-500/40 bg-amber-500/10",
+              latestApp.status === "approved" && "border-green-500/40 bg-green-500/10",
+              latestApp.status === "rejected" && "border-destructive/40 bg-destructive/10",
+            )}
+            role="status"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {latestApp.status === "pending" && <><Loader2 className="w-4 h-4 animate-spin text-amber-600" /><span className="text-amber-700 dark:text-amber-400">审核中</span></>}
+              {latestApp.status === "approved" && <><CheckCircle2 className="w-4 h-4 text-green-600" /><span className="text-green-700 dark:text-green-400">已通过</span></>}
+              {latestApp.status === "rejected" && <><ShieldCheck className="w-4 h-4 text-destructive" /><span className="text-destructive">未通过</span></>}
+              <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+                提交于 {new Date(latestApp.created_at).toLocaleDateString("zh-CN")}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+              {latestApp.status === "pending" && "我们已收到您的申请，1–3 个工作日内完成审核。"}
+              {latestApp.status === "approved" && "恭喜！您已成为认证萌宠司机，可前往「我的」开始接单。"}
+              {latestApp.status === "rejected" && (latestApp.review_note || "请根据审核反馈修改资料后重新提交。")}
+            </p>
+          </div>
+        ) : null}
+
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="intro">成为司机</TabsTrigger>
