@@ -199,6 +199,8 @@ const BookingPage = () => {
         order_type: activeTab,
         service_type: activeTab === "pickup" ? selectedTier : selectedService || activeTab,
         pet_type: selectedPet,
+        pet_id: savedPet?.id,
+        pet_snapshot: petSnapshot,
         booking_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined,
         booking_time: selectedTime,
         store_name: selectedStore || undefined,
