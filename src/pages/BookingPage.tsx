@@ -364,6 +364,9 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
+                onPlanRouteReady={(fn) => {
+                  planRouteRef.current = fn;
+                }}
                 onRouteChange={(info) => {
                   setRouteKm(info.distanceKm);
                   if (info.error) {
@@ -384,14 +387,34 @@ const BookingPage = () => {
                 </p>
               )}
               {routeStatus === "error" && (
-                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
-                  ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。请检查地址或重试「查看路线规划」。
-                </p>
+                <div className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2 flex items-start justify-between gap-2">
+                  <span className="flex-1">
+                    ⚠️ {routeError || "路线规划失败"}，已按 <span className="font-semibold">起步价估算</span>。
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => planRouteRef.current?.()}
+                    disabled={!pickupAddress || !dropoffAddress}
+                    className="shrink-0 px-2.5 py-1 rounded-md bg-amber-500 text-white font-semibold text-[11px] hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    🔄 重试规划
+                  </button>
+                </div>
               )}
               {routeStatus === "outdated" && (
-                <p className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2">
-                  ⚠️ 地址已修改，路线已失效，请重新点击「查看路线规划」。当前 <span className="font-semibold">按起步价估算</span>。
-                </p>
+                <div className="mt-2 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-lg px-3 py-2 flex items-start justify-between gap-2">
+                  <span className="flex-1">
+                    ⚠️ 地址已修改，路线已失效。当前 <span className="font-semibold">按起步价估算</span>。
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => planRouteRef.current?.()}
+                    disabled={!pickupAddress || !dropoffAddress}
+                    className="shrink-0 px-2.5 py-1 rounded-md bg-amber-500 text-white font-semibold text-[11px] hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    🔄 重新规划
+                  </button>
+                </div>
               )}
             </section>
 
