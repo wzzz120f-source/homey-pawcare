@@ -161,10 +161,13 @@ const BookingPage = () => {
   };
 
   // ─── Submit disabled logic ────────────────────────────────────────────────
+  const pickupNeedsDateTime = activeTab === "pickup" && timeMode === "scheduled";
+  const otherNeedsDateTime = activeTab !== "pickup";
+  const needsDateTime = pickupNeedsDateTime || otherNeedsDateTime;
+
   const isDisabled =
     !selectedPet ||
-    !selectedDate ||
-    !selectedTime ||
+    (needsDateTime && (!selectedDate || !selectedTime)) ||
     (activeTab === "home" && !selectedService) ||
     (activeTab === "store" && !selectedStore) ||
     (activeTab === "pickup" && (!pickupAddress || !dropoffAddress));
