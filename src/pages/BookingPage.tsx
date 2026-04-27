@@ -110,6 +110,7 @@ const BookingPage = () => {
   const [driverGender, setDriverGender] = useState<DriverGender>("any");
   const [addInsurance, setAddInsurance] = useState(true);
   const [addPhoto, setAddPhoto] = useState(false);
+  const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
