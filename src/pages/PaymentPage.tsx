@@ -30,6 +30,14 @@ interface OrderData {
   service_label?: string;
   pet_label?: string;
   cart_items?: CartItem[];
+  pickup_tier?: {
+    id: string;
+    label: string;
+    desc?: string;
+    price: number;
+    priceLabel?: string;
+    recommended?: boolean;
+  };
 }
 
 interface Coupon {
