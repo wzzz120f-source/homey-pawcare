@@ -350,7 +350,13 @@ const BookingPage = () => {
                 onPickupAddressChange={setPickupAddress}
                 dropoffAddress={dropoffAddress}
                 onDropoffAddressChange={setDropoffAddress}
+                onRouteChange={(info) => setRouteKm(info?.distanceKm ?? null)}
               />
+              {routeKm !== null && (
+                <p className="mt-2 text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-2">
+                  📍 路程约 <span className="font-semibold text-primary">{routeKm.toFixed(1)} 公里</span>，距离加价 <span className="font-semibold text-primary">+¥{distanceSurcharge}</span>（每公里 ¥2）
+                </p>
+              )}
             </section>
 
             {/* ── Service Tiers (DiDi-style) ── */}
