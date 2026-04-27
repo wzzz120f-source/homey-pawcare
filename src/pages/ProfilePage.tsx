@@ -529,6 +529,32 @@ const ProfilePage = () => {
           </button>
         )}
         <button
+          onClick={() => navigate("/pets")}
+          className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-xl">🐾</div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-foreground">宠物档案管理</p>
+              <p className="text-xs text-muted-foreground">疫苗 / 过敏 / 自动共享给司机</p>
+            </div>
+          </div>
+          <span className="text-muted-foreground">→</span>
+        </button>
+        <button
+          onClick={() => navigate("/orders")}
+          className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-xl">📋</div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-foreground">历史订单 · 一键复用</p>
+              <p className="text-xs text-muted-foreground">常用路线 / 再来一单</p>
+            </div>
+          </div>
+          <span className="text-muted-foreground">→</span>
+        </button>
+        <button
           onClick={() => navigate("/charity-footprint")}
           className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
         >

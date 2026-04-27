@@ -26,6 +26,10 @@ const MerchantCenterPage = lazy(() => import("./pages/MerchantCenterPage"));
 const MerchantApplyPage = lazy(() => import("./pages/MerchantApplyPage"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const DriverApplyPage = lazy(() => import("./pages/DriverApplyPage"));
+const PetProfilesPage = lazy(() => import("./pages/PetProfilesPage"));
+const TripRatingPage = lazy(() => import("./pages/TripRatingPage"));
+const TripTrackingPage = lazy(() => import("./pages/TripTrackingPage"));
+const OrderHistoryPage = lazy(() => import("./pages/OrderHistoryPage"));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +68,10 @@ const App = () => (
             <Route path="/merchant/apply" element={<MerchantApplyPage />} />
             <Route path="/merchant/admin" element={<MerchantAdminPage />} />
             <Route path="/driver/apply" element={<DriverApplyPage />} />
+            <Route path="/pets" element={<PetProfilesPage />} />
+            <Route path="/rate/:id" element={<TripRatingPage />} />
+            <Route path="/track/:id" element={<TripTrackingPage />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

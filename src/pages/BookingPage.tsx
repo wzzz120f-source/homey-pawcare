@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft,
   Clock,
@@ -95,8 +97,14 @@ const TAB_OPTIONS: readonly { key: BookingTab; label: string; icon: typeof PawPr
 const BookingPage = () => {
   const navigate = useNavigate();
 
+  const location = useLocation();
+  const { user } = useAuth();
+  const prefill = (location.state as any)?.prefill;
+
   // Shared state
   const [selectedPet, setSelectedPet] = useState("");
+  const [savedPets, setSavedPets] = useState<any[]>([]);
+  const [selectedSavedPetId, setSelectedSavedPetId] = useState<string>("");
   const [selectedService, setSelectedService] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("");
@@ -124,6 +132,35 @@ const BookingPage = () => {
     setSubmitAttempted(false);
   }, [timeMode]);
 
+  // 加载用户的宠物档案
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("pets")
+      .select("id,name,pet_type,breed,allergies,behavior_notes,vaccinations,auto_share,is_default")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        const list = data || [];
+        setSavedPets(list);
+        const def = list.find((p: any) => p.is_default) || list[0];
+        if (def && !selectedSavedPetId) {
+          setSelectedSavedPetId(def.id);
+          setSelectedPet(def.pet_type);
+        }
+      });
+  }, [user]);
+
+  // 历史订单复用：预填地址 + 宠物快照
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.pickup_address) setPickupAddress(prefill.pickup_address);
+    if (prefill.dropoff_address) setDropoffAddress(prefill.dropoff_address);
+    if (prefill.pet_snapshot?.pet_type) setSelectedPet(prefill.pet_snapshot.pet_type);
+    if ((prefill.pickup_address || prefill.dropoff_address) && activeTab !== "pickup") setActiveTab("pickup");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   // ─── Derived values ──────────────────────────────────────────────────────
   const currentTier = PICKUP_TIERS.find((t) => t.id === selectedTier) ?? PICKUP_TIERS[1];
   const genderOption = GENDER_OPTIONS.find((g) => g.value === driverGender)!;
@@ -144,11 +181,26 @@ const BookingPage = () => {
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
     const amount = activeTab === "home" ? Number(priceStr) : activeTab === "store" ? 199 : pickupTotal;
 
+    const savedPet = savedPets.find((p) => p.id === selectedSavedPetId);
+    const petSnapshot = savedPet && savedPet.auto_share
+      ? {
+          id: savedPet.id,
+          name: savedPet.name,
+          pet_type: savedPet.pet_type,
+          breed: savedPet.breed,
+          allergies: savedPet.allergies || [],
+          behavior_notes: savedPet.behavior_notes || [],
+          vaccinations: savedPet.vaccinations || [],
+        }
+      : null;
+
     navigate("/payment", {
       state: {
         order_type: activeTab,
         service_type: activeTab === "pickup" ? selectedTier : selectedService || activeTab,
         pet_type: selectedPet,
+        pet_id: savedPet?.id,
+        pet_snapshot: petSnapshot,
         booking_date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined,
         booking_time: selectedTime,
         store_name: selectedStore || undefined,
@@ -238,6 +290,50 @@ const BookingPage = () => {
             </button>
           ))}
         </div>
+
+        {/* ── 我的宠物档案 ── */}
+        {savedPets.length > 0 && (
+          <section className="mb-4 animate-fade-in-up">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-bold text-foreground flex items-center gap-2">
+                <PawPrint className="w-4 h-4 text-primary" /> 我的宠物
+              </h2>
+              <button onClick={() => navigate("/pets")} className="text-xs text-primary">管理档案 →</button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {savedPets.map((p) => {
+                const active = selectedSavedPetId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedSavedPetId(p.id);
+                      setSelectedPet(p.pet_type);
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-xl border px-3 py-2 text-left min-w-[120px]",
+                      active ? "bg-primary/10 border-primary" : "bg-card",
+                    )}
+                  >
+                    <div className="text-sm font-medium truncate">🐾 {p.name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {p.allergies?.length > 0 ? `过敏:${p.allergies[0]}` : "档案完整"}
+                    </div>
+                    {p.auto_share && active && (
+                      <div className="text-[10px] text-orange-500 mt-0.5">自动共享给司机</div>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => navigate("/pets")}
+                className="shrink-0 rounded-xl border border-dashed px-3 py-2 text-xs text-muted-foreground min-w-[80px]"
+              >
+                + 新增
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* ── Pet Type ── */}
         <section className="mb-6 animate-fade-in-up" aria-label="宠物类型">
