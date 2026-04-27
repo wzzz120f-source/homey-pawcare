@@ -181,6 +181,19 @@ const BookingPage = () => {
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
     const amount = activeTab === "home" ? Number(priceStr) : activeTab === "store" ? 199 : pickupTotal;
 
+    const savedPet = savedPets.find((p) => p.id === selectedSavedPetId);
+    const petSnapshot = savedPet && savedPet.auto_share
+      ? {
+          id: savedPet.id,
+          name: savedPet.name,
+          pet_type: savedPet.pet_type,
+          breed: savedPet.breed,
+          allergies: savedPet.allergies || [],
+          behavior_notes: savedPet.behavior_notes || [],
+          vaccinations: savedPet.vaccinations || [],
+        }
+      : null;
+
     navigate("/payment", {
       state: {
         order_type: activeTab,
