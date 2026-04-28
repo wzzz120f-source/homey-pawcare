@@ -269,11 +269,12 @@ const ShopPage = () => {
             </Select>
           )}
           <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-            <SelectTrigger className="h-8 text-xs w-28">
+            <SelectTrigger className="h-8 text-xs w-32">
               <ArrowUpDown className="w-3 h-3 mr-1" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="recommend">⭐ 好评推流</SelectItem>
               <SelectItem value="sales">销量优先</SelectItem>
               <SelectItem value="price_asc">价格低→高</SelectItem>
               <SelectItem value="price_desc">价格高→低</SelectItem>
