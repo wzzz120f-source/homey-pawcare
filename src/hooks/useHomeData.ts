@@ -18,11 +18,18 @@ export function useServices() {
   });
 }
 
-/** 获取附近技师列表 */
+/** 获取附近技师列表（按真实评价好评推流排序：rating × log(reviews+10)） */
 export function useTechnicians() {
   return useQuery<readonly Technician[]>({
     queryKey: ["technicians"],
-    queryFn: () => simulateApi([...TECHNICIANS]),
+    queryFn: () => {
+      const sorted = [...TECHNICIANS].sort(
+        (a, b) =>
+          b.rating * Math.log10(b.reviews + 10) -
+          a.rating * Math.log10(a.reviews + 10),
+      );
+      return simulateApi(sorted);
+    },
     staleTime: 5 * 60 * 1000,
   });
 }
