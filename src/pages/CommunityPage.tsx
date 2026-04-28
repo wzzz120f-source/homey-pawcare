@@ -397,6 +397,7 @@ const CommunityPage = () => {
             </TabsList>
           </Tabs>
         </div>
+        <CommunitySearchBar activeTab={activeTab} value={searchTerm} onChange={setSearchTerm} />
         <ChunkStatusWidget />
       </header>
 
