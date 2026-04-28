@@ -46,7 +46,9 @@ export const getChunkStatus = (): StatusMap => readStatus();
 export const subscribeChunkStatus = (fn: (s: StatusMap) => void) => {
   listeners.add(fn);
   fn(readStatus());
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 };
 
 const updateStatus = (module: string, patch: Partial<ChunkStatus>) => {
