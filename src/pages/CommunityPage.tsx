@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, Component, type ComponentType, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,24 +25,87 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
-const lazyWithRetry = <T extends React.ComponentType<any>>(
+const lazyWithStatus = <T extends ComponentType<any>>(
+  moduleName: string,
   factory: () => Promise<{ default: T }>,
 ) =>
   lazy(async () => {
     try {
       return await factory();
     } catch (err) {
-      // 旧 chunk 失效（部署/HMR 后），强制刷新一次
-      if (!sessionStorage.getItem("chunk-reloaded")) {
-        sessionStorage.setItem("chunk-reloaded", "1");
-        window.location.reload();
-      }
+      Object.assign(err as object, { communityModule: moduleName, detectedAt: new Date().toISOString() });
       throw err;
     }
   });
 
-const GuardianChannel = lazyWithRetry(() => import("@/components/community/GuardianChannel"));
-const PetRadar = lazyWithRetry(() => import("@/components/community/PetRadar"));
+const GuardianChannel = lazyWithStatus("守护频道 GuardianChannel", () => import("@/components/community/GuardianChannel"));
+const PetRadar = lazyWithStatus("寻宠雷达 PetRadar", () => import("@/components/community/PetRadar"));
+
+type CommunityLazyError = Error & { communityModule?: string; detectedAt?: string };
+type CommunityStatusState = { error: CommunityLazyError | null };
+
+class CommunityLazyBoundary extends Component<
+  { children: ReactNode; activeTab: string; onBack: () => void },
+  CommunityStatusState
+> {
+  state: CommunityStatusState = { error: null };
+
+  static getDerivedStateFromError(error: CommunityLazyError) {
+    return { error };
+  }
+
+  componentDidUpdate(prevProps: { activeTab: string }) {
+    if (prevProps.activeTab !== this.props.activeTab && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return <CommunityStatusPanel error={this.state.error} onBack={this.props.onBack} />;
+  }
+}
+
+const CommunityStatusPanel = ({ error, onBack }: { error: CommunityLazyError; onBack: () => void }) => {
+  const message = error?.message || "社区模块加载失败";
+  const isLazyLoadFailure = /dynamically imported module|import|fetch/i.test(message);
+
+  return (
+    <section className="px-4 py-6">
+      <div className="rounded-2xl border border-status-warn-border bg-status-warn/70 p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-background p-2 text-status-warn-foreground">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <p className="text-sm font-extrabold text-foreground">社区模块暂时没有加载成功</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {isLazyLoadFailure ? "通常是预览缓存仍在请求旧版本模块。刷新页面后会重新获取最新社区代码。" : "请刷新页面重试；如果仍然出现，请保留以下错误信息。"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-background/70 p-3 text-xs text-muted-foreground">
+              <div className="flex justify-between gap-3"><span>模块</span><span className="truncate font-semibold text-foreground">{error.communityModule || "社区动态模块"}</span></div>
+              <div className="mt-1 flex justify-between gap-3"><span>类型</span><span className="font-semibold text-foreground">{error.name || "TypeError"}</span></div>
+              <div className="mt-1 flex justify-between gap-3"><span>时间</span><span className="font-semibold text-foreground">{new Date(error.detectedAt || Date.now()).toLocaleTimeString()}</span></div>
+              <p className="mt-2 break-words font-mono text-[11px] leading-relaxed">{message}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="hero" className="rounded-xl" onClick={() => window.location.reload()}>
+                刷新页面
+              </Button>
+              <Button size="sm" variant="secondary" className="rounded-xl" onClick={onBack}>
+                回到爱心广场
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 interface Post {
   id: string;
@@ -531,15 +594,19 @@ const CommunityPage = () => {
         )}
 
         {activeTab === "guardian" && (
-          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <GuardianChannel />
-          </Suspense>
+          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
+            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <GuardianChannel />
+            </Suspense>
+          </CommunityLazyBoundary>
         )}
 
         {activeTab === "radar" && (
-          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <PetRadar />
-          </Suspense>
+          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
+            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <PetRadar />
+            </Suspense>
+          </CommunityLazyBoundary>
         )}
       </main>
 
