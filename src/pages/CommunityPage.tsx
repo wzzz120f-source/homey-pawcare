@@ -188,6 +188,7 @@ const CommunityPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<PostCategory>("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   // file input handled inside MediaPicker component
 
   const userIds = posts.map((p) => p.user_id);
