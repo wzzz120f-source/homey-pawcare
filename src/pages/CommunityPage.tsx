@@ -204,6 +204,7 @@ const CommunityPage = () => {
 
     if (filterCategory !== "all") query = query.eq("category", filterCategory);
     if (filterTag) query = query.contains("tags", [filterTag]);
+    if (searchTerm.trim()) query = query.ilike("content", `%${searchTerm.trim()}%`);
 
     const { data: postsData, error } = await query;
     if (error || !postsData) {
