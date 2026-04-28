@@ -286,8 +286,8 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                   </div>
                 </div>
               </Card>
-            ))
-          )}
+            ));
+          })()}
         </TabsContent>
 
         <TabsContent value="tnr" className="mt-0 space-y-3">
