@@ -248,7 +248,7 @@ const CommunityPage = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, filterCategory, filterTag, activeTab]);
+  }, [user, filterCategory, filterTag, activeTab, searchTerm]);
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, "");
