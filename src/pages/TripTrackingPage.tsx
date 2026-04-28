@@ -373,6 +373,8 @@ const TripTrackingPage = () => {
             <p className="text-xs text-muted-foreground py-4 text-center">司机还未上传照片</p>
           )}
         </section>
+        </>
+        )}
 
         {/* 快捷按钮 */}
         <section className="grid grid-cols-3 gap-2">
