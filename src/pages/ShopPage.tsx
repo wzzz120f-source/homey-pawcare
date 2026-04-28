@@ -389,8 +389,15 @@ const ShopPage = () => {
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-muted-foreground">已售 {product.sales_count}</span>
+                  <div className="flex items-center justify-between mt-1 gap-1">
+                    {stat && stat.review_count > 0 ? (
+                      <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                        {stat.good_rate}% 好评 ({stat.review_count})
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">已售 {product.sales_count}</span>
+                    )}
                     {merchant && (
                       <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{merchant.name}</span>
                     )}
