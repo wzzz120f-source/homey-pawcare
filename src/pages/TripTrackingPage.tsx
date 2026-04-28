@@ -42,8 +42,13 @@ const TripTrackingPage = () => {
   const [progress, setProgress] = useState(0);
   const [history, setHistory] = useState<Tracking[]>([]);
   const [replayIdx, setReplayIdx] = useState<number | null>(null);
+  const [retryIn, setRetryIn] = useState<number>(30);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const replayRef = useRef<number | null>(null);
   const simRef = useRef<number | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
