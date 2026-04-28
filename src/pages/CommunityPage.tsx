@@ -593,15 +593,19 @@ const CommunityPage = () => {
         )}
 
         {activeTab === "guardian" && (
-          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <GuardianChannel />
-          </Suspense>
+          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
+            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <GuardianChannel />
+            </Suspense>
+          </CommunityLazyBoundary>
         )}
 
         {activeTab === "radar" && (
-          <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <PetRadar />
-          </Suspense>
+          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
+            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+              <PetRadar />
+            </Suspense>
+          </CommunityLazyBoundary>
         )}
       </main>
 
