@@ -648,7 +648,7 @@ const CommunityPage = () => {
           >
             {(retryKey) => (
               <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-                <GuardianChannel />
+                <GuardianChannel searchTerm={searchTerm} />
               </Suspense>
             )}
           </CommunityLazyBoundary>
@@ -663,7 +663,7 @@ const CommunityPage = () => {
           >
             {(retryKey) => (
               <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-                <PetRadar />
+                <PetRadar searchTerm={searchTerm} />
               </Suspense>
             )}
           </CommunityLazyBoundary>
