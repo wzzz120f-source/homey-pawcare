@@ -59,7 +59,7 @@ const TripTrackingPage = () => {
     if (!orderId) return;
     let active = true;
 
-    const load = async () => {
+    const loadOrder = async () => {
       const { data: ord } = await supabase
         .from("orders")
         .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type")
@@ -67,68 +67,92 @@ const TripTrackingPage = () => {
         .maybeSingle();
       if (!active) return;
       setOrder(ord);
-
-      const { data: tr } = await supabase
-        .from("trip_tracking")
-        .select("*")
-        .eq("order_id", orderId)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!active) return;
-
-      if (tr) {
-        setTracking(tr as any);
-      } else {
-        // 演示：自动创建一条初始追踪记录
-        const { data: created } = await supabase
-          .from("trip_tracking")
-          .insert({
-            order_id: orderId,
-            stage: "departed",
-            driver_lat: 31.2304,
-            driver_lng: 121.4737,
-            distance_km: 5.2,
-            eta_minutes: 15,
-            cabin_temperature: 24,
-            message: "司机已出发，预计 15 分钟到达",
-          })
-          .select()
-          .single();
-        if (created) setTracking(created as any);
-      }
     };
 
-    load();
+    loadOrder();
+    fetchTracking();
+    subscribe();
 
-    // Realtime 订阅
+    return () => {
+      active = false;
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (simRef.current) window.clearInterval(simRef.current);
+      if (replayRef.current) window.clearInterval(replayRef.current);
+      if (retryTimerRef.current) window.clearInterval(retryTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, user, authLoading]);
+
+  const fetchTracking = async () => {
+    if (!orderId) return;
+    const { data: tr } = await supabase
+      .from("trip_tracking")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (tr) {
+      setTracking(tr as any);
+      setLiveTracking(tr as any);
+      stopAutoRetry();
+    } else {
+      startAutoRetry();
+    }
+  };
+
+  const subscribe = () => {
+    if (!orderId) return;
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
     const channel = supabase
-      .channel(`trip-tracking-${orderId}`)
+      .channel(`trip-tracking-${orderId}-${Date.now()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trip_tracking", filter: `order_id=eq.${orderId}` },
         (payload) => {
           if (payload.new) {
             setLiveTracking(payload.new as any);
-            // 回放期间不打断画面
             setTracking((prev) => (replayRef.current ? prev : (payload.new as any)));
+            stopAutoRetry();
           }
         },
       )
       .subscribe();
+    channelRef.current = channel;
+  };
 
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-      if (simRef.current) window.clearInterval(simRef.current);
-      if (replayRef.current) window.clearInterval(replayRef.current);
-    };
-  }, [orderId, user, authLoading]);
+  const startAutoRetry = () => {
+    if (retryTimerRef.current) return;
+    setRetryIn(30);
+    retryTimerRef.current = window.setInterval(() => {
+      setRetryIn((s) => {
+        if (s <= 1) {
+          handleRetry(true);
+          return 30;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
-  // 同步 liveTracking 初值
-  useEffect(() => {
-    if (tracking && !liveTracking) setLiveTracking(tracking);
-  }, [tracking]);
+  const stopAutoRetry = () => {
+    if (retryTimerRef.current) {
+      window.clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
+
+  const handleRetry = async (auto = false) => {
+    setIsRetrying(true);
+    setRetryCount((c) => c + 1);
+    subscribe();
+    await fetchTracking();
+    setIsRetrying(false);
+    if (!auto) {
+      toast({ title: "已重新连接", description: "正在拉取司机最新位置…" });
+    }
+  };
+
 
   // 司机位置进度动画（演示用）
   useEffect(() => {
