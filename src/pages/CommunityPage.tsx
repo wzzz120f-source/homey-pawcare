@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Component, type ComponentType, type ReactNode } from "react";
+import { useState, useEffect, useRef, Suspense, Component, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -350,6 +350,7 @@ const CommunityPage = () => {
             </TabsList>
           </Tabs>
         </div>
+        <ChunkStatusWidget />
       </header>
 
       <main className="max-w-lg mx-auto">
