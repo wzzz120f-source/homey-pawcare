@@ -636,18 +636,32 @@ const CommunityPage = () => {
         )}
 
         {activeTab === "guardian" && (
-          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
-            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-              <GuardianChannel />
-            </Suspense>
+          <CommunityLazyBoundary
+            activeTab={activeTab}
+            onBack={() => setActiveTab("plaza")}
+            moduleName="守护频道 GuardianChannel"
+            retryFactory={() => import("@/components/community/GuardianChannel")}
+          >
+            {(retryKey) => (
+              <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <GuardianChannel />
+              </Suspense>
+            )}
           </CommunityLazyBoundary>
         )}
 
         {activeTab === "radar" && (
-          <CommunityLazyBoundary activeTab={activeTab} onBack={() => setActiveTab("plaza")}>
-            <Suspense fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-              <PetRadar />
-            </Suspense>
+          <CommunityLazyBoundary
+            activeTab={activeTab}
+            onBack={() => setActiveTab("plaza")}
+            moduleName="寻宠雷达 PetRadar"
+            retryFactory={() => import("@/components/community/PetRadar")}
+          >
+            {(retryKey) => (
+              <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <PetRadar />
+              </Suspense>
+            )}
           </CommunityLazyBoundary>
         )}
       </main>
