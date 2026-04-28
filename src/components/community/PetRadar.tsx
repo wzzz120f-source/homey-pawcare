@@ -355,7 +355,8 @@ const PetRadar = ({ searchTerm = "" }: PetRadarProps) => {
           })}
           </div>
         </>
-      )}
+        );
+      })()}
 
       {/* 走失登记表单 */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
