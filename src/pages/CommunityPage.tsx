@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Component, type ComponentType, type ReactNode } from "react";
+import { useState, useEffect, useRef, Suspense, Component, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,22 +24,19 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import { lazyTracked } from "@/lib/chunkRecovery";
+import ChunkStatusWidget from "@/components/community/ChunkStatusWidget";
 
-const lazyWithStatus = <T extends ComponentType<any>>(
-  moduleName: string,
-  factory: () => Promise<{ default: T }>,
-) =>
-  lazy(async () => {
-    try {
-      return await factory();
-    } catch (err) {
-      Object.assign(err as object, { communityModule: moduleName, detectedAt: new Date().toISOString() });
-      throw err;
-    }
-  });
-
-const GuardianChannel = lazyWithStatus("守护频道 GuardianChannel", () => import("@/components/community/GuardianChannel"));
-const PetRadar = lazyWithStatus("寻宠雷达 PetRadar", () => import("@/components/community/PetRadar"));
+const GuardianChannel = lazyTracked(
+  "守护频道 GuardianChannel",
+  () => import("@/components/community/GuardianChannel"),
+  { critical: true },
+);
+const PetRadar = lazyTracked(
+  "寻宠雷达 PetRadar",
+  () => import("@/components/community/PetRadar"),
+  { critical: true },
+);
 
 type CommunityLazyError = Error & { communityModule?: string; detectedAt?: string };
 type CommunityStatusState = { error: CommunityLazyError | null };
@@ -353,6 +350,7 @@ const CommunityPage = () => {
             </TabsList>
           </Tabs>
         </div>
+        <ChunkStatusWidget />
       </header>
 
       <main className="max-w-lg mx-auto">
