@@ -134,16 +134,18 @@ const ShopPage = () => {
   };
 
   const fetchProducts = async () => {
-    const orderCol = sortBy === "sales" ? "sales_count" : "price";
-    const ascending = sortBy === "price_asc";
-    let query = supabase.from("products").select("*").order(orderCol, { ascending: sortBy === "price_asc" ? true : sortBy === "price_desc" ? false : false });
+    // recommend 走客户端按好评推流排序；其他走 DB 排序
+    let query = supabase.from("products").select("*");
+    if (sortBy === "sales") query = query.order("sales_count", { ascending: false });
+    else if (sortBy === "price_asc") query = query.order("price", { ascending: true });
+    else if (sortBy === "price_desc") query = query.order("price", { ascending: false });
+    else query = query.order("sales_count", { ascending: false }); // recommend 默认按销量预排
     if (selectedCategory) query = query.eq("category_id", selectedCategory);
     if (searchQuery) query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
     if (brandFilter) query = query.eq("brand", brandFilter);
     const { data } = await query;
     if (data) {
       setProducts(data);
-      // Extract unique brands
       const brands = [...new Set(data.map((p: any) => p.brand).filter(Boolean))] as string[];
       if (allBrands.length === 0 && brands.length > 0) setAllBrands(brands);
     }
