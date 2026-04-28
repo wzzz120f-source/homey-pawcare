@@ -18,7 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Heart, MessageCircle, Image as ImageIcon, Send, X, Plus,
-  LogIn, Hash, Sparkles, ShieldCheck, Radar, AlertTriangle,
+  LogIn, Hash, Sparkles, ShieldCheck, Radar, AlertTriangle, RefreshCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
