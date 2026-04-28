@@ -212,10 +212,15 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
         <TabsContent value="rescue" className="mt-0 space-y-3">
           {loading ? (
             <div className="flex justify-center py-10"><div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
-          ) : stories.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground"><span className="text-3xl block mb-2">🐾</span>暂无救助日记</div>
-          ) : (
-            stories.map((s) => (
+          ) : (() => {
+            const kw = searchTerm.trim().toLowerCase();
+            const filtered = kw
+              ? stories.filter((s) => [s.pet_name, s.story, s.location, s.medical_progress].some((f) => (f || "").toLowerCase().includes(kw)))
+              : stories;
+            if (filtered.length === 0) {
+              return <div className="text-center py-10 text-muted-foreground"><span className="text-3xl block mb-2">🐾</span>{kw ? `没有匹配「${searchTerm}」的救助日记` : "暂无救助日记"}</div>;
+            }
+            return filtered.map((s) => (
               <Card key={s.id} className="overflow-hidden">
                 <div className="p-3">
                   <div className="flex items-start justify-between mb-2">
