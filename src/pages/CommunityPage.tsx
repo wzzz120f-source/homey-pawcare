@@ -25,8 +25,24 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
-const GuardianChannel = lazy(() => import("@/components/community/GuardianChannel"));
-const PetRadar = lazy(() => import("@/components/community/PetRadar"));
+const lazyWithRetry = <T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+) =>
+  lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      // 旧 chunk 失效（部署/HMR 后），强制刷新一次
+      if (!sessionStorage.getItem("chunk-reloaded")) {
+        sessionStorage.setItem("chunk-reloaded", "1");
+        window.location.reload();
+      }
+      throw err;
+    }
+  });
+
+const GuardianChannel = lazyWithRetry(() => import("@/components/community/GuardianChannel"));
+const PetRadar = lazyWithRetry(() => import("@/components/community/PetRadar"));
 
 interface Post {
   id: string;
