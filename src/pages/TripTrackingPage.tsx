@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square } from "lucide-react";
+import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square, RefreshCw, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -42,8 +42,13 @@ const TripTrackingPage = () => {
   const [progress, setProgress] = useState(0);
   const [history, setHistory] = useState<Tracking[]>([]);
   const [replayIdx, setReplayIdx] = useState<number | null>(null);
+  const [retryIn, setRetryIn] = useState<number>(30);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const replayRef = useRef<number | null>(null);
   const simRef = useRef<number | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -54,7 +59,7 @@ const TripTrackingPage = () => {
     if (!orderId) return;
     let active = true;
 
-    const load = async () => {
+    const loadOrder = async () => {
       const { data: ord } = await supabase
         .from("orders")
         .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type")
@@ -62,68 +67,92 @@ const TripTrackingPage = () => {
         .maybeSingle();
       if (!active) return;
       setOrder(ord);
-
-      const { data: tr } = await supabase
-        .from("trip_tracking")
-        .select("*")
-        .eq("order_id", orderId)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!active) return;
-
-      if (tr) {
-        setTracking(tr as any);
-      } else {
-        // 演示：自动创建一条初始追踪记录
-        const { data: created } = await supabase
-          .from("trip_tracking")
-          .insert({
-            order_id: orderId,
-            stage: "departed",
-            driver_lat: 31.2304,
-            driver_lng: 121.4737,
-            distance_km: 5.2,
-            eta_minutes: 15,
-            cabin_temperature: 24,
-            message: "司机已出发，预计 15 分钟到达",
-          })
-          .select()
-          .single();
-        if (created) setTracking(created as any);
-      }
     };
 
-    load();
+    loadOrder();
+    fetchTracking();
+    subscribe();
 
-    // Realtime 订阅
+    return () => {
+      active = false;
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (simRef.current) window.clearInterval(simRef.current);
+      if (replayRef.current) window.clearInterval(replayRef.current);
+      if (retryTimerRef.current) window.clearInterval(retryTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, user, authLoading]);
+
+  const fetchTracking = async () => {
+    if (!orderId) return;
+    const { data: tr } = await supabase
+      .from("trip_tracking")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (tr) {
+      setTracking(tr as any);
+      setLiveTracking(tr as any);
+      stopAutoRetry();
+    } else {
+      startAutoRetry();
+    }
+  };
+
+  const subscribe = () => {
+    if (!orderId) return;
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
     const channel = supabase
-      .channel(`trip-tracking-${orderId}`)
+      .channel(`trip-tracking-${orderId}-${Date.now()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trip_tracking", filter: `order_id=eq.${orderId}` },
         (payload) => {
           if (payload.new) {
             setLiveTracking(payload.new as any);
-            // 回放期间不打断画面
             setTracking((prev) => (replayRef.current ? prev : (payload.new as any)));
+            stopAutoRetry();
           }
         },
       )
       .subscribe();
+    channelRef.current = channel;
+  };
 
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-      if (simRef.current) window.clearInterval(simRef.current);
-      if (replayRef.current) window.clearInterval(replayRef.current);
-    };
-  }, [orderId, user, authLoading]);
+  const startAutoRetry = () => {
+    if (retryTimerRef.current) return;
+    setRetryIn(30);
+    retryTimerRef.current = window.setInterval(() => {
+      setRetryIn((s) => {
+        if (s <= 1) {
+          handleRetry(true);
+          return 30;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  };
 
-  // 同步 liveTracking 初值
-  useEffect(() => {
-    if (tracking && !liveTracking) setLiveTracking(tracking);
-  }, [tracking]);
+  const stopAutoRetry = () => {
+    if (retryTimerRef.current) {
+      window.clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
+
+  const handleRetry = async (auto = false) => {
+    setIsRetrying(true);
+    setRetryCount((c) => c + 1);
+    subscribe();
+    await fetchTracking();
+    setIsRetrying(false);
+    if (!auto) {
+      toast({ title: "已重新连接", description: "正在拉取司机最新位置…" });
+    }
+  };
+
 
   // 司机位置进度动画（演示用）
   useEffect(() => {
@@ -236,6 +265,34 @@ const TripTrackingPage = () => {
           </div>
         )}
 
+        {!tracking ? (
+          <section className="rounded-2xl border border-dashed border-muted-foreground/30 bg-card p-6 text-center space-y-4 shadow-sm">
+            <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+              <Inbox className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold">暂无司机位置</h3>
+              <p className="text-sm text-muted-foreground">
+                司机还未上报实时位置，可能尚未出发或暂时离线。
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isRetrying ? "正在重新连接…" : `${retryIn}s 后自动重试 · 已重试 ${retryCount} 次`}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" onClick={() => toast({ title: "正在拨打司机电话", description: "请耐心等待接听" })}>
+                <Phone className="w-4 h-4 mr-1" /> 联系司机
+              </Button>
+              <Button size="sm" onClick={() => handleRetry(false)} disabled={isRetrying}>
+                <RefreshCw className={cn("w-4 h-4 mr-1", isRetrying && "animate-spin")} /> 立即重试
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => toast({ title: "已通知客服", description: "客服将协助您联系司机" })}>
+              <MessageCircle className="w-4 h-4 mr-1" /> 联系平台客服
+            </Button>
+          </section>
+        ) : (
+        <>
         {/* SVG 地图 */}
         <section className="rounded-2xl border bg-card overflow-hidden shadow-sm">
           <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900">
@@ -316,6 +373,8 @@ const TripTrackingPage = () => {
             <p className="text-xs text-muted-foreground py-4 text-center">司机还未上传照片</p>
           )}
         </section>
+        </>
+        )}
 
         {/* 快捷按钮 */}
         <section className="grid grid-cols-3 gap-2">
