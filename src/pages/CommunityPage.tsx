@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Component, type ReactNode } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, Component, type ComponentType, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
-const lazyWithStatus = <T extends React.ComponentType<any>>(
+const lazyWithStatus = <T extends ComponentType<any>>(
   moduleName: string,
   factory: () => Promise<{ default: T }>,
 ) =>
@@ -41,7 +41,8 @@ const lazyWithStatus = <T extends React.ComponentType<any>>(
 const GuardianChannel = lazyWithStatus("守护频道 GuardianChannel", () => import("@/components/community/GuardianChannel"));
 const PetRadar = lazyWithStatus("寻宠雷达 PetRadar", () => import("@/components/community/PetRadar"));
 
-type CommunityStatusState = { error: Error | null };
+type CommunityLazyError = Error & { communityModule?: string; detectedAt?: string };
+type CommunityStatusState = { error: CommunityLazyError | null };
 
 class CommunityLazyBoundary extends Component<
   { children: ReactNode; activeTab: string; onBack: () => void },
@@ -49,7 +50,7 @@ class CommunityLazyBoundary extends Component<
 > {
   state: CommunityStatusState = { error: null };
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: CommunityLazyError) {
     return { error };
   }
 
@@ -65,7 +66,7 @@ class CommunityLazyBoundary extends Component<
   }
 }
 
-const CommunityStatusPanel = ({ error, onBack }: { error: Error & Record<string, any>; onBack: () => void }) => {
+const CommunityStatusPanel = ({ error, onBack }: { error: CommunityLazyError; onBack: () => void }) => {
   const message = error?.message || "社区模块加载失败";
   const isLazyLoadFailure = /dynamically imported module|import|fetch/i.test(message);
 
