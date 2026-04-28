@@ -43,7 +43,7 @@ const PRICE_RANGES = [
   { label: "¥600以上", min: 600, max: 99999 },
 ];
 
-type SortType = "rating" | "price_low" | "price_high" | "reviews";
+type SortType = "recommend" | "rating" | "price_low" | "price_high" | "reviews";
 
 interface PetHotel {
   id: string; name: string; address: string; longitude: number; latitude: number;
@@ -63,7 +63,7 @@ const PetHotelPage = () => {
   const [selectedHotel, setSelectedHotel] = useState<PetHotel | null>(null);
   const [currentLocation, setCurrentLocation] = useState("");
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
-  const [sortType, setSortType] = useState<SortType>("rating");
+  const [sortType, setSortType] = useState<SortType>("recommend");
   const [priceRange, setPriceRange] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -148,7 +148,12 @@ const PetHotelPage = () => {
         case "price_low": return a.price_min - b.price_min;
         case "price_high": return b.price_min - a.price_min;
         case "reviews": return b.reviews_count - a.reviews_count;
-        default: return Number(b.rating) - Number(a.rating);
+        case "rating": return Number(b.rating) - Number(a.rating);
+        // 好评推流：评分 × log(评价数+1)，结合真实评价量与口碑
+        default: {
+          const score = (h: PetHotel) => Number(h.rating) * Math.log10(h.reviews_count + 10);
+          return score(b) - score(a);
+        }
       }
     });
 
@@ -189,10 +194,11 @@ const PetHotelPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="recommend">⭐ 好评推流</SelectItem>
               <SelectItem value="rating">评分最高</SelectItem>
+              <SelectItem value="reviews">评价最多</SelectItem>
               <SelectItem value="price_low">价格最低</SelectItem>
               <SelectItem value="price_high">价格最高</SelectItem>
-              <SelectItem value="reviews">评价最多</SelectItem>
             </SelectContent>
           </Select>
           <span className="text-xs text-muted-foreground ml-auto">{filteredHotels.length}家酒店</span>
