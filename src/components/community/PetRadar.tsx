@@ -22,7 +22,11 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   closed: { text: "已关闭", color: "bg-muted text-muted-foreground" },
 };
 
-const PetRadar = () => {
+interface PetRadarProps {
+  searchTerm?: string;
+}
+
+const PetRadar = ({ searchTerm = "" }: PetRadarProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();

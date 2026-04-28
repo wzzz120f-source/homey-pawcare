@@ -31,7 +31,11 @@ const TNR_STATUS_LABELS: Record<string, { text: string; color: string }> = {
   done: { text: "已完成", color: "bg-status-success text-status-success-foreground" },
 };
 
-const GuardianChannel = () => {
+interface GuardianChannelProps {
+  searchTerm?: string;
+}
+
+const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tab, setTab] = useState<"rescue" | "tnr">("rescue");
