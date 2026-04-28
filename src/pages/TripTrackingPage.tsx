@@ -265,6 +265,34 @@ const TripTrackingPage = () => {
           </div>
         )}
 
+        {!tracking ? (
+          <section className="rounded-2xl border border-dashed border-muted-foreground/30 bg-card p-6 text-center space-y-4 shadow-sm">
+            <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+              <Inbox className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold">暂无司机位置</h3>
+              <p className="text-sm text-muted-foreground">
+                司机还未上报实时位置，可能尚未出发或暂时离线。
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isRetrying ? "正在重新连接…" : `${retryIn}s 后自动重试 · 已重试 ${retryCount} 次`}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" onClick={() => toast({ title: "正在拨打司机电话", description: "请耐心等待接听" })}>
+                <Phone className="w-4 h-4 mr-1" /> 联系司机
+              </Button>
+              <Button size="sm" onClick={() => handleRetry(false)} disabled={isRetrying}>
+                <RefreshCw className={cn("w-4 h-4 mr-1", isRetrying && "animate-spin")} /> 立即重试
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => toast({ title: "已通知客服", description: "客服将协助您联系司机" })}>
+              <MessageCircle className="w-4 h-4 mr-1" /> 联系平台客服
+            </Button>
+          </section>
+        ) : (
+        <>
         {/* SVG 地图 */}
         <section className="rounded-2xl border bg-card overflow-hidden shadow-sm">
           <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900">
