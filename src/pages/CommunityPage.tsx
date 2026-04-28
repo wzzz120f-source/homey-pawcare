@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { lazyTracked } from "@/lib/chunkRecovery";
 import ChunkStatusWidget from "@/components/community/ChunkStatusWidget";
+import CommunitySearchBar from "@/components/community/CommunitySearchBar";
 
 const GuardianChannel = lazyTracked(
   "守护频道 GuardianChannel",
