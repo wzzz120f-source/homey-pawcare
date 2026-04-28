@@ -22,7 +22,11 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   closed: { text: "已关闭", color: "bg-muted text-muted-foreground" },
 };
 
-const PetRadar = () => {
+interface PetRadarProps {
+  searchTerm?: string;
+}
+
+const PetRadar = ({ searchTerm = "" }: PetRadarProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -203,14 +207,27 @@ const PetRadar = () => {
         <Plus className="w-4 h-4" /> 我家宠物走丢了
       </Button>
 
-      {loading ? (
-        <div className="flex justify-center py-10"><div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
-      ) : lostPets.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground">
-          <span className="text-3xl block mb-2">📡</span>
-          附近暂无走失宠物
-        </div>
-      ) : (
+      {(() => {
+        const kw = searchTerm.trim().toLowerCase();
+        const matchedBySearch = kw
+          ? lostPets.filter((p) =>
+              [p.pet_name, p.breed, p.features, p.last_seen_location].some((f) =>
+                (f || "").toLowerCase().includes(kw),
+              ),
+            )
+          : lostPets;
+        if (loading) {
+          return <div className="flex justify-center py-10"><div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+        }
+        if (matchedBySearch.length === 0) {
+          return (
+            <div className="text-center py-10 text-muted-foreground">
+              <span className="text-3xl block mb-2">📡</span>
+              {kw ? `没有匹配「${searchTerm}」的走失记录` : "附近暂无走失宠物"}
+            </div>
+          );
+        }
+        return (
         <>
           {/* 半径切换 */}
           <div className="flex items-center justify-between mb-2 px-1">
@@ -233,7 +250,7 @@ const PetRadar = () => {
 
           {/* 高德地图 — 聚类 + 半径圈 */}
           <PetRadarMap
-            pets={lostPets.filter((p) => {
+            pets={matchedBySearch.filter((p) => {
               if (!userLocation) return true;
               return distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) <= radiusKm;
             })}
@@ -243,7 +260,7 @@ const PetRadar = () => {
           />
 
           <div className="space-y-3">
-            {lostPets.map((p) => {
+            {matchedBySearch.map((p) => {
               const dist = userLocation ? distanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude) : null;
               const petClues = clues[p.id] || [];
               const isHighlighted = highlightId === p.id;
@@ -338,7 +355,8 @@ const PetRadar = () => {
           })}
           </div>
         </>
-      )}
+        );
+      })()}
 
       {/* 走失登记表单 */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

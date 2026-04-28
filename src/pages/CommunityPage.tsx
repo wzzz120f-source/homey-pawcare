@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { lazyTracked } from "@/lib/chunkRecovery";
 import ChunkStatusWidget from "@/components/community/ChunkStatusWidget";
+import CommunitySearchBar from "@/components/community/CommunitySearchBar";
 
 const GuardianChannel = lazyTracked(
   "守护频道 GuardianChannel",
@@ -187,6 +188,7 @@ const CommunityPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<PostCategory>("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   // file input handled inside MediaPicker component
 
   const userIds = posts.map((p) => p.user_id);
@@ -202,6 +204,7 @@ const CommunityPage = () => {
 
     if (filterCategory !== "all") query = query.eq("category", filterCategory);
     if (filterTag) query = query.contains("tags", [filterTag]);
+    if (searchTerm.trim()) query = query.ilike("content", `%${searchTerm.trim()}%`);
 
     const { data: postsData, error } = await query;
     if (error || !postsData) {
@@ -245,7 +248,7 @@ const CommunityPage = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, filterCategory, filterTag, activeTab]);
+  }, [user, filterCategory, filterTag, activeTab, searchTerm]);
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, "");
@@ -394,6 +397,7 @@ const CommunityPage = () => {
             </TabsList>
           </Tabs>
         </div>
+        <CommunitySearchBar activeTab={activeTab} value={searchTerm} onChange={setSearchTerm} />
         <ChunkStatusWidget />
       </header>
 
@@ -644,7 +648,7 @@ const CommunityPage = () => {
           >
             {(retryKey) => (
               <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-                <GuardianChannel />
+                <GuardianChannel searchTerm={searchTerm} />
               </Suspense>
             )}
           </CommunityLazyBoundary>
@@ -659,7 +663,7 @@ const CommunityPage = () => {
           >
             {(retryKey) => (
               <Suspense key={retryKey} fallback={<div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-                <PetRadar />
+                <PetRadar searchTerm={searchTerm} />
               </Suspense>
             )}
           </CommunityLazyBoundary>

@@ -1838,6 +1838,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_product_review_stats: {
+        Args: never
+        Returns: {
+          avg_rating: number
+          good_rate: number
+          good_review_count: number
+          product_id: string
+          review_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

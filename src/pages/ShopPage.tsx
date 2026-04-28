@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
+import { useProductReviewStats, getRecommendScore } from "@/hooks/useReviewStats";
+import { Star } from "lucide-react";
 
 interface Category {
   id: string;
@@ -69,7 +71,8 @@ const ShopPage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
-  const [sortBy, setSortBy] = useState<"sales" | "price_asc" | "price_desc">("sales");
+  const [sortBy, setSortBy] = useState<"recommend" | "sales" | "price_asc" | "price_desc">("recommend");
+  const { data: reviewStats } = useProductReviewStats();
   const [allBrands, setAllBrands] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
@@ -131,16 +134,18 @@ const ShopPage = () => {
   };
 
   const fetchProducts = async () => {
-    const orderCol = sortBy === "sales" ? "sales_count" : "price";
-    const ascending = sortBy === "price_asc";
-    let query = supabase.from("products").select("*").order(orderCol, { ascending: sortBy === "price_asc" ? true : sortBy === "price_desc" ? false : false });
+    // recommend 走客户端按好评推流排序；其他走 DB 排序
+    let query = supabase.from("products").select("*");
+    if (sortBy === "sales") query = query.order("sales_count", { ascending: false });
+    else if (sortBy === "price_asc") query = query.order("price", { ascending: true });
+    else if (sortBy === "price_desc") query = query.order("price", { ascending: false });
+    else query = query.order("sales_count", { ascending: false }); // recommend 默认按销量预排
     if (selectedCategory) query = query.eq("category_id", selectedCategory);
     if (searchQuery) query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`);
     if (brandFilter) query = query.eq("brand", brandFilter);
     const { data } = await query;
     if (data) {
       setProducts(data);
-      // Extract unique brands
       const brands = [...new Set(data.map((p: any) => p.brand).filter(Boolean))] as string[];
       if (allBrands.length === 0 && brands.length > 0) setAllBrands(brands);
     }
@@ -264,11 +269,12 @@ const ShopPage = () => {
             </Select>
           )}
           <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-            <SelectTrigger className="h-8 text-xs w-28">
+            <SelectTrigger className="h-8 text-xs w-32">
               <ArrowUpDown className="w-3 h-3 mr-1" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="recommend">⭐ 好评推流</SelectItem>
               <SelectItem value="sales">销量优先</SelectItem>
               <SelectItem value="price_asc">价格低→高</SelectItem>
               <SelectItem value="price_desc">价格高→低</SelectItem>
@@ -305,12 +311,26 @@ const ShopPage = () => {
 
       {/* Products Grid */}
       <div className="px-4 pt-2">
-        <h2 className="text-sm font-bold text-foreground mb-2">
-          {selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : "热门商品"}
+        <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1">
+          {sortBy === "recommend" && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+          {sortBy === "recommend"
+            ? "好评推流"
+            : (selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : "热门商品")}
           <span className="text-muted-foreground font-normal ml-1">({products.length})</span>
         </h2>
+        {sortBy === "recommend" && (
+          <p className="text-[11px] text-muted-foreground mb-2">📊 根据真实订单评价的好评数加权排序</p>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => {
+          {(sortBy === "recommend"
+            ? [...products].sort(
+                (a, b) =>
+                  getRecommendScore(reviewStats?.[b.id], b.sales_count) -
+                  getRecommendScore(reviewStats?.[a.id], a.sales_count),
+              )
+            : products
+          ).map((product) => {
+            const stat = reviewStats?.[product.id];
             const merchant = getMerchant(product.merchant_id);
             const cartItem = cart.items.find((i) => i.id === product.id);
             return (
@@ -369,8 +389,15 @@ const ShopPage = () => {
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-muted-foreground">已售 {product.sales_count}</span>
+                  <div className="flex items-center justify-between mt-1 gap-1">
+                    {stat && stat.review_count > 0 ? (
+                      <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                        {stat.good_rate}% 好评 ({stat.review_count})
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">已售 {product.sales_count}</span>
+                    )}
                     {merchant && (
                       <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{merchant.name}</span>
                     )}
