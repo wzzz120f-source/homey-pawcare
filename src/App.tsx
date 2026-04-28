@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,30 +6,37 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { lazyTracked } from "@/lib/chunkRecovery";
 
-const BookingPage = lazy(() => import("./pages/BookingPage"));
-const CommunityPage = lazy(() => import("./pages/CommunityPage"));
-const AuthPage = lazy(() => import("./pages/AuthPage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const ShopPage = lazy(() => import("./pages/ShopPage"));
-const CustomerServicePage = lazy(() => import("./pages/CustomerServicePage"));
-const PaymentPage = lazy(() => import("./pages/PaymentPage"));
-const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
-const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
-const MerchantAppealPage = lazy(() => import("./pages/MerchantAppealPage"));
-const PetHotelPage = lazy(() => import("./pages/PetHotelPage"));
-const HotelDetailPage = lazy(() => import("./pages/HotelDetailPage"));
-const PointsCenterPage = lazy(() => import("./pages/PointsCenterPage"));
-const PostDetailPage = lazy(() => import("./pages/PostDetailPage"));
-const CharityFootprintPage = lazy(() => import("./pages/CharityFootprintPage"));
-const MerchantCenterPage = lazy(() => import("./pages/MerchantCenterPage"));
-const MerchantApplyPage = lazy(() => import("./pages/MerchantApplyPage"));
-const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
-const DriverApplyPage = lazy(() => import("./pages/DriverApplyPage"));
-const PetProfilesPage = lazy(() => import("./pages/PetProfilesPage"));
-const TripRatingPage = lazy(() => import("./pages/TripRatingPage"));
-const TripTrackingPage = lazy(() => import("./pages/TripTrackingPage"));
-const OrderHistoryPage = lazy(() => import("./pages/OrderHistoryPage"));
+// Community-adjacent routes are marked critical: a chunk-load failure on these
+// triggers the global capped reload flow so future community additions inherit
+// the same recovery behavior automatically.
+const CommunityPage = lazyTracked("路由 CommunityPage", () => import("./pages/CommunityPage"), { critical: true });
+const PostDetailPage = lazyTracked("路由 PostDetailPage", () => import("./pages/PostDetailPage"), { critical: true });
+const CharityFootprintPage = lazyTracked("路由 CharityFootprintPage", () => import("./pages/CharityFootprintPage"), { critical: true });
+
+// Other routes get tracking only (visible in the status widget) without
+// auto-reload, to avoid surprise reloads on rarely-used screens.
+const BookingPage = lazyTracked("路由 BookingPage", () => import("./pages/BookingPage"));
+const AuthPage = lazyTracked("路由 AuthPage", () => import("./pages/AuthPage"));
+const ProfilePage = lazyTracked("路由 ProfilePage", () => import("./pages/ProfilePage"));
+const ShopPage = lazyTracked("路由 ShopPage", () => import("./pages/ShopPage"));
+const CustomerServicePage = lazyTracked("路由 CustomerServicePage", () => import("./pages/CustomerServicePage"));
+const PaymentPage = lazyTracked("路由 PaymentPage", () => import("./pages/PaymentPage"));
+const OrderDetailPage = lazyTracked("路由 OrderDetailPage", () => import("./pages/OrderDetailPage"));
+const ProductDetailPage = lazyTracked("路由 ProductDetailPage", () => import("./pages/ProductDetailPage"));
+const MerchantAppealPage = lazyTracked("路由 MerchantAppealPage", () => import("./pages/MerchantAppealPage"));
+const PetHotelPage = lazyTracked("路由 PetHotelPage", () => import("./pages/PetHotelPage"));
+const HotelDetailPage = lazyTracked("路由 HotelDetailPage", () => import("./pages/HotelDetailPage"));
+const PointsCenterPage = lazyTracked("路由 PointsCenterPage", () => import("./pages/PointsCenterPage"));
+const MerchantCenterPage = lazyTracked("路由 MerchantCenterPage", () => import("./pages/MerchantCenterPage"));
+const MerchantApplyPage = lazyTracked("路由 MerchantApplyPage", () => import("./pages/MerchantApplyPage"));
+const MerchantAdminPage = lazyTracked("路由 MerchantAdminPage", () => import("./pages/MerchantAdminPage"));
+const DriverApplyPage = lazyTracked("路由 DriverApplyPage", () => import("./pages/DriverApplyPage"));
+const PetProfilesPage = lazyTracked("路由 PetProfilesPage", () => import("./pages/PetProfilesPage"));
+const TripRatingPage = lazyTracked("路由 TripRatingPage", () => import("./pages/TripRatingPage"));
+const TripTrackingPage = lazyTracked("路由 TripTrackingPage", () => import("./pages/TripTrackingPage"));
+const OrderHistoryPage = lazyTracked("路由 OrderHistoryPage", () => import("./pages/OrderHistoryPage"));
 
 const queryClient = new QueryClient();
 
