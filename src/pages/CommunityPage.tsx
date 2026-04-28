@@ -39,13 +39,13 @@ const PetRadar = lazyTracked(
 );
 
 type CommunityLazyError = Error & { communityModule?: string; detectedAt?: string };
-type CommunityStatusState = { error: CommunityLazyError | null };
+type CommunityStatusState = { error: CommunityLazyError | null; retryKey: number; retrying: boolean };
 
 class CommunityLazyBoundary extends Component<
-  { children: ReactNode; activeTab: string; onBack: () => void },
+  { children: (retryKey: number) => ReactNode; activeTab: string; onBack: () => void; moduleName: string; retryFactory: () => Promise<unknown> },
   CommunityStatusState
 > {
-  state: CommunityStatusState = { error: null };
+  state: CommunityStatusState = { error: null, retryKey: 0, retrying: false };
 
   static getDerivedStateFromError(error: CommunityLazyError) {
     return { error };
@@ -53,52 +53,96 @@ class CommunityLazyBoundary extends Component<
 
   componentDidUpdate(prevProps: { activeTab: string }) {
     if (prevProps.activeTab !== this.props.activeTab && this.state.error) {
-      this.setState({ error: null });
+      this.setState({ error: null, retrying: false });
     }
   }
 
+  handleRetry = async () => {
+    this.setState({ retrying: true });
+    try {
+      // Try the import again first; if it succeeds, remount Suspense via retryKey.
+      await this.props.retryFactory();
+      this.setState((s) => ({ error: null, retrying: false, retryKey: s.retryKey + 1 }));
+      toast.success("已重新加载模块");
+    } catch (err) {
+      const e = err as CommunityLazyError;
+      Object.assign(e, { communityModule: this.props.moduleName, detectedAt: new Date().toISOString() });
+      this.setState({ error: e, retrying: false });
+      toast.error("仍然无法加载，请稍后再试或刷新页面");
+    }
+  };
+
   render() {
-    if (!this.state.error) return this.props.children;
-    return <CommunityStatusPanel error={this.state.error} onBack={this.props.onBack} />;
+    if (!this.state.error) return this.props.children(this.state.retryKey);
+    return (
+      <CommunityStatusPanel
+        error={this.state.error}
+        retrying={this.state.retrying}
+        onRetry={this.handleRetry}
+        onBack={this.props.onBack}
+      />
+    );
   }
 }
 
-const CommunityStatusPanel = ({ error, onBack }: { error: CommunityLazyError; onBack: () => void }) => {
+const CommunityStatusPanel = ({
+  error,
+  retrying,
+  onRetry,
+  onBack,
+}: {
+  error: CommunityLazyError;
+  retrying: boolean;
+  onRetry: () => void;
+  onBack: () => void;
+}) => {
   const message = error?.message || "社区模块加载失败";
-  const isLazyLoadFailure = /dynamically imported module|import|fetch/i.test(message);
+  const isLazyLoadFailure = /dynamically imported module|import|fetch|Loading chunk/i.test(message);
+  const moduleLabel = error.communityModule || "社区动态模块";
 
   return (
     <section className="px-4 py-6">
-      <div className="rounded-2xl border border-status-warn-border bg-status-warn/70 p-4 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-full bg-background p-2 text-status-warn-foreground">
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1 space-y-3">
-            <div>
-              <p className="text-sm font-extrabold text-foreground">社区模块暂时没有加载成功</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {isLazyLoadFailure ? "通常是预览缓存仍在请求旧版本模块。刷新页面后会重新获取最新社区代码。" : "请刷新页面重试；如果仍然出现，请保留以下错误信息。"}
-              </p>
-            </div>
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm text-center">
+        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-3xl">
+          🐾
+        </div>
+        <h3 className="text-base font-extrabold text-foreground">这片小天地暂时没打开</h3>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+          {isLazyLoadFailure
+            ? `「${moduleLabel}」加载失败了，可能是网络不稳或预览缓存了旧版本。`
+            : `「${moduleLabel}」遇到了一些小麻烦，让我们一起再试一次。`}
+        </p>
 
-            <div className="rounded-xl border border-border/60 bg-background/70 p-3 text-xs text-muted-foreground">
-              <div className="flex justify-between gap-3"><span>模块</span><span className="truncate font-semibold text-foreground">{error.communityModule || "社区动态模块"}</span></div>
-              <div className="mt-1 flex justify-between gap-3"><span>类型</span><span className="font-semibold text-foreground">{error.name || "TypeError"}</span></div>
-              <div className="mt-1 flex justify-between gap-3"><span>时间</span><span className="font-semibold text-foreground">{new Date(error.detectedAt || Date.now()).toLocaleTimeString()}</span></div>
-              <p className="mt-2 break-words font-mono text-[11px] leading-relaxed">{message}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="hero" className="rounded-xl" onClick={() => window.location.reload()}>
-                刷新页面
-              </Button>
-              <Button size="sm" variant="secondary" className="rounded-xl" onClick={onBack}>
-                回到爱心广场
-              </Button>
-            </div>
+        <div className="mt-5 flex flex-col gap-2">
+          <Button
+            size="lg"
+            variant="hero"
+            className="w-full rounded-xl gap-2"
+            onClick={onRetry}
+            disabled={retrying}
+          >
+            <RefreshCcw className={cn("h-4 w-4", retrying && "animate-spin")} />
+            {retrying ? "重新加载中…" : "再试一次"}
+          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" className="flex-1 rounded-xl" onClick={onBack}>
+              回到爱心广场
+            </Button>
+            <Button size="sm" variant="ghost" className="flex-1 rounded-xl" onClick={() => window.location.reload()}>
+              刷新整个页面
+            </Button>
           </div>
         </div>
+
+        <details className="mt-4 text-left">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground">查看技术详情</summary>
+          <div className="mt-2 rounded-xl border border-border/60 bg-background/70 p-3 text-[11px] text-muted-foreground">
+            <div className="flex justify-between gap-3"><span>模块</span><span className="truncate font-semibold text-foreground">{moduleLabel}</span></div>
+            <div className="mt-1 flex justify-between gap-3"><span>类型</span><span className="font-semibold text-foreground">{error.name || "TypeError"}</span></div>
+            <div className="mt-1 flex justify-between gap-3"><span>时间</span><span className="font-semibold text-foreground">{new Date(error.detectedAt || Date.now()).toLocaleTimeString()}</span></div>
+            <p className="mt-2 break-words font-mono text-[10px] leading-relaxed">{message}</p>
+          </div>
+        </details>
       </div>
     </section>
   );
