@@ -11,13 +11,17 @@ installGlobalChunkRecovery();
 // If their resolved URLs are gone (HMR rebuilt with new hashes) the global
 // recovery flow above will trigger a single reload.
 if (typeof window !== "undefined") {
-  requestIdleCallback?.(() => {
+  const runPrefetch = () => {
+    // Inner community components
     prefetchChunk("守护频道 GuardianChannel", () => import("./components/community/GuardianChannel"), { critical: true });
     prefetchChunk("寻宠雷达 PetRadar", () => import("./components/community/PetRadar"), { critical: true });
-  }) ?? setTimeout(() => {
-    prefetchChunk("守护频道 GuardianChannel", () => import("./components/community/GuardianChannel"), { critical: true });
-    prefetchChunk("寻宠雷达 PetRadar", () => import("./components/community/PetRadar"), { critical: true });
-  }, 1500);
+    // Critical community routes — keep this list aligned with App.tsx
+    prefetchChunk("路由 CommunityPage", () => import("./pages/CommunityPage"), { critical: true });
+    prefetchChunk("路由 PostDetailPage", () => import("./pages/PostDetailPage"), { critical: true });
+    prefetchChunk("路由 CharityFootprintPage", () => import("./pages/CharityFootprintPage"), { critical: true });
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).requestIdleCallback?.(runPrefetch) ?? setTimeout(runPrefetch, 1500);
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
