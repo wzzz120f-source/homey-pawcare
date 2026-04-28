@@ -311,12 +311,26 @@ const ShopPage = () => {
 
       {/* Products Grid */}
       <div className="px-4 pt-2">
-        <h2 className="text-sm font-bold text-foreground mb-2">
-          {selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : "热门商品"}
+        <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1">
+          {sortBy === "recommend" && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+          {sortBy === "recommend"
+            ? "好评推流"
+            : (selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : "热门商品")}
           <span className="text-muted-foreground font-normal ml-1">({products.length})</span>
         </h2>
+        {sortBy === "recommend" && (
+          <p className="text-[11px] text-muted-foreground mb-2">📊 根据真实订单评价的好评数加权排序</p>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => {
+          {(sortBy === "recommend"
+            ? [...products].sort(
+                (a, b) =>
+                  getRecommendScore(reviewStats?.[b.id], b.sales_count) -
+                  getRecommendScore(reviewStats?.[a.id], a.sales_count),
+              )
+            : products
+          ).map((product) => {
+            const stat = reviewStats?.[product.id];
             const merchant = getMerchant(product.merchant_id);
             const cartItem = cart.items.find((i) => i.id === product.id);
             return (
