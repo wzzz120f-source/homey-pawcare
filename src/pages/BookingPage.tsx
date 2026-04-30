@@ -470,10 +470,11 @@ const BookingPage = () => {
                 </button>
               ))}
             </div>
+            {submitAttempted && errors.service && (
+              <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.service}</p>
+            )}
           </section>
         )}
-
-        {/* ── Store: Nearby Stores ── */}
         {activeTab === "store" && (
           <section className="mb-6 animate-fade-in-up" aria-label="附近门店">
             <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
