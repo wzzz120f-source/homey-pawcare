@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,16 @@ const ShopPage = () => {
   };
 
   const getMerchant = (merchantId: string) => merchants.find((m) => m.id === merchantId);
+
+  // 好评推流统一排序：在客户端基于 reviewStats 重新排序，确保 stats 异步到达后也会更新
+  const sortedProducts = useMemo(() => {
+    if (sortBy !== "recommend") return products;
+    return [...products].sort(
+      (a, b) =>
+        getRecommendScore(reviewStats?.[b.id], b.sales_count) -
+        getRecommendScore(reviewStats?.[a.id], a.sales_count),
+    );
+  }, [products, reviewStats, sortBy]);
 
   const handleAddToCart = (product: Product) => {
     const merchant = getMerchant(product.merchant_id);
@@ -322,14 +332,7 @@ const ShopPage = () => {
           <p className="text-[11px] text-muted-foreground mb-2">📊 根据真实订单评价的好评数加权排序</p>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {(sortBy === "recommend"
-            ? [...products].sort(
-                (a, b) =>
-                  getRecommendScore(reviewStats?.[b.id], b.sales_count) -
-                  getRecommendScore(reviewStats?.[a.id], a.sales_count),
-              )
-            : products
-          ).map((product) => {
+          {sortedProducts.map((product) => {
             const stat = reviewStats?.[product.id];
             const merchant = getMerchant(product.merchant_id);
             const cartItem = cart.items.find((i) => i.id === product.id);
