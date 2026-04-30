@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Heart, ShoppingCart, Star, ChevronLeft, ChevronRight, ShieldCheck, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { BottomCtaShell } from "@/components/BottomCta";
 
 interface Product {
   id: string;
