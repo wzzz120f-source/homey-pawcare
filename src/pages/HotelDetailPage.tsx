@@ -437,6 +437,7 @@ const HotelDetailPage = () => {
       });
       setShowBooking(false);
       resetBookingForm();
+      clearHotelDraft();
     } catch (err: any) {
       toast.error(err.message || "预订失败");
     } finally { setSubmitting(false); }
