@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import { fetchAISummary } from "@/lib/aiSummary";
+import { Sparkles } from "lucide-react";
 
 import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
 import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
@@ -107,6 +110,34 @@ const HotelDetailPage = () => {
     total: number;
     estimatedArrival: string;
   } | null>(null);
+  const [aiReceiptSummary, setAiReceiptSummary] = useState<string>("");
+  const [aiReceiptLoading, setAiReceiptLoading] = useState(false);
+
+  // Generate AI booking summary when receipt is shown
+  useEffect(() => {
+    if (!receipt) {
+      setAiReceiptSummary("");
+      return;
+    }
+    let cancelled = false;
+    setAiReceiptLoading(true);
+    fetchAISummary("booking_receipt", {
+      订单号: receipt.orderNo,
+      宠物类型: receipt.petLabel,
+      入住日期: receipt.date,
+      入住时段: receipt.timeSlot,
+      时长: `${receipt.nights} 晚`,
+      门店: `${receipt.hotelName}（${receipt.hotelAddress}）`,
+      接送方式: receipt.pickupMethod === "pickup" ? `专车接送 · 起点：${receipt.pickupAddress}` : "自行送达",
+      预计抵达: receipt.estimatedArrival,
+      备注: receipt.notes || "无",
+      总金额: `¥${receipt.total}`,
+    })
+      .then((text) => { if (!cancelled) setAiReceiptSummary(text); })
+      .catch((err) => { if (!cancelled) setAiReceiptSummary(""); console.warn("AI summary failed:", err.message); })
+      .finally(() => { if (!cancelled) setAiReceiptLoading(false); });
+    return () => { cancelled = true; };
+  }, [receipt]);
 
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -772,6 +803,25 @@ const HotelDetailPage = () => {
                 <span className="text-primary">¥{receipt.total}</span>
               </div>
             </div>
+
+            {/* AI 智能摘要 */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Sparkles className="w-3.5 h-3.5" /> AI 订单摘要
+              </div>
+              {aiReceiptLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你梳理订单要点…
+                </div>
+              ) : aiReceiptSummary ? (
+                <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_strong]:text-primary">
+                  <ReactMarkdown>{aiReceiptSummary}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">AI 摘要稍后可用，请直接查看上方订单详情。</p>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setReceipt(null)}>继续浏览</Button>
               <Button className="flex-1" onClick={() => { setReceipt(null); navigate("/orders"); }}>查看订单</Button>

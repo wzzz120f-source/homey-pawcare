@@ -13,8 +13,12 @@ import {
   CalendarDays,
   ShieldCheck,
   Camera,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import AMapReal from "@/components/AMapReal";
+import ReactMarkdown from "react-markdown";
+import { fetchAISummary } from "@/lib/aiSummary";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -128,6 +132,66 @@ const BookingPage = () => {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
+
+  // ── AI assistant state ────────────────────────────────────────────────
+  const [aiRouteText, setAiRouteText] = useState("");
+  const [aiRouteLoading, setAiRouteLoading] = useState(false);
+  const [aiAdviceText, setAiAdviceText] = useState("");
+  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+
+  // Debounced AI route explanation when route is ready
+  useEffect(() => {
+    if (activeTab !== "pickup" || routeStatus !== "ok" || routeKm === null || routeDurationMin === null) {
+      setAiRouteText("");
+      return;
+    }
+    const handle = setTimeout(() => {
+      let cancelled = false;
+      setAiRouteLoading(true);
+      fetchAISummary("route_explain", {
+        上车点: pickupAddress,
+        下车点: dropoffAddress,
+        预计里程_公里: routeKm,
+        预计耗时_分钟: routeDurationMin,
+        宠物类型: PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择",
+        时间安排: timeMode === "now" ? "立即出发" : "预约时段",
+      })
+        .then((t) => { if (!cancelled) setAiRouteText(t); })
+        .catch((err) => { if (!cancelled) setAiRouteText(""); console.warn("AI route explain failed:", err.message); })
+        .finally(() => { if (!cancelled) setAiRouteLoading(false); });
+      return () => { cancelled = true; };
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [activeTab, routeStatus, routeKm, routeDurationMin, pickupAddress, dropoffAddress, selectedPet, timeMode]);
+
+  // Generate AI booking advice when confirm dialog opens
+  useEffect(() => {
+    if (!showConfirm) {
+      setAiAdviceText("");
+      return;
+    }
+    let cancelled = false;
+    setAiAdviceLoading(true);
+    const petLabel = PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择";
+    const serviceLabel =
+      activeTab === "home"
+        ? `上门服务 · ${SERVICE_TYPES.find((s) => s.id === selectedService)?.label || ""}`
+        : activeTab === "store"
+          ? "到店服务"
+          : "宠物接送";
+    fetchAISummary("booking_advice", {
+      服务类型: serviceLabel,
+      宠物类型: petLabel,
+      备注: notes || "无",
+      接送方式: activeTab === "pickup" ? `路线 ${routeKm?.toFixed(1) ?? "—"} km / ${routeDurationMin ?? "—"} 分钟` : "无需接送",
+      时间安排: timeMode === "now" ? "立即预约" : "预约时段",
+    })
+      .then((t) => { if (!cancelled) setAiAdviceText(t); })
+      .catch((err) => { if (!cancelled) setAiAdviceText(""); console.warn("AI advice failed:", err.message); })
+      .finally(() => { if (!cancelled) setAiAdviceLoading(false); });
+    return () => { cancelled = true; };
+  }, [showConfirm, activeTab, selectedPet, selectedService, notes, routeKm, routeDurationMin, timeMode]);
+
 
   // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
   useEffect(() => {
@@ -645,6 +709,24 @@ const BookingPage = () => {
                       : "正在规划路线…"}
                 </div>
               )}
+
+              {/* AI 路线解读 */}
+              {routeStatus === "ok" && routeKm !== null && (aiRouteLoading || aiRouteText) && (
+                <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Sparkles className="w-3.5 h-3.5" /> AI 路线解读 · 上下车贴士
+                  </div>
+                  {aiRouteLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" /> AI 正在分析路线…
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
+                      <ReactMarkdown>{aiRouteText}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* ── Service Tiers (DiDi-style) ── */}
@@ -1141,6 +1223,25 @@ const BookingPage = () => {
                 </span>
               </div>
             </div>
+
+            {/* AI 预约助手 */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 建议与注意事项
+              </div>
+              {aiAdviceLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你准备贴心建议…
+                </div>
+              ) : aiAdviceText ? (
+                <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
+                  <ReactMarkdown>{aiAdviceText}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">提交前请核对宠物类型与备注 ☑️</p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
                 返回修改
