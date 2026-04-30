@@ -520,6 +520,7 @@ const BookingPage = () => {
                 }}
                 onRouteChange={(info) => {
                   setRouteKm(info.distanceKm);
+                  setRouteDurationMin(info.durationMin);
                   if (info.error) {
                     setRouteStatus("error");
                     setRouteError(info.error);
