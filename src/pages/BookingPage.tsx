@@ -161,21 +161,128 @@ const BookingPage = () => {
   const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const [aiAdviceError, setAiAdviceError] = useState<AIServiceError | null>(null);
   const [selectedPlanIdx, setSelectedPlanIdx] = useState(0);
+  // ── Plan apply / lock state ──
+  // When user picks "选择该方案", suggested fields are written to form state and
+  // locked here so they cannot silently diverge before submission.
+  type LockKey = "time" | "tier" | "gender" | "timeMode" | "notes";
+  const [lockedFields, setLockedFields] = useState<Set<LockKey>>(new Set());
+  const [appliedPlanTitle, setAppliedPlanTitle] = useState<string>("");
+  const isLocked = (k: LockKey) => lockedFields.has(k);
 
-  const draftKey = "booking_draft_v1";
+  const [pendingDraft, setPendingDraft] = useState<BookingDraft | null>(null);
+
+  const collectDraft = (): BookingDraft => ({
+    activeTab,
+    selectedPet,
+    selectedService,
+    selectedDate: selectedDate?.toISOString(),
+    selectedTime,
+    selectedStore,
+    notes,
+    pickupAddress,
+    dropoffAddress,
+    selectedTier,
+    driverGender,
+    addInsurance,
+    addPhoto,
+    timeMode,
+    appliedPlanTitle: appliedPlanTitle || undefined,
+  });
+
   const saveDraft = () => {
-    try {
-      const draft = {
-        activeTab, selectedPet, selectedService, selectedDate: selectedDate?.toISOString(),
-        selectedTime, selectedStore, notes, pickupAddress, dropoffAddress,
-        selectedTier, driverGender, addInsurance, addPhoto, timeMode,
-        savedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(draftKey, JSON.stringify(draft));
+    if (persistBookingDraft(collectDraft())) {
       toast.success("草稿已保存，下次回到此页面可继续下单");
-    } catch {
+    } else {
       toast.error("草稿保存失败");
     }
+  };
+
+  // Restore on mount
+  useEffect(() => {
+    const draft = loadBookingDraft();
+    if (draft) setPendingDraft(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    if (pendingDraft.activeTab) setActiveTab(pendingDraft.activeTab as BookingTab);
+    if (pendingDraft.selectedPet) setSelectedPet(pendingDraft.selectedPet);
+    if (pendingDraft.selectedService) setSelectedService(pendingDraft.selectedService);
+    if (pendingDraft.selectedDate) {
+      const d = new Date(pendingDraft.selectedDate);
+      if (!Number.isNaN(d.getTime())) setSelectedDate(d);
+    }
+    if (pendingDraft.selectedTime) setSelectedTime(pendingDraft.selectedTime);
+    if (pendingDraft.selectedStore) setSelectedStore(pendingDraft.selectedStore);
+    if (pendingDraft.notes !== undefined) setNotes(pendingDraft.notes);
+    if (pendingDraft.pickupAddress) setPickupAddress(pendingDraft.pickupAddress);
+    if (pendingDraft.dropoffAddress) setDropoffAddress(pendingDraft.dropoffAddress);
+    if (pendingDraft.selectedTier) setSelectedTier(pendingDraft.selectedTier);
+    if (pendingDraft.driverGender) setDriverGender(pendingDraft.driverGender as DriverGender);
+    if (typeof pendingDraft.addInsurance === "boolean") setAddInsurance(pendingDraft.addInsurance);
+    if (typeof pendingDraft.addPhoto === "boolean") setAddPhoto(pendingDraft.addPhoto);
+    if (pendingDraft.timeMode) setTimeMode(pendingDraft.timeMode as "now" | "scheduled" | "habit");
+    setPendingDraft(null);
+    clearBookingDraft();
+    toast.success("已恢复上次草稿，请核对后继续");
+  };
+
+  const dismissDraft = () => {
+    setPendingDraft(null);
+    clearBookingDraft();
+  };
+
+  // Apply an AI plan: write its suggested fields to form state and lock them.
+  const applyPlan = (plan: AdvicePlan, idx: number) => {
+    setSelectedPlanIdx(idx);
+    const apply = plan.applyTo;
+    if (!apply) {
+      setAppliedPlanTitle(plan.title);
+      toast.success(`已选择方案：${plan.title}`);
+      return;
+    }
+    const newLocks = new Set<LockKey>(lockedFields);
+    if (apply.suggestedTime && TIME_SLOTS.includes(apply.suggestedTime as any)) {
+      setSelectedTime(apply.suggestedTime);
+    }
+    if (apply.suggestedTier && PICKUP_TIERS.some((t) => t.id === apply.suggestedTier)) {
+      setSelectedTier(apply.suggestedTier);
+    }
+    if (apply.suggestedDriverGender) {
+      setDriverGender(apply.suggestedDriverGender);
+    }
+    if (apply.suggestedTimeMode) {
+      setTimeMode(apply.suggestedTimeMode);
+    }
+    if (apply.suggestedNote && !notes.includes(apply.suggestedNote)) {
+      setNotes((prev) => (prev ? `${prev}；${apply.suggestedNote}` : apply.suggestedNote!));
+    }
+    (apply.lockFields || []).forEach((k) => newLocks.add(k));
+    setLockedFields(newLocks);
+    setAppliedPlanTitle(plan.title);
+    toast.success(`已应用方案「${plan.title}」并锁定相关字段`);
+  };
+
+  const clearPlanLocks = () => {
+    setLockedFields(new Set());
+    setAppliedPlanTitle("");
+    toast.success("已解除方案锁定，可自由编辑");
+  };
+
+  // Unified 转人工 handoff — saves a draft + context snapshot, then navigates.
+  const handoffToCustomerService = (
+    reason: "ai_rate_limit" | "ai_credit" | "ai_offline" | "manual",
+  ) => {
+    persistBookingDraft(collectDraft());
+    saveHandoffContext({
+      source: "booking",
+      reason,
+      summary: `预约草稿：${activeTab === "home" ? "上门" : activeTab === "store" ? "到店寄养" : "宠物接送"} · 宠物 ${selectedPet || "未选"}${selectedTime ? ` · 时段 ${selectedTime}` : ""}${appliedPlanTitle ? ` · 已选方案「${appliedPlanTitle}」` : ""}`,
+      payload: { draft: collectDraft(), appliedPlanTitle },
+    });
+    setShowConfirm(false);
+    navigate("/customer-service");
   };
 
   // Debounced AI route explanation + timeline when route is ready
