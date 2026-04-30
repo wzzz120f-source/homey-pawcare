@@ -1165,8 +1165,10 @@ const BookingPage = () => {
 
             {/* ── Time Mode (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="出发时间">
-              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">⏱️ 出发时间</h2>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时间模式">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                ⏱️ 出发时间 {isLocked("timeMode") && <LockBadge label="方案锁定" />}
+              </h2>
+              <div className={cn("grid grid-cols-3 gap-2", isLocked("timeMode") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="时间模式" aria-disabled={isLocked("timeMode")}>
                 {([
                   { v: "now", label: "立即预约", desc: "5 分钟内派单" },
                   { v: "scheduled", label: "预约时段", desc: "选择具体时间" },
