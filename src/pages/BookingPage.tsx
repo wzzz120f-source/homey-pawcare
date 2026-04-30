@@ -1223,6 +1223,25 @@ const BookingPage = () => {
                 </span>
               </div>
             </div>
+
+            {/* AI 预约助手 */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 建议与注意事项
+              </div>
+              {aiAdviceLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你准备贴心建议…
+                </div>
+              ) : aiAdviceText ? (
+                <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
+                  <ReactMarkdown>{aiAdviceText}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">提交前请核对宠物类型与备注 ☑️</p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
                 返回修改
