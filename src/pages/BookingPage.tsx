@@ -175,10 +175,32 @@ const BookingPage = () => {
   const pickupTotal = tierDynamicPrice(currentTier.price) + addOnsTotal;
   const isFallbackPrice = routeKm === null;
 
-  // ─── Submit handler ──────────────────────────────────────────────────────
+  // ─── Validation: per-field error map ─────────────────────────────────────
+  const pickupNeedsDateTime = activeTab === "pickup" && timeMode === "scheduled";
+  const otherNeedsDateTime = activeTab !== "pickup";
+  const needsDateTime = pickupNeedsDateTime || otherNeedsDateTime;
+
+  const errors = {
+    pet: !selectedPet ? "请选择宠物类型" : "",
+    service: activeTab === "home" && !selectedService ? "请选择服务项目" : "",
+    store: activeTab === "store" && !selectedStore ? "请选择门店" : "",
+    pickupAddress: activeTab === "pickup" && !pickupAddress ? "请填写上车地址" : "",
+    dropoffAddress: activeTab === "pickup" && !dropoffAddress ? "请填写下车地址" : "",
+    date: needsDateTime && !selectedDate ? "请选择预约日期" : "",
+    time: needsDateTime && !selectedTime ? "请选择预约时段" : "",
+  } as const;
+  const errorList = Object.values(errors).filter(Boolean) as string[];
+  const isDisabled = errorList.length > 0;
+
+  // ─── Submit handler (open confirm dialog) ────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
     if (isDisabled) return;
+    setShowConfirm(true);
+  };
+
+  // ─── Proceed to payment after user confirms ──────────────────────────────
+  const proceedToPayment = () => {
     const petInfo = PET_TYPES.find((p) => p.id === selectedPet);
     const serviceInfo = SERVICE_TYPES.find((s) => s.id === selectedService);
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
@@ -198,6 +220,7 @@ const BookingPage = () => {
         }
       : null;
 
+    setShowConfirm(false);
     navigate("/payment", {
       state: {
         order_type: activeTab,
@@ -227,6 +250,7 @@ const BookingPage = () => {
             ? `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`
             : undefined,
         route_distance_km: activeTab === "pickup" ? routeKm ?? undefined : undefined,
+        route_duration_min: activeTab === "pickup" ? routeDurationMin ?? undefined : undefined,
         pickup_tier:
           activeTab === "pickup"
             ? {
@@ -241,18 +265,6 @@ const BookingPage = () => {
       },
     });
   };
-
-  // ─── Submit disabled logic ────────────────────────────────────────────────
-  const pickupNeedsDateTime = activeTab === "pickup" && timeMode === "scheduled";
-  const otherNeedsDateTime = activeTab !== "pickup";
-  const needsDateTime = pickupNeedsDateTime || otherNeedsDateTime;
-
-  const isDisabled =
-    !selectedPet ||
-    (needsDateTime && (!selectedDate || !selectedTime)) ||
-    (activeTab === "home" && !selectedService) ||
-    (activeTab === "store" && !selectedStore) ||
-    (activeTab === "pickup" && (!pickupAddress || !dropoffAddress));
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
