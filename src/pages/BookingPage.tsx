@@ -469,6 +469,7 @@ const BookingPage = () => {
       : null;
 
     setShowConfirm(false);
+    clearBookingDraft();
     navigate("/payment", {
       state: {
         order_type: activeTab,
