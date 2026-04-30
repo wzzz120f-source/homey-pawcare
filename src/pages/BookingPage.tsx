@@ -429,6 +429,9 @@ const BookingPage = () => {
               </button>
             ))}
           </div>
+          {submitAttempted && errors.pet && (
+            <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.pet}</p>
+          )}
         </section>
 
         {/* ── Home: Service Type ── */}
