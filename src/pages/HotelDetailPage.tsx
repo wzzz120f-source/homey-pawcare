@@ -20,7 +20,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { fetchAISummary, AIServiceError, getOfflineFallback } from "@/lib/aiSummary";
-import { Sparkles, Copy, Download, Headphones, Save, RefreshCw } from "lucide-react";
+import {
+  saveHotelDraft,
+  loadHotelDraft,
+  clearHotelDraft,
+  saveHandoffContext,
+  formatSavedAt,
+  type HotelBookingDraft,
+} from "@/lib/bookingDraft";
+import { Sparkles, Copy, Download, Headphones, Save, RefreshCw, FileDown, X } from "lucide-react";
 
 import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
 import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
@@ -113,6 +121,8 @@ const HotelDetailPage = () => {
   const [aiReceiptSummary, setAiReceiptSummary] = useState<string>("");
   const [aiReceiptLoading, setAiReceiptLoading] = useState(false);
   const [aiReceiptError, setAiReceiptError] = useState<AIServiceError | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<HotelBookingDraft | null>(null);
   const receiptCardRef = useRef<HTMLDivElement>(null);
 
   const fetchReceiptSummary = (rec: NonNullable<typeof receipt>) => {
@@ -175,8 +185,43 @@ const HotelDetailPage = () => {
     }
   };
 
+  // Build a plain-text version of the receipt — also used as PDF fallback
+  // when html2canvas/jsPDF fail to load or render (slow network, OOM, etc.).
+  const buildReceiptText = (rec: NonNullable<typeof receipt>) =>
+    [
+      `【萌宠到家 · 预订成功】`,
+      `订单号：${rec.orderNo}`,
+      `酒店：${rec.hotelName}（${rec.hotelAddress}）`,
+      `宠物：${rec.petLabel}`,
+      `入住：${rec.date} ${rec.timeSlot}`,
+      `时长：${rec.nights} 晚`,
+      `接送：${rec.pickupMethod === "pickup" ? `专车 · 起点：${rec.pickupAddress}` : "自行送达"}`,
+      `预计抵达：${rec.estimatedArrival}`,
+      rec.notes && `备注：${rec.notes}`,
+      `合计：¥${rec.total}`,
+      aiReceiptSummary && `\nAI 摘要：\n${aiReceiptSummary}`,
+    ].filter(Boolean).join("\n");
+
+  const downloadReceiptText = (rec: NonNullable<typeof receipt>) => {
+    try {
+      const blob = new Blob([buildReceiptText(rec)], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `booking-${rec.orderNo}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("✅ 已下载纯文本订单");
+    } catch {
+      toast.error("下载失败，请手动复制");
+    }
+  };
+
   const downloadReceiptPDF = async () => {
     if (!receipt || !receiptCardRef.current) return;
+    setPdfError(null);
     try {
       toast.loading("正在生成 PDF…", { id: "pdf" });
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
@@ -199,18 +244,59 @@ const HotelDetailPage = () => {
       pdf.save(`booking-${receipt.orderNo}.pdf`);
       toast.success("✅ PDF 已下载", { id: "pdf" });
     } catch (e) {
-      toast.error("PDF 生成失败，请重试", { id: "pdf" });
+      console.error("PDF 生成失败:", e);
+      const msg = e instanceof Error ? e.message : "未知错误";
+      setPdfError(msg);
+      toast.error("PDF 生成失败，已切换为纯文本下载", { id: "pdf" });
+      // Auto-fallback to plain text so the user always gets a file.
+      downloadReceiptText(receipt);
     }
   };
 
+  // Persist the in-progress / failed booking so the user can resume from the
+  // hotel page later (or 转人工客服 with full context).
+  const persistDraft = (reason?: string) => {
+    if (!hotel) return false;
+    return saveHotelDraft({
+      hotelId: hotel.id,
+      hotelName: hotel.name,
+      hotelAddress: hotel.address,
+      bookingDate: receipt?.date || bookingDate,
+      bookingNights: receipt?.nights || bookingNights,
+      bookingPetType: receipt?.petLabel ? bookingPetType : bookingPetType,
+      bookingTimeSlot: receipt?.timeSlot || bookingTimeSlot,
+      bookingNotes: receipt?.notes ?? bookingNotes,
+      pickupMethod: receipt?.pickupMethod || pickupMethod,
+      pickupAddress: receipt?.pickupAddress || pickupAddress,
+    });
+  };
+
   const saveBookingDraft = () => {
-    if (!receipt) return;
-    try {
-      localStorage.setItem("hotel_booking_draft_v1", JSON.stringify({ ...receipt, savedAt: new Date().toISOString() }));
-      toast.success("草稿已保存，可在「我的订单」中继续");
-    } catch {
-      toast.error("草稿保存失败");
-    }
+    if (persistDraft()) toast.success("草稿已保存，下次回到本酒店将自动恢复");
+    else toast.error("草稿保存失败");
+  };
+
+  // Unified 转人工 entry — saves a context snapshot so 客服 sees the order/form.
+  const handoffToCustomerService = (
+    reason: "ai_rate_limit" | "ai_credit" | "ai_offline" | "pdf_failed" | "manual",
+  ) => {
+    persistDraft(reason);
+    saveHandoffContext({
+      source: receipt ? "receipt" : "hotel",
+      reason,
+      summary: receipt
+        ? `酒店订单 ${receipt.orderNo}（${receipt.hotelName}） · ${receipt.petLabel} · ${receipt.date} ${receipt.timeSlot} · 共 ${receipt.nights} 晚 · ¥${receipt.total}`
+        : `酒店预订草稿：${hotel?.name || "—"} · 宠物 ${bookingPetType || "未选"} · ${bookingDate || "未选日期"} ${bookingTimeSlot || ""}`,
+      payload: {
+        reason,
+        receipt: receipt || null,
+        hotelId: hotel?.id,
+        hotelName: hotel?.name,
+        pdfError: pdfError || undefined,
+      },
+    });
+    setReceipt(null);
+    navigate("/customer-service");
   };
 
   // Review form
@@ -240,7 +326,31 @@ const HotelDetailPage = () => {
         setLoading(false);
       });
     fetchReviews(id);
+    // Surface any saved draft for this hotel so the user can resume.
+    const draft = loadHotelDraft();
+    if (draft && draft.hotelId === id) setPendingDraft(draft);
   }, [id]);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    if (pendingDraft.bookingDate) setBookingDate(pendingDraft.bookingDate);
+    if (pendingDraft.bookingNights) setBookingNights(pendingDraft.bookingNights);
+    if (pendingDraft.bookingPetType) setBookingPetType(pendingDraft.bookingPetType);
+    if (pendingDraft.bookingTimeSlot) setBookingTimeSlot(pendingDraft.bookingTimeSlot);
+    if (pendingDraft.bookingNotes !== undefined) setBookingNotes(pendingDraft.bookingNotes);
+    if (pendingDraft.pickupMethod) setPickupMethod(pendingDraft.pickupMethod);
+    if (pendingDraft.pickupAddress) setPickupAddress(pendingDraft.pickupAddress);
+    setShowBooking(true);
+    setBookingStep("form");
+    setPendingDraft(null);
+    clearHotelDraft();
+    toast.success("已恢复上次草稿，请核对后继续");
+  };
+
+  const dismissDraft = () => {
+    setPendingDraft(null);
+    clearHotelDraft();
+  };
 
   const fetchReviews = async (hotelId: string) => {
     setLoadingReviews(true);
@@ -327,6 +437,7 @@ const HotelDetailPage = () => {
       });
       setShowBooking(false);
       resetBookingForm();
+      clearHotelDraft();
     } catch (err: any) {
       toast.error(err.message || "预订失败");
     } finally { setSubmitting(false); }
@@ -460,6 +571,44 @@ const HotelDetailPage = () => {
       </div>
 
       <main className="max-w-lg mx-auto">
+        {pendingDraft && (
+          <div className="mx-4 mt-3 rounded-xl border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 animate-fade-in-up">
+            <Save className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">检测到上次未完成的预订草稿</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                保存于 {formatSavedAt(pendingDraft.savedAt)}
+                {pendingDraft.bookingDate && ` · ${pendingDraft.bookingDate}`}
+                {pendingDraft.bookingTimeSlot && ` ${pendingDraft.bookingTimeSlot}`}
+                {pendingDraft.bookingPetType && ` · 宠物 ${pendingDraft.bookingPetType}`}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={restoreDraft}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground"
+                >
+                  恢复并继续
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissDraft}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border text-muted-foreground"
+                >
+                  忽略
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={dismissDraft}
+              aria-label="关闭"
+              className="p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* Quick Info */}
         <div className="px-4 py-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -912,6 +1061,16 @@ const HotelDetailPage = () => {
                     >
                       <Download className="w-3 h-3" /> PDF
                     </button>
+                    {pdfError && (
+                      <button
+                        type="button"
+                        onClick={() => receipt && downloadReceiptText(receipt)}
+                        className="text-[11px] px-2 py-0.5 rounded-md bg-secondary border border-border text-foreground flex items-center gap-1"
+                        aria-label="下载纯文本订单"
+                      >
+                        <FileDown className="w-3 h-3" /> 纯文本
+                      </button>
+                    )}
                   </div>
                 </div>
                 {aiReceiptLoading ? (
@@ -937,7 +1096,11 @@ const HotelDetailPage = () => {
                     </p>
                     <button
                       type="button"
-                      onClick={() => { setReceipt(null); navigate("/customer-service"); }}
+                      onClick={() => handoffToCustomerService(
+                        aiReceiptError.kind === "rate_limit" ? "ai_rate_limit"
+                        : aiReceiptError.kind === "credit" ? "ai_credit"
+                        : "ai_offline"
+                      )}
                       className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
                     >
                       <Headphones className="w-3 h-3" /> 转人工客服
@@ -948,6 +1111,34 @@ const HotelDetailPage = () => {
                       className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
                     >
                       <Save className="w-3 h-3" /> 保存草稿
+                    </button>
+                  </div>
+                )}
+                {pdfError && (
+                  <div className="flex flex-wrap gap-2 pt-1.5 border-t border-primary/15">
+                    <p className="w-full text-[11px] text-amber-600 dark:text-amber-400">
+                      ⚠️ PDF 生成失败：{pdfError.slice(0, 60)}。已自动尝试纯文本下载，可重试或转人工。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={downloadReceiptPDF}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> 重试 PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => receipt && downloadReceiptText(receipt)}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                    >
+                      <FileDown className="w-3 h-3" /> 改下载纯文本
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handoffToCustomerService("pdf_failed")}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                    >
+                      <Headphones className="w-3 h-3" /> 转人工客服
                     </button>
                   </div>
                 )}

@@ -25,8 +25,16 @@ import {
   type TimelineStep,
   getOfflineFallback,
 } from "@/lib/aiSummary";
+import {
+  saveBookingDraft as persistBookingDraft,
+  loadBookingDraft,
+  clearBookingDraft,
+  saveHandoffContext,
+  formatSavedAt,
+  type BookingDraft,
+} from "@/lib/bookingDraft";
 import { toast } from "sonner";
-import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon } from "lucide-react";
+import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon, Lock, Unlock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -153,21 +161,128 @@ const BookingPage = () => {
   const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const [aiAdviceError, setAiAdviceError] = useState<AIServiceError | null>(null);
   const [selectedPlanIdx, setSelectedPlanIdx] = useState(0);
+  // ── Plan apply / lock state ──
+  // When user picks "选择该方案", suggested fields are written to form state and
+  // locked here so they cannot silently diverge before submission.
+  type LockKey = "time" | "tier" | "gender" | "timeMode" | "notes";
+  const [lockedFields, setLockedFields] = useState<Set<LockKey>>(new Set());
+  const [appliedPlanTitle, setAppliedPlanTitle] = useState<string>("");
+  const isLocked = (k: LockKey) => lockedFields.has(k);
 
-  const draftKey = "booking_draft_v1";
+  const [pendingDraft, setPendingDraft] = useState<BookingDraft | null>(null);
+
+  const collectDraft = (): BookingDraft => ({
+    activeTab,
+    selectedPet,
+    selectedService,
+    selectedDate: selectedDate?.toISOString(),
+    selectedTime,
+    selectedStore,
+    notes,
+    pickupAddress,
+    dropoffAddress,
+    selectedTier,
+    driverGender,
+    addInsurance,
+    addPhoto,
+    timeMode,
+    appliedPlanTitle: appliedPlanTitle || undefined,
+  });
+
   const saveDraft = () => {
-    try {
-      const draft = {
-        activeTab, selectedPet, selectedService, selectedDate: selectedDate?.toISOString(),
-        selectedTime, selectedStore, notes, pickupAddress, dropoffAddress,
-        selectedTier, driverGender, addInsurance, addPhoto, timeMode,
-        savedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(draftKey, JSON.stringify(draft));
+    if (persistBookingDraft(collectDraft())) {
       toast.success("草稿已保存，下次回到此页面可继续下单");
-    } catch {
+    } else {
       toast.error("草稿保存失败");
     }
+  };
+
+  // Restore on mount
+  useEffect(() => {
+    const draft = loadBookingDraft();
+    if (draft) setPendingDraft(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    if (pendingDraft.activeTab) setActiveTab(pendingDraft.activeTab as BookingTab);
+    if (pendingDraft.selectedPet) setSelectedPet(pendingDraft.selectedPet);
+    if (pendingDraft.selectedService) setSelectedService(pendingDraft.selectedService);
+    if (pendingDraft.selectedDate) {
+      const d = new Date(pendingDraft.selectedDate);
+      if (!Number.isNaN(d.getTime())) setSelectedDate(d);
+    }
+    if (pendingDraft.selectedTime) setSelectedTime(pendingDraft.selectedTime);
+    if (pendingDraft.selectedStore) setSelectedStore(pendingDraft.selectedStore);
+    if (pendingDraft.notes !== undefined) setNotes(pendingDraft.notes);
+    if (pendingDraft.pickupAddress) setPickupAddress(pendingDraft.pickupAddress);
+    if (pendingDraft.dropoffAddress) setDropoffAddress(pendingDraft.dropoffAddress);
+    if (pendingDraft.selectedTier) setSelectedTier(pendingDraft.selectedTier);
+    if (pendingDraft.driverGender) setDriverGender(pendingDraft.driverGender as DriverGender);
+    if (typeof pendingDraft.addInsurance === "boolean") setAddInsurance(pendingDraft.addInsurance);
+    if (typeof pendingDraft.addPhoto === "boolean") setAddPhoto(pendingDraft.addPhoto);
+    if (pendingDraft.timeMode) setTimeMode(pendingDraft.timeMode as "now" | "scheduled" | "habit");
+    setPendingDraft(null);
+    clearBookingDraft();
+    toast.success("已恢复上次草稿，请核对后继续");
+  };
+
+  const dismissDraft = () => {
+    setPendingDraft(null);
+    clearBookingDraft();
+  };
+
+  // Apply an AI plan: write its suggested fields to form state and lock them.
+  const applyPlan = (plan: AdvicePlan, idx: number) => {
+    setSelectedPlanIdx(idx);
+    const apply = plan.applyTo;
+    if (!apply) {
+      setAppliedPlanTitle(plan.title);
+      toast.success(`已选择方案：${plan.title}`);
+      return;
+    }
+    const newLocks = new Set<LockKey>(lockedFields);
+    if (apply.suggestedTime && TIME_SLOTS.includes(apply.suggestedTime as any)) {
+      setSelectedTime(apply.suggestedTime);
+    }
+    if (apply.suggestedTier && PICKUP_TIERS.some((t) => t.id === apply.suggestedTier)) {
+      setSelectedTier(apply.suggestedTier);
+    }
+    if (apply.suggestedDriverGender) {
+      setDriverGender(apply.suggestedDriverGender);
+    }
+    if (apply.suggestedTimeMode) {
+      setTimeMode(apply.suggestedTimeMode);
+    }
+    if (apply.suggestedNote && !notes.includes(apply.suggestedNote)) {
+      setNotes((prev) => (prev ? `${prev}；${apply.suggestedNote}` : apply.suggestedNote!));
+    }
+    (apply.lockFields || []).forEach((k) => newLocks.add(k));
+    setLockedFields(newLocks);
+    setAppliedPlanTitle(plan.title);
+    toast.success(`已应用方案「${plan.title}」并锁定相关字段`);
+  };
+
+  const clearPlanLocks = () => {
+    setLockedFields(new Set());
+    setAppliedPlanTitle("");
+    toast.success("已解除方案锁定，可自由编辑");
+  };
+
+  // Unified 转人工 handoff — saves a draft + context snapshot, then navigates.
+  const handoffToCustomerService = (
+    reason: "ai_rate_limit" | "ai_credit" | "ai_offline" | "manual",
+  ) => {
+    persistBookingDraft(collectDraft());
+    saveHandoffContext({
+      source: "booking",
+      reason,
+      summary: `预约草稿：${activeTab === "home" ? "上门" : activeTab === "store" ? "到店寄养" : "宠物接送"} · 宠物 ${selectedPet || "未选"}${selectedTime ? ` · 时段 ${selectedTime}` : ""}${appliedPlanTitle ? ` · 已选方案「${appliedPlanTitle}」` : ""}`,
+      payload: { draft: collectDraft(), appliedPlanTitle },
+    });
+    setShowConfirm(false);
+    navigate("/customer-service");
   };
 
   // Debounced AI route explanation + timeline when route is ready
@@ -354,6 +469,7 @@ const BookingPage = () => {
       : null;
 
     setShowConfirm(false);
+    clearBookingDraft();
     navigate("/payment", {
       state: {
         order_type: activeTab,
@@ -418,6 +534,31 @@ const BookingPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-5 pt-4">
+        {pendingDraft && (
+          <div className="mb-4 rounded-xl border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 animate-fade-in-up">
+            <Save className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">检测到上次未完成的预约草稿</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                保存于 {formatSavedAt(pendingDraft.savedAt)}
+                {pendingDraft.activeTab && ` · ${pendingDraft.activeTab}`}
+                {pendingDraft.selectedTime && ` · ${pendingDraft.selectedTime}`}
+                {pendingDraft.appliedPlanTitle && ` · 方案「${pendingDraft.appliedPlanTitle}」`}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button type="button" onClick={restoreDraft} className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground">
+                  恢复并继续
+                </button>
+                <button type="button" onClick={dismissDraft} className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border text-muted-foreground">
+                  忽略
+                </button>
+              </div>
+            </div>
+            <button type="button" onClick={dismissDraft} aria-label="关闭" className="p-1 text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* ── Service Tabs ── */}
         <div className="flex gap-2 mb-6" role="tablist" aria-label="服务类型">
           {TAB_OPTIONS.map((tab) => (
@@ -854,8 +995,11 @@ const BookingPage = () => {
 
             {/* ── Service Tiers (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="接送方式">
-              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">🚗 选择接送方式</h2>
-              <div className="flex flex-col gap-2" role="radiogroup" aria-label="接送方式选择">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                🚗 选择接送方式
+                {isLocked("tier") && <LockBadge label="方案锁定" />}
+              </h2>
+              <div className={cn("flex flex-col gap-2", isLocked("tier") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="接送方式选择" aria-disabled={isLocked("tier")}>
                 {PICKUP_TIERS.map((tier) => (
                   <button
                     key={tier.id}
@@ -942,8 +1086,9 @@ const BookingPage = () => {
                 <span className="text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-2 py-0.5 rounded-full">
                   新
                 </span>
+                {isLocked("gender") && <LockBadge label="方案锁定" />}
               </h2>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="司机性别选择">
+              <div className={cn("grid grid-cols-3 gap-2", isLocked("gender") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="司机性别选择" aria-disabled={isLocked("gender")}>
                 {GENDER_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -1045,8 +1190,10 @@ const BookingPage = () => {
 
             {/* ── Time Mode (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="出发时间">
-              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">⏱️ 出发时间</h2>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时间模式">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                ⏱️ 出发时间 {isLocked("timeMode") && <LockBadge label="方案锁定" />}
+              </h2>
+              <div className={cn("grid grid-cols-3 gap-2", isLocked("timeMode") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="时间模式" aria-disabled={isLocked("timeMode")}>
                 {([
                   { v: "now", label: "立即预约", desc: "5 分钟内派单" },
                   { v: "scheduled", label: "预约时段", desc: "选择具体时间" },
@@ -1118,13 +1265,14 @@ const BookingPage = () => {
               <p role="alert" className="text-xs text-destructive">⚠️ {errors.date}</p>
             )}
 
-            <div>
+            <div className={cn(isLocked("time") && "opacity-70")}>
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
+                {isLocked("time") && <LockBadge label="方案锁定" />}
               </p>
               {activeTab === "pickup" && timeMode === "scheduled" ? (
                 <>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <Select value={selectedTime} onValueChange={setSelectedTime} disabled={isLocked("time")}>
                     <SelectTrigger
                       className={cn(
                         "w-full",
@@ -1155,7 +1303,7 @@ const BookingPage = () => {
                   )}
                 </>
               ) : (
-                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
+                <div className={cn("grid grid-cols-3 gap-2", isLocked("time") && "pointer-events-none")} role="radiogroup" aria-label="时段选择" aria-disabled={isLocked("time")}>
                   {TIME_SLOTS.map((t) => (
                     <button
                       key={t}
@@ -1187,6 +1335,7 @@ const BookingPage = () => {
         <section className="mb-6 animate-fade-in-up" aria-label="备注信息">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" aria-hidden="true" /> 备注信息
+            {isLocked("notes") && <LockBadge label="方案锁定" />}
           </h2>
           <textarea
             value={notes}
@@ -1194,7 +1343,11 @@ const BookingPage = () => {
             placeholder="请填写宠物特殊情况（如：性格、过敏、特殊需求等）"
             rows={3}
             maxLength={300}
-            className="w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
+            disabled={isLocked("notes")}
+            className={cn(
+              "w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none",
+              isLocked("notes") && "opacity-70 cursor-not-allowed",
+            )}
             aria-label="备注信息输入框"
           />
           <p className="mt-1 text-[10px] text-muted-foreground text-right">{notes.length}/300</p>
@@ -1372,50 +1525,99 @@ const BookingPage = () => {
                 <div className="space-y-2">
                   {aiPlans.map((plan, idx) => {
                     const active = idx === selectedPlanIdx;
+                    const applied = appliedPlanTitle === plan.title;
                     return (
-                      <button
+                      <div
                         key={idx}
-                        type="button"
-                        onClick={() => setSelectedPlanIdx(idx)}
                         className={cn(
-                          "w-full text-left rounded-lg border p-2.5 transition-all",
+                          "rounded-lg border p-2.5 transition-all",
                           active
                             ? "border-primary bg-card ring-1 ring-primary"
-                            : "border-border bg-card/50 hover:border-primary/50",
+                            : "border-border bg-card/50",
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
-                            <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
-                            {plan.recommended && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
-                                ⭐ 推荐
-                              </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlanIdx(idx)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
+                              <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
+                              {plan.recommended && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
+                                  ⭐ 推荐
+                                </span>
+                              )}
+                              {applied && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold shrink-0 flex items-center gap-0.5">
+                                  <Lock className="w-2.5 h-2.5" /> 已应用
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
+                          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div>
+                              <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
+                              <ul className="space-y-0.5 text-foreground">
+                                {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
+                              <ul className="space-y-0.5 text-foreground">
+                                {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
+                              </ul>
+                            </div>
+                          </div>
+                          {plan.reason && (
+                            <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
+                          )}
+                        </button>
+                        <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/60">
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                            {plan.applyTo?.suggestedTime && <span>📅 {plan.applyTo.suggestedTime}</span>}
+                            {plan.applyTo?.suggestedTier && (
+                              <span>🚗 {PICKUP_TIERS.find((t) => t.id === plan.applyTo!.suggestedTier)?.label || plan.applyTo.suggestedTier}</span>
                             )}
+                            {plan.applyTo?.lockFields?.length ? (
+                              <span className="text-primary">将锁定 {plan.applyTo.lockFields.length} 项</span>
+                            ) : null}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => applyPlan(plan, idx)}
+                            disabled={applied}
+                            className={cn(
+                              "text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors",
+                              applied
+                                ? "bg-primary/15 text-primary cursor-default"
+                                : "bg-primary text-primary-foreground hover:opacity-90",
+                            )}
+                          >
+                            {applied ? <><Lock className="w-3 h-3" /> 已选择</> : <>选择该方案</>}
+                          </button>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
-                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                          <div>
-                            <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
-                            <ul className="space-y-0.5 text-foreground">
-                              {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
-                            <ul className="space-y-0.5 text-foreground">
-                              {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
-                            </ul>
-                          </div>
-                        </div>
-                        {plan.reason && (
-                          <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
-                        )}
-                      </button>
+                      </div>
                     );
                   })}
+                  {appliedPlanTitle && lockedFields.size > 0 && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <Lock className="w-3 h-3 shrink-0" />
+                        已锁定 {Array.from(lockedFields).join("/")} 以匹配「{appliedPlanTitle}」
+                      </span>
+                      <button
+                        type="button"
+                        onClick={clearPlanLocks}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-card border border-primary/40 hover:bg-card/80"
+                      >
+                        <Unlock className="w-3 h-3" /> 解除锁定
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : aiAdviceFallbackText ? (
                 <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
@@ -1437,7 +1639,11 @@ const BookingPage = () => {
                   </p>
                   <button
                     type="button"
-                    onClick={() => { setShowConfirm(false); navigate("/customer-service"); }}
+                    onClick={() => handoffToCustomerService(
+                      aiAdviceError?.kind === "rate_limit" ? "ai_rate_limit"
+                      : aiAdviceError?.kind === "credit" ? "ai_credit"
+                      : "ai_offline"
+                    )}
                     className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
                   >
                     <Headphones className="w-3 h-3" /> 转人工客服
@@ -1469,6 +1675,12 @@ const BookingPage = () => {
     </div>
   );
 };
+
+const LockBadge = ({ label }: { label: string }) => (
+  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary inline-flex items-center gap-0.5">
+    <Lock className="w-2.5 h-2.5" /> {label}
+  </span>
+);
 
 const ConfirmRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between gap-3">

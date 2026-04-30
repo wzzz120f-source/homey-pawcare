@@ -18,6 +18,28 @@ export class AIServiceError extends Error {
   }
 }
 
+/**
+ * Optional, structured fields the plan suggests applying to the booking form
+ * once the user picks "选择该方案". Any field that is set will overwrite the
+ * matching form value AND be added to lockFields so the user cannot silently
+ * diverge from the chosen plan before submitting. Use sparingly — only fields
+ * that the AI is confident about should be filled.
+ */
+export interface AdvicePlanApply {
+  /** Time slot label, e.g. "10:00-11:00" — must match an entry in TIME_SLOTS. */
+  suggestedTime?: string;
+  /** Pickup tier id for 接送 tab, e.g. "express" / "share" / "night" / "luxury". */
+  suggestedTier?: string;
+  /** Driver gender preference: "any" | "male" | "female". */
+  suggestedDriverGender?: "any" | "male" | "female";
+  /** Time mode for pickup tab: "now" | "scheduled" | "habit". */
+  suggestedTimeMode?: "now" | "scheduled" | "habit";
+  /** Extra note appended to user's notes (will not overwrite existing notes). */
+  suggestedNote?: string;
+  /** Field keys to lock (one of: time / tier / gender / timeMode / notes). */
+  lockFields?: Array<"time" | "tier" | "gender" | "timeMode" | "notes">;
+}
+
 export interface AdvicePlan {
   title: string;
   summary: string;
@@ -25,6 +47,7 @@ export interface AdvicePlan {
   cons: string[];
   reason: string;
   recommended?: boolean;
+  applyTo?: AdvicePlanApply;
 }
 
 export interface TimelineStep {

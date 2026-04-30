@@ -33,11 +33,13 @@ function buildSystem(mode: Mode): string {
   // booking_advice → multi-plan
   return `你是萌宠到家的 AI 预约助手。基于用户选择的 宠物类型 / 备注 / 接送方式 / 服务类型，生成 2-3 个可选预约方案（例如不同技师/时段/接送档位），帮助用户对比。
 严格返回 JSON（不要 markdown 代码块包裹），结构：
-{"plans":[{"title":"方案名（10字内）","summary":"一句话说明（25字内）","pros":["优点1","优点2"],"cons":["缺点1"],"reason":"推荐理由（30字内）","recommended":true}]}
+{"plans":[{"title":"方案名（10字内）","summary":"一句话说明（25字内）","pros":["优点1","优点2"],"cons":["缺点1"],"reason":"推荐理由（30字内）","recommended":true,"applyTo":{"suggestedTime":"10:00-11:00","suggestedTier":"express","suggestedDriverGender":"any","suggestedTimeMode":"scheduled","suggestedNote":"提前 5 分钟到达","lockFields":["time","tier"]}}]}
 要求：
 - 输出 2-3 个 plan，且仅 1 个 recommended:true
 - pros 至少 2 条、cons 至少 1 条，简短可对比
-- 中文，亲切但克制 emoji（每个 plan 最多 1 个）`;
+- 中文，亲切但克制 emoji（每个 plan 最多 1 个）
+- applyTo 可选；若给出则 lockFields 必须仅包含真正建议锁定的字段（time/tier/gender/timeMode/notes 之一或多个）
+- suggestedTime 必须是 HH:MM-HH:MM 形式；suggestedTier 仅可为 share/express/night/luxury 之一`;
 }
 
 function safeParseJSON<T>(s: string): T | null {

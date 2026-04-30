@@ -4,10 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, ArrowLeft, Bot, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { Send, ArrowLeft, Bot, Sparkles, Loader2, Trash2, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { consumeHandoffContext, type HandoffContext } from "@/lib/bookingDraft";
 
 interface Message {
   role: "user" | "assistant";
@@ -38,7 +39,14 @@ const CustomerServicePage = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [handoff, setHandoff] = useState<HandoffContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Pick up any handoff context saved by the booking / hotel pages.
+  useEffect(() => {
+    const ctx = consumeHandoffContext();
+    if (ctx) setHandoff(ctx);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -242,6 +250,32 @@ const CustomerServicePage = () => {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {handoff && (
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 flex items-start gap-2">
+            <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">已为客服带入您的预约上下文</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 break-all">{handoff.summary}</p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => sendMessage(`请协助处理以下预约：${handoff.summary}（来源：${handoff.source}/${handoff.reason || "manual"}）`)}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground"
+                >
+                  发送给客服
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(handoff.source === "hotel" || handoff.source === "receipt" ? "/pet-hotel" : "/booking")}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border"
+                >
+                  返回继续下单
+                </button>
+                <button type="button" onClick={() => setHandoff(null)} className="text-[11px] px-2.5 py-1 rounded-full text-muted-foreground">忽略</button>
+              </div>
+            </div>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
