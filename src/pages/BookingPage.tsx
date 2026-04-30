@@ -1642,6 +1642,12 @@ const BookingPage = () => {
   );
 };
 
+const LockBadge = ({ label }: { label: string }) => (
+  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary inline-flex items-center gap-0.5">
+    <Lock className="w-2.5 h-2.5" /> {label}
+  </span>
+);
+
 const ConfirmRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between gap-3">
     <span className="text-muted-foreground shrink-0">{label}</span>
