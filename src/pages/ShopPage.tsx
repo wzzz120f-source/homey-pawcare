@@ -322,15 +322,7 @@ const ShopPage = () => {
           <p className="text-[11px] text-muted-foreground mb-2">📊 根据真实订单评价的好评数加权排序</p>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {useMemo(() => {
-            if (sortBy !== "recommend") return products;
-            // 好评推流：好评数 * 0.7 + 销量 * 0.3，统一应用到所有商品（无评价回退到销量）
-            return [...products].sort(
-              (a, b) =>
-                getRecommendScore(reviewStats?.[b.id], b.sales_count) -
-                getRecommendScore(reviewStats?.[a.id], a.sales_count),
-            );
-          }, [products, reviewStats, sortBy]).map((product) => {
+          {sortedProducts.map((product) => {
             const stat = reviewStats?.[product.id];
             const merchant = getMerchant(product.merchant_id);
             const cartItem = cart.items.find((i) => i.id === product.id);
