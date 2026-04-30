@@ -1310,6 +1310,7 @@ const BookingPage = () => {
         <section className="mb-6 animate-fade-in-up" aria-label="备注信息">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary" aria-hidden="true" /> 备注信息
+            {isLocked("notes") && <LockBadge label="方案锁定" />}
           </h2>
           <textarea
             value={notes}
@@ -1317,7 +1318,11 @@ const BookingPage = () => {
             placeholder="请填写宠物特殊情况（如：性格、过敏、特殊需求等）"
             rows={3}
             maxLength={300}
-            className="w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
+            disabled={isLocked("notes")}
+            className={cn(
+              "w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none",
+              isLocked("notes") && "opacity-70 cursor-not-allowed",
+            )}
             aria-label="备注信息输入框"
           />
           <p className="mt-1 text-[10px] text-muted-foreground text-right">{notes.length}/300</p>
