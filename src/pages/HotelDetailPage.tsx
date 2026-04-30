@@ -110,6 +110,34 @@ const HotelDetailPage = () => {
     total: number;
     estimatedArrival: string;
   } | null>(null);
+  const [aiReceiptSummary, setAiReceiptSummary] = useState<string>("");
+  const [aiReceiptLoading, setAiReceiptLoading] = useState(false);
+
+  // Generate AI booking summary when receipt is shown
+  useEffect(() => {
+    if (!receipt) {
+      setAiReceiptSummary("");
+      return;
+    }
+    let cancelled = false;
+    setAiReceiptLoading(true);
+    fetchAISummary("booking_receipt", {
+      订单号: receipt.orderNo,
+      宠物类型: receipt.petLabel,
+      入住日期: receipt.date,
+      入住时段: receipt.timeSlot,
+      时长: `${receipt.nights} 晚`,
+      门店: `${receipt.hotelName}（${receipt.hotelAddress}）`,
+      接送方式: receipt.pickupMethod === "pickup" ? `专车接送 · 起点：${receipt.pickupAddress}` : "自行送达",
+      预计抵达: receipt.estimatedArrival,
+      备注: receipt.notes || "无",
+      总金额: `¥${receipt.total}`,
+    })
+      .then((text) => { if (!cancelled) setAiReceiptSummary(text); })
+      .catch((err) => { if (!cancelled) setAiReceiptSummary(""); console.warn("AI summary failed:", err.message); })
+      .finally(() => { if (!cancelled) setAiReceiptLoading(false); });
+    return () => { cancelled = true; };
+  }, [receipt]);
 
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
