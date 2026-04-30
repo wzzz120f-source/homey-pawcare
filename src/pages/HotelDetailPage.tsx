@@ -820,6 +820,8 @@ const HotelDetailPage = () => {
               ) : (
                 <p className="text-xs text-muted-foreground">AI 摘要稍后可用，请直接查看上方订单详情。</p>
               )}
+            </div>
+
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setReceipt(null)}>继续浏览</Button>
               <Button className="flex-1" onClick={() => { setReceipt(null); navigate("/orders"); }}>查看订单</Button>
