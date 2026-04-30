@@ -185,8 +185,43 @@ const HotelDetailPage = () => {
     }
   };
 
+  // Build a plain-text version of the receipt — also used as PDF fallback
+  // when html2canvas/jsPDF fail to load or render (slow network, OOM, etc.).
+  const buildReceiptText = (rec: NonNullable<typeof receipt>) =>
+    [
+      `【萌宠到家 · 预订成功】`,
+      `订单号：${rec.orderNo}`,
+      `酒店：${rec.hotelName}（${rec.hotelAddress}）`,
+      `宠物：${rec.petLabel}`,
+      `入住：${rec.date} ${rec.timeSlot}`,
+      `时长：${rec.nights} 晚`,
+      `接送：${rec.pickupMethod === "pickup" ? `专车 · 起点：${rec.pickupAddress}` : "自行送达"}`,
+      `预计抵达：${rec.estimatedArrival}`,
+      rec.notes && `备注：${rec.notes}`,
+      `合计：¥${rec.total}`,
+      aiReceiptSummary && `\nAI 摘要：\n${aiReceiptSummary}`,
+    ].filter(Boolean).join("\n");
+
+  const downloadReceiptText = (rec: NonNullable<typeof receipt>) => {
+    try {
+      const blob = new Blob([buildReceiptText(rec)], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `booking-${rec.orderNo}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("✅ 已下载纯文本订单");
+    } catch {
+      toast.error("下载失败，请手动复制");
+    }
+  };
+
   const downloadReceiptPDF = async () => {
     if (!receipt || !receiptCardRef.current) return;
+    setPdfError(null);
     try {
       toast.loading("正在生成 PDF…", { id: "pdf" });
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
@@ -209,18 +244,59 @@ const HotelDetailPage = () => {
       pdf.save(`booking-${receipt.orderNo}.pdf`);
       toast.success("✅ PDF 已下载", { id: "pdf" });
     } catch (e) {
-      toast.error("PDF 生成失败，请重试", { id: "pdf" });
+      console.error("PDF 生成失败:", e);
+      const msg = e instanceof Error ? e.message : "未知错误";
+      setPdfError(msg);
+      toast.error("PDF 生成失败，已切换为纯文本下载", { id: "pdf" });
+      // Auto-fallback to plain text so the user always gets a file.
+      downloadReceiptText(receipt);
     }
   };
 
+  // Persist the in-progress / failed booking so the user can resume from the
+  // hotel page later (or 转人工客服 with full context).
+  const persistDraft = (reason?: string) => {
+    if (!hotel) return false;
+    return saveHotelDraft({
+      hotelId: hotel.id,
+      hotelName: hotel.name,
+      hotelAddress: hotel.address,
+      bookingDate: receipt?.date || bookingDate,
+      bookingNights: receipt?.nights || bookingNights,
+      bookingPetType: receipt?.petLabel ? bookingPetType : bookingPetType,
+      bookingTimeSlot: receipt?.timeSlot || bookingTimeSlot,
+      bookingNotes: receipt?.notes ?? bookingNotes,
+      pickupMethod: receipt?.pickupMethod || pickupMethod,
+      pickupAddress: receipt?.pickupAddress || pickupAddress,
+    });
+  };
+
   const saveBookingDraft = () => {
-    if (!receipt) return;
-    try {
-      localStorage.setItem("hotel_booking_draft_v1", JSON.stringify({ ...receipt, savedAt: new Date().toISOString() }));
-      toast.success("草稿已保存，可在「我的订单」中继续");
-    } catch {
-      toast.error("草稿保存失败");
-    }
+    if (persistDraft()) toast.success("草稿已保存，下次回到本酒店将自动恢复");
+    else toast.error("草稿保存失败");
+  };
+
+  // Unified 转人工 entry — saves a context snapshot so 客服 sees the order/form.
+  const handoffToCustomerService = (
+    reason: "ai_rate_limit" | "ai_credit" | "ai_offline" | "pdf_failed" | "manual",
+  ) => {
+    persistDraft(reason);
+    saveHandoffContext({
+      source: receipt ? "receipt" : "hotel",
+      reason,
+      summary: receipt
+        ? `酒店订单 ${receipt.orderNo}（${receipt.hotelName}） · ${receipt.petLabel} · ${receipt.date} ${receipt.timeSlot} · 共 ${receipt.nights} 晚 · ¥${receipt.total}`
+        : `酒店预订草稿：${hotel?.name || "—"} · 宠物 ${bookingPetType || "未选"} · ${bookingDate || "未选日期"} ${bookingTimeSlot || ""}`,
+      payload: {
+        reason,
+        receipt: receipt || null,
+        hotelId: hotel?.id,
+        hotelName: hotel?.name,
+        pdfError: pdfError || undefined,
+      },
+    });
+    setReceipt(null);
+    navigate("/customer-service");
   };
 
   // Review form
