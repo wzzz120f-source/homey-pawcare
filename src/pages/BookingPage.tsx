@@ -13,8 +13,12 @@ import {
   CalendarDays,
   ShieldCheck,
   Camera,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import AMapReal from "@/components/AMapReal";
+import ReactMarkdown from "react-markdown";
+import { fetchAISummary } from "@/lib/aiSummary";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
