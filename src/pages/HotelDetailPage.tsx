@@ -19,8 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
-import { fetchAISummary } from "@/lib/aiSummary";
-import { Sparkles } from "lucide-react";
+import { fetchAISummary, AIServiceError, getOfflineFallback } from "@/lib/aiSummary";
+import { Sparkles, Copy, Download, Headphones, Save, RefreshCw } from "lucide-react";
 
 import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
 import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
@@ -112,32 +112,106 @@ const HotelDetailPage = () => {
   } | null>(null);
   const [aiReceiptSummary, setAiReceiptSummary] = useState<string>("");
   const [aiReceiptLoading, setAiReceiptLoading] = useState(false);
+  const [aiReceiptError, setAiReceiptError] = useState<AIServiceError | null>(null);
+  const receiptCardRef = useRef<HTMLDivElement>(null);
+
+  const fetchReceiptSummary = (rec: NonNullable<typeof receipt>) => {
+    let cancelled = false;
+    setAiReceiptLoading(true);
+    setAiReceiptError(null);
+    fetchAISummary("booking_receipt", {
+      订单号: rec.orderNo,
+      宠物类型: rec.petLabel,
+      入住日期: rec.date,
+      入住时段: rec.timeSlot,
+      时长: `${rec.nights} 晚`,
+      门店: `${rec.hotelName}（${rec.hotelAddress}）`,
+      接送方式: rec.pickupMethod === "pickup" ? `专车接送 · 起点：${rec.pickupAddress}` : "自行送达",
+      预计抵达: rec.estimatedArrival,
+      备注: rec.notes || "无",
+      总金额: `¥${rec.total}`,
+    })
+      .then((r) => { if (!cancelled) setAiReceiptSummary(r.text || getOfflineFallback("booking_receipt")); })
+      .catch((err: AIServiceError) => {
+        if (!cancelled) {
+          setAiReceiptSummary(getOfflineFallback("booking_receipt"));
+          setAiReceiptError(err);
+        }
+      })
+      .finally(() => { if (!cancelled) setAiReceiptLoading(false); });
+    return () => { cancelled = true; };
+  };
 
   // Generate AI booking summary when receipt is shown
   useEffect(() => {
     if (!receipt) {
-      setAiReceiptSummary("");
+      setAiReceiptSummary(""); setAiReceiptError(null);
       return;
     }
-    let cancelled = false;
-    setAiReceiptLoading(true);
-    fetchAISummary("booking_receipt", {
-      订单号: receipt.orderNo,
-      宠物类型: receipt.petLabel,
-      入住日期: receipt.date,
-      入住时段: receipt.timeSlot,
-      时长: `${receipt.nights} 晚`,
-      门店: `${receipt.hotelName}（${receipt.hotelAddress}）`,
-      接送方式: receipt.pickupMethod === "pickup" ? `专车接送 · 起点：${receipt.pickupAddress}` : "自行送达",
-      预计抵达: receipt.estimatedArrival,
-      备注: receipt.notes || "无",
-      总金额: `¥${receipt.total}`,
-    })
-      .then((text) => { if (!cancelled) setAiReceiptSummary(text); })
-      .catch((err) => { if (!cancelled) setAiReceiptSummary(""); console.warn("AI summary failed:", err.message); })
-      .finally(() => { if (!cancelled) setAiReceiptLoading(false); });
-    return () => { cancelled = true; };
+    return fetchReceiptSummary(receipt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipt]);
+
+  const copyReceipt = async () => {
+    if (!receipt) return;
+    const lines = [
+      `【萌宠到家 · 预订成功】`,
+      `订单号：${receipt.orderNo}`,
+      `酒店：${receipt.hotelName}（${receipt.hotelAddress}）`,
+      `宠物：${receipt.petLabel}`,
+      `入住：${receipt.date} ${receipt.timeSlot}`,
+      `时长：${receipt.nights} 晚`,
+      `接送：${receipt.pickupMethod === "pickup" ? `专车 · 起点：${receipt.pickupAddress}` : "自行送达"}`,
+      `预计抵达：${receipt.estimatedArrival}`,
+      receipt.notes && `备注：${receipt.notes}`,
+      `合计：¥${receipt.total}`,
+      aiReceiptSummary && `\nAI 摘要：\n${aiReceiptSummary}`,
+    ].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(lines);
+      toast.success("✅ 已复制到剪贴板");
+    } catch {
+      toast.error("复制失败，请手动选择文本");
+    }
+  };
+
+  const downloadReceiptPDF = async () => {
+    if (!receipt || !receiptCardRef.current) return;
+    try {
+      toast.loading("正在生成 PDF…", { id: "pdf" });
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(receiptCardRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const ratio = Math.min((pageW - 40) / canvas.width, (pageH - 40) / canvas.height);
+      const w = canvas.width * ratio;
+      const h = canvas.height * ratio;
+      pdf.addImage(imgData, "PNG", (pageW - w) / 2, 20, w, h);
+      pdf.save(`booking-${receipt.orderNo}.pdf`);
+      toast.success("✅ PDF 已下载", { id: "pdf" });
+    } catch (e) {
+      toast.error("PDF 生成失败，请重试", { id: "pdf" });
+    }
+  };
+
+  const saveBookingDraft = () => {
+    if (!receipt) return;
+    try {
+      localStorage.setItem("hotel_booking_draft_v1", JSON.stringify({ ...receipt, savedAt: new Date().toISOString() }));
+      toast.success("草稿已保存，可在「我的订单」中继续");
+    } catch {
+      toast.error("草稿保存失败");
+    }
+  };
 
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
