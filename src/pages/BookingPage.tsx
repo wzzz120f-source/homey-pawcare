@@ -1278,7 +1278,7 @@ const BookingPage = () => {
                   )}
                 </>
               ) : (
-                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="时段选择">
+                <div className={cn("grid grid-cols-3 gap-2", isLocked("time") && "pointer-events-none")} role="radiogroup" aria-label="时段选择" aria-disabled={isLocked("time")}>
                   {TIME_SLOTS.map((t) => (
                     <button
                       key={t}
