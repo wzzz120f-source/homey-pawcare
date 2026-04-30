@@ -42,6 +42,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
+import { BottomCtaShell } from "@/components/BottomCta";
 import { PET_TYPES, SERVICE_TYPES, TIME_SLOTS, NEARBY_STORES } from "@/config/booking";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -1440,7 +1441,7 @@ const BookingPage = () => {
             确认预约
           </Button>
         </div>
-      </div>
+      </BottomCtaShell>
 
       {/* ── Pre-submit Confirm Dialog ── */}
       {showConfirm && (
