@@ -255,7 +255,22 @@ const PetHotelPage = () => {
 
         {/* Hotel List */}
         <div className="px-4 mt-4 space-y-3 pb-4">
-          <h2 className="text-base font-extrabold text-foreground">📍 附近宠物友好酒店</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-extrabold text-foreground">📍 附近宠物友好酒店</h2>
+            {sortType === "recommend" && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] gap-1 bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                title="按真实评价：评分 × log(评价数+10) 加权排序，高分高口碑优先"
+              >
+                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                好评推流
+              </Badge>
+            )}
+          </div>
+          {sortType === "recommend" && (
+            <p className="text-[11px] text-muted-foreground -mt-1">📊 按真实评价加权（评分 × log(评价数+10)）</p>
+          )}
 
           {loadingHotels ? (
             Array.from({ length: 3 }).map((_, i) => (
