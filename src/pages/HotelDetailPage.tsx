@@ -1023,6 +1023,16 @@ const HotelDetailPage = () => {
                     >
                       <Download className="w-3 h-3" /> PDF
                     </button>
+                    {pdfError && (
+                      <button
+                        type="button"
+                        onClick={() => receipt && downloadReceiptText(receipt)}
+                        className="text-[11px] px-2 py-0.5 rounded-md bg-secondary border border-border text-foreground flex items-center gap-1"
+                        aria-label="下载纯文本订单"
+                      >
+                        <FileDown className="w-3 h-3" /> 纯文本
+                      </button>
+                    )}
                   </div>
                 </div>
                 {aiReceiptLoading ? (
