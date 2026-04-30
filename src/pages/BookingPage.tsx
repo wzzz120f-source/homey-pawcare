@@ -1602,7 +1602,11 @@ const BookingPage = () => {
                   </p>
                   <button
                     type="button"
-                    onClick={() => { setShowConfirm(false); navigate("/customer-service"); }}
+                    onClick={() => handoffToCustomerService(
+                      aiAdviceError?.kind === "rate_limit" ? "ai_rate_limit"
+                      : aiAdviceError?.kind === "credit" ? "ai_credit"
+                      : "ai_offline"
+                    )}
                     className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
                   >
                     <Headphones className="w-3 h-3" /> 转人工客服
