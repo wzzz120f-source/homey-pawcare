@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { lazyTracked } from "@/lib/chunkRecovery";
+import AIChatWidget from "@/components/AIChatWidget";
 
 // Community-adjacent routes are marked critical: a chunk-load failure on these
 // triggers the global capped reload flow so future community additions inherit
