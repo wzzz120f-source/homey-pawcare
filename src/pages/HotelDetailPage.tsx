@@ -20,7 +20,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { fetchAISummary, AIServiceError, getOfflineFallback } from "@/lib/aiSummary";
-import { Sparkles, Copy, Download, Headphones, Save, RefreshCw } from "lucide-react";
+import {
+  saveHotelDraft,
+  loadHotelDraft,
+  clearHotelDraft,
+  saveHandoffContext,
+  formatSavedAt,
+  type HotelBookingDraft,
+} from "@/lib/bookingDraft";
+import { Sparkles, Copy, Download, Headphones, Save, RefreshCw, FileDown, X } from "lucide-react";
 
 import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
 import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
