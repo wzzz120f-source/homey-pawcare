@@ -25,8 +25,16 @@ import {
   type TimelineStep,
   getOfflineFallback,
 } from "@/lib/aiSummary";
+import {
+  saveBookingDraft as persistBookingDraft,
+  loadBookingDraft,
+  clearBookingDraft,
+  saveHandoffContext,
+  formatSavedAt,
+  type BookingDraft,
+} from "@/lib/bookingDraft";
 import { toast } from "sonner";
-import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon } from "lucide-react";
+import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon, Lock, Unlock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
