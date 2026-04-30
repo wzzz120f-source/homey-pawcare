@@ -570,6 +570,62 @@ const BookingPage = () => {
               )}
             </section>
 
+            {/* ── Route Preview (mileage / duration / OD points) ── */}
+            <section className="mb-6 animate-fade-in-up" aria-label="路线预览">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                🗺️ 路线预览
+                <span className="text-[10px] font-medium bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
+                  高德实时规划
+                </span>
+              </h2>
+              {pickupAddress && dropoffAddress && routeStatus === "ok" && routeKm !== null ? (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">预计里程</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">{routeKm.toFixed(1)} <span className="text-xs font-medium">km</span></p>
+                    </div>
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">预计耗时</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">
+                        {routeDurationMin !== null ? routeDurationMin : "—"}
+                        <span className="text-xs font-medium"> 分钟</span>
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">距离加价</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">+¥{distanceSurcharge}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">起</span>
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground text-[10px]">上车点</p>
+                        <p className="text-foreground font-medium break-all">{pickupAddress}</p>
+                      </div>
+                    </div>
+                    <div className="ml-2.5 border-l-2 border-dashed border-border h-3" aria-hidden="true" />
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">终</span>
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground text-[10px]">下车点</p>
+                        <p className="text-foreground font-medium break-all">{dropoffAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-4 text-xs text-muted-foreground text-center">
+                  {!pickupAddress || !dropoffAddress
+                    ? "请先在上方填写上下车地址，将自动规划路线并显示预计里程、耗时与上下车点"
+                    : routeStatus === "error" || routeStatus === "outdated"
+                      ? "路线暂未就绪，请使用上方「重新规划」按钮再次尝试"
+                      : "正在规划路线…"}
+                </div>
+              )}
+            </section>
+
             {/* ── Service Tiers (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="接送方式">
               <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">🚗 选择接送方式</h2>
