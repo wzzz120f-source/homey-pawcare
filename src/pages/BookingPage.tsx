@@ -970,6 +970,9 @@ const BookingPage = () => {
                   ))}
                 </div>
               )}
+              {submitAttempted && errors.time && !(activeTab === "pickup" && timeMode === "scheduled") && (
+                <p role="alert" className="mt-1.5 text-xs text-destructive">⚠️ {errors.time}</p>
+              )}
             </div>
           </div>
         </section>
