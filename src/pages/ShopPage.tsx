@@ -153,6 +153,16 @@ const ShopPage = () => {
 
   const getMerchant = (merchantId: string) => merchants.find((m) => m.id === merchantId);
 
+  // 好评推流统一排序：在客户端基于 reviewStats 重新排序，确保 stats 异步到达后也会更新
+  const sortedProducts = useMemo(() => {
+    if (sortBy !== "recommend") return products;
+    return [...products].sort(
+      (a, b) =>
+        getRecommendScore(reviewStats?.[b.id], b.sales_count) -
+        getRecommendScore(reviewStats?.[a.id], a.sales_count),
+    );
+  }, [products, reviewStats, sortBy]);
+
   const handleAddToCart = (product: Product) => {
     const merchant = getMerchant(product.merchant_id);
     cart.addItem({
