@@ -1061,8 +1061,9 @@ const BookingPage = () => {
                 <span className="text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-2 py-0.5 rounded-full">
                   新
                 </span>
+                {isLocked("gender") && <LockBadge label="方案锁定" />}
               </h2>
-              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="司机性别选择">
+              <div className={cn("grid grid-cols-3 gap-2", isLocked("gender") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="司机性别选择" aria-disabled={isLocked("gender")}>
                 {GENDER_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
