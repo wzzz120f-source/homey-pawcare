@@ -585,9 +585,13 @@ const BookingPage = () => {
                   </button>
                 </div>
               )}
+              {submitAttempted && (errors.pickupAddress || errors.dropoffAddress) && (
+                <div role="alert" className="mt-2 text-xs text-destructive space-y-0.5">
+                  {errors.pickupAddress && <p>⚠️ {errors.pickupAddress}</p>}
+                  {errors.dropoffAddress && <p>⚠️ {errors.dropoffAddress}</p>}
+                </div>
+              )}
             </section>
-
-            {/* ── Route Preview (mileage / duration / OD points) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="路线预览">
               <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
                 🗺️ 路线预览
