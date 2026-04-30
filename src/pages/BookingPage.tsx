@@ -1034,6 +1034,20 @@ const BookingPage = () => {
           </details>
         )}
 
+        {submitAttempted && errorList.length > 0 && (
+          <div
+            role="alert"
+            className="max-w-lg mx-auto mx-5 mb-1 mt-1 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive"
+          >
+            <p className="font-semibold mb-0.5">⚠️ 还有 {errorList.length} 项待完善：</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {errorList.slice(0, 4).map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-4">
           {/* Price summary for pickup */}
           {activeTab === "pickup" && (
@@ -1052,6 +1066,75 @@ const BookingPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* ── Pre-submit Confirm Dialog ── */}
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-50 bg-foreground/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-confirm-title"
+        >
+          <div
+            className="bg-background w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-3 animate-fade-in-up max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="booking-confirm-title" className="text-lg font-extrabold text-foreground">
+              确认预约信息
+            </h3>
+            <p className="text-xs text-muted-foreground">请核对以下信息，确认后将进入支付流程。</p>
+            <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
+              <ConfirmRow label="🏷️ 服务" value={
+                activeTab === "home" ? `上门服务 · ${SERVICE_TYPES.find((s) => s.id === selectedService)?.label || ""}`
+                : activeTab === "store" ? `门店寄养 · ${selectedStore}`
+                : `宠物接送 · ${currentTier.label}`
+              } />
+              <ConfirmRow label="🐾 宠物" value={PET_TYPES.find((p) => p.id === selectedPet)?.label || "—"} />
+              {needsDateTime && (
+                <ConfirmRow
+                  label="📅 时间"
+                  value={`${selectedDate ? format(selectedDate, "yyyy-MM-dd") : "—"} ${selectedTime || ""}`.trim()}
+                />
+              )}
+              {activeTab === "pickup" && timeMode === "now" && (
+                <ConfirmRow label="📅 时间" value="立即预约（5 分钟内派单）" />
+              )}
+              {activeTab === "pickup" && (
+                <>
+                  <ConfirmRow label="🟢 上车" value={pickupAddress} />
+                  <ConfirmRow label="🔴 下车" value={dropoffAddress} />
+                  {routeKm !== null && (
+                    <ConfirmRow
+                      label="🗺️ 路线"
+                      value={`约 ${routeKm.toFixed(1)} km · ${routeDurationMin ?? "—"} 分钟`}
+                    />
+                  )}
+                </>
+              )}
+              {notes && <ConfirmRow label="📝 备注" value={notes} />}
+              <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
+                <span>合计</span>
+                <span className="text-primary">
+                  ¥{activeTab === "pickup"
+                    ? pickupTotal
+                    : activeTab === "store"
+                      ? 199
+                      : Number((SERVICE_TYPES.find((s) => s.id === selectedService)?.price || "0").replace(/[^0-9]/g, ""))}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
+                返回修改
+              </Button>
+              <Button className="flex-1" onClick={proceedToPayment}>
+                确认并支付
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
