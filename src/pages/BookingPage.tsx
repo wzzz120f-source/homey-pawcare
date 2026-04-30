@@ -1347,21 +1347,109 @@ const BookingPage = () => {
               </div>
             </div>
 
-            {/* AI 预约助手 */}
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 建议与注意事项
+            {/* AI 预约助手 · 多方案 */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 为你推荐 2-3 个方案
+                </div>
+                {aiAdviceError && (
+                  <button
+                    type="button"
+                    onClick={retryAdvice}
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> 重试
+                  </button>
+                )}
               </div>
+
               {aiAdviceLoading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你准备贴心建议…
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在生成可选方案…
                 </div>
-              ) : aiAdviceText ? (
+              ) : aiPlans.length > 0 ? (
+                <div className="space-y-2">
+                  {aiPlans.map((plan, idx) => {
+                    const active = idx === selectedPlanIdx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedPlanIdx(idx)}
+                        className={cn(
+                          "w-full text-left rounded-lg border p-2.5 transition-all",
+                          active
+                            ? "border-primary bg-card ring-1 ring-primary"
+                            : "border-border bg-card/50 hover:border-primary/50",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
+                            {plan.recommended && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
+                                ⭐ 推荐
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
+                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div>
+                            <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
+                            <ul className="space-y-0.5 text-foreground">
+                              {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
+                            <ul className="space-y-0.5 text-foreground">
+                              {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+                        {plan.reason && (
+                          <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : aiAdviceFallbackText ? (
                 <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
-                  <ReactMarkdown>{aiAdviceText}</ReactMarkdown>
+                  <ReactMarkdown>{aiAdviceFallbackText}</ReactMarkdown>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">提交前请核对宠物类型与备注 ☑️</p>
+              )}
+
+              {aiAdviceError && (
+                <div className="flex flex-wrap gap-2 pt-1.5 border-t border-primary/15">
+                  <p className="w-full text-[11px] text-amber-600 dark:text-amber-400">
+                    {aiAdviceError.kind === "rate_limit"
+                      ? "⚠️ 请求过于频繁。"
+                      : aiAdviceError.kind === "credit"
+                        ? "⚠️ AI 额度不足。"
+                        : "⚠️ AI 暂不可用。"}
+                    可改用人工客服，或保存草稿稍后继续下单。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowConfirm(false); navigate("/customer-service"); }}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
+                  >
+                    <Headphones className="w-3 h-3" /> 转人工客服
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveDraft}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                  >
+                    <Save className="w-3 h-3" /> 保存草稿
+                  </button>
+                </div>
               )}
             </div>
 
