@@ -301,10 +301,23 @@ const PetHotelPage = () => {
                       <h3 className="text-sm font-bold text-foreground line-clamp-1">{hotel.name}</h3>
                       <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div
+                      className={cn(
+                        "inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-md transition-colors",
+                        sortType === "recommend"
+                          ? "bg-amber-50 ring-1 ring-amber-200"
+                          : "bg-transparent",
+                      )}
+                      title="综合评分来源：真实订单评价"
+                    >
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="text-xs font-bold text-foreground">{Number(hotel.rating).toFixed(1)}</span>
-                      <span className="text-[10px] text-muted-foreground">({hotel.reviews_count}条评价)</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        ({hotel.reviews_count}条真实评价)
+                      </span>
+                      {sortType === "recommend" && (
+                        <span className="text-[10px] font-semibold text-amber-700 ml-0.5">· 推流</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
