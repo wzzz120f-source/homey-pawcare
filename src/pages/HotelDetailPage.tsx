@@ -758,7 +758,7 @@ const HotelDetailPage = () => {
       </main>
 
       {/* Bottom CTA */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/90 backdrop-blur border-t border-border px-4 py-3">
+      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/90 backdrop-blur border-t border-border px-4 py-3 rounded-lg">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
             <span className="text-lg font-extrabold text-primary">¥{hotel.price_min}</span>
