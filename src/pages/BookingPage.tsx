@@ -42,6 +42,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
+import { BottomCtaShell } from "@/components/BottomCta";
 import { PET_TYPES, SERVICE_TYPES, TIME_SLOTS, NEARBY_STORES } from "@/config/booking";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -1355,7 +1356,7 @@ const BookingPage = () => {
       </main>
 
       {/* ── Fixed Submit Bar ── */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border/50">
+      <BottomCtaShell className="bg-background/95 backdrop-blur-md border-t border-border/50">
         {/* Pickup price breakdown */}
         {activeTab === "pickup" && (
           <details className="max-w-lg mx-auto px-5 pt-2 group">
@@ -1440,7 +1441,7 @@ const BookingPage = () => {
             确认预约
           </Button>
         </div>
-      </div>
+      </BottomCtaShell>
 
       {/* ── Pre-submit Confirm Dialog ── */}
       {showConfirm && (

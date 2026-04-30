@@ -20,6 +20,7 @@ import BottomNav from "@/components/BottomNav";
 import { useProductReviewStats } from "@/hooks/useReviewStats";
 import { sortProductsByRecommend } from "@/lib/recommendSort";
 import { Star } from "lucide-react";
+import { BottomCtaShell } from "@/components/BottomCta";
 
 interface Category {
   id: string;
@@ -414,7 +415,7 @@ const ShopPage = () => {
 
       {/* Cart Floating Bar */}
       {cart.totalItems > 0 && !showCart && (
-        <div className="fixed bottom-20 left-0 right-0 z-30 px-4 pb-2">
+        <BottomCtaShell offset="above-nav-lg" className="px-4 pb-2">
           <div className="max-w-lg mx-auto bg-card rounded-2xl card-shadow p-3 flex items-center gap-3 border border-border">
             <button
               type="button"
@@ -434,7 +435,7 @@ const ShopPage = () => {
               去结算
             </Button>
           </div>
-        </div>
+        </BottomCtaShell>
       )}
 
       {/* Cart Drawer - bottom sheet */}
