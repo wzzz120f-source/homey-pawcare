@@ -122,9 +122,11 @@ const BookingPage = () => {
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
   const [routeKm, setRouteKm] = useState<number | null>(null);
+  const [routeDurationMin, setRouteDurationMin] = useState<number | null>(null);
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
 
   // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
@@ -173,10 +175,32 @@ const BookingPage = () => {
   const pickupTotal = tierDynamicPrice(currentTier.price) + addOnsTotal;
   const isFallbackPrice = routeKm === null;
 
-  // ─── Submit handler ──────────────────────────────────────────────────────
+  // ─── Validation: per-field error map ─────────────────────────────────────
+  const pickupNeedsDateTime = activeTab === "pickup" && timeMode === "scheduled";
+  const otherNeedsDateTime = activeTab !== "pickup";
+  const needsDateTime = pickupNeedsDateTime || otherNeedsDateTime;
+
+  const errors = {
+    pet: !selectedPet ? "请选择宠物类型" : "",
+    service: activeTab === "home" && !selectedService ? "请选择服务项目" : "",
+    store: activeTab === "store" && !selectedStore ? "请选择门店" : "",
+    pickupAddress: activeTab === "pickup" && !pickupAddress ? "请填写上车地址" : "",
+    dropoffAddress: activeTab === "pickup" && !dropoffAddress ? "请填写下车地址" : "",
+    date: needsDateTime && !selectedDate ? "请选择预约日期" : "",
+    time: needsDateTime && !selectedTime ? "请选择预约时段" : "",
+  } as const;
+  const errorList = Object.values(errors).filter(Boolean) as string[];
+  const isDisabled = errorList.length > 0;
+
+  // ─── Submit handler (open confirm dialog) ────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
     if (isDisabled) return;
+    setShowConfirm(true);
+  };
+
+  // ─── Proceed to payment after user confirms ──────────────────────────────
+  const proceedToPayment = () => {
     const petInfo = PET_TYPES.find((p) => p.id === selectedPet);
     const serviceInfo = SERVICE_TYPES.find((s) => s.id === selectedService);
     const priceStr = serviceInfo?.price?.replace(/[^0-9]/g, "") || "0";
@@ -196,6 +220,7 @@ const BookingPage = () => {
         }
       : null;
 
+    setShowConfirm(false);
     navigate("/payment", {
       state: {
         order_type: activeTab,
@@ -225,6 +250,7 @@ const BookingPage = () => {
             ? `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`
             : undefined,
         route_distance_km: activeTab === "pickup" ? routeKm ?? undefined : undefined,
+        route_duration_min: activeTab === "pickup" ? routeDurationMin ?? undefined : undefined,
         pickup_tier:
           activeTab === "pickup"
             ? {
@@ -239,18 +265,6 @@ const BookingPage = () => {
       },
     });
   };
-
-  // ─── Submit disabled logic ────────────────────────────────────────────────
-  const pickupNeedsDateTime = activeTab === "pickup" && timeMode === "scheduled";
-  const otherNeedsDateTime = activeTab !== "pickup";
-  const needsDateTime = pickupNeedsDateTime || otherNeedsDateTime;
-
-  const isDisabled =
-    !selectedPet ||
-    (needsDateTime && (!selectedDate || !selectedTime)) ||
-    (activeTab === "home" && !selectedService) ||
-    (activeTab === "store" && !selectedStore) ||
-    (activeTab === "pickup" && (!pickupAddress || !dropoffAddress));
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -415,6 +429,9 @@ const BookingPage = () => {
               </button>
             ))}
           </div>
+          {submitAttempted && errors.pet && (
+            <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.pet}</p>
+          )}
         </section>
 
         {/* ── Home: Service Type ── */}
@@ -453,10 +470,11 @@ const BookingPage = () => {
                 </button>
               ))}
             </div>
+            {submitAttempted && errors.service && (
+              <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.service}</p>
+            )}
           </section>
         )}
-
-        {/* ── Store: Nearby Stores ── */}
         {activeTab === "store" && (
           <section className="mb-6 animate-fade-in-up" aria-label="附近门店">
             <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
@@ -497,10 +515,11 @@ const BookingPage = () => {
                 </button>
               ))}
             </div>
+            {submitAttempted && errors.store && (
+              <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.store}</p>
+            )}
           </section>
         )}
-
-        {/* ── Pickup Tab ── */}
         {activeTab === "pickup" && (
           <>
             {/* Map / Address */}
@@ -518,6 +537,7 @@ const BookingPage = () => {
                 }}
                 onRouteChange={(info) => {
                   setRouteKm(info.distanceKm);
+                  setRouteDurationMin(info.durationMin);
                   if (info.error) {
                     setRouteStatus("error");
                     setRouteError(info.error);
@@ -563,6 +583,66 @@ const BookingPage = () => {
                   >
                     🔄 重新规划
                   </button>
+                </div>
+              )}
+              {submitAttempted && (errors.pickupAddress || errors.dropoffAddress) && (
+                <div role="alert" className="mt-2 text-xs text-destructive space-y-0.5">
+                  {errors.pickupAddress && <p>⚠️ {errors.pickupAddress}</p>}
+                  {errors.dropoffAddress && <p>⚠️ {errors.dropoffAddress}</p>}
+                </div>
+              )}
+            </section>
+            <section className="mb-6 animate-fade-in-up" aria-label="路线预览">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                🗺️ 路线预览
+                <span className="text-[10px] font-medium bg-secondary text-muted-foreground px-2 py-0.5 rounded-full">
+                  高德实时规划
+                </span>
+              </h2>
+              {pickupAddress && dropoffAddress && routeStatus === "ok" && routeKm !== null ? (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">预计里程</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">{routeKm.toFixed(1)} <span className="text-xs font-medium">km</span></p>
+                    </div>
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">预计耗时</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">
+                        {routeDurationMin !== null ? routeDurationMin : "—"}
+                        <span className="text-xs font-medium"> 分钟</span>
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-primary/5 p-2">
+                      <p className="text-[10px] text-muted-foreground">距离加价</p>
+                      <p className="text-base font-extrabold text-primary mt-0.5">+¥{distanceSurcharge}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">起</span>
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground text-[10px]">上车点</p>
+                        <p className="text-foreground font-medium break-all">{pickupAddress}</p>
+                      </div>
+                    </div>
+                    <div className="ml-2.5 border-l-2 border-dashed border-border h-3" aria-hidden="true" />
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">终</span>
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground text-[10px]">下车点</p>
+                        <p className="text-foreground font-medium break-all">{dropoffAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-4 text-xs text-muted-foreground text-center">
+                  {!pickupAddress || !dropoffAddress
+                    ? "请先在上方填写上下车地址，将自动规划路线并显示预计里程、耗时与上下车点"
+                    : routeStatus === "error" || routeStatus === "outdated"
+                      ? "路线暂未就绪，请使用上方「重新规划」按钮再次尝试"
+                      : "正在规划路线…"}
                 </div>
               )}
             </section>
@@ -829,6 +909,9 @@ const BookingPage = () => {
                 />
               </PopoverContent>
             </Popover>
+            {submitAttempted && errors.date && (
+              <p role="alert" className="text-xs text-destructive">⚠️ {errors.date}</p>
+            )}
 
             <div>
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
@@ -887,6 +970,9 @@ const BookingPage = () => {
                   ))}
                 </div>
               )}
+              {submitAttempted && errors.time && !(activeTab === "pickup" && timeMode === "scheduled") && (
+                <p role="alert" className="mt-1.5 text-xs text-destructive">⚠️ {errors.time}</p>
+              )}
             </div>
           </div>
         </section>
@@ -899,12 +985,14 @@ const BookingPage = () => {
           </h2>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.target.value.slice(0, 300))}
             placeholder="请填写宠物特殊情况（如：性格、过敏、特殊需求等）"
             rows={3}
+            maxLength={300}
             className="w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
             aria-label="备注信息输入框"
           />
+          <p className="mt-1 text-[10px] text-muted-foreground text-right">{notes.length}/300</p>
         </section>
       </main>
 
@@ -963,6 +1051,20 @@ const BookingPage = () => {
           </details>
         )}
 
+        {submitAttempted && errorList.length > 0 && (
+          <div
+            role="alert"
+            className="max-w-lg mx-auto mx-5 mb-1 mt-1 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive"
+          >
+            <p className="font-semibold mb-0.5">⚠️ 还有 {errorList.length} 项待完善：</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {errorList.slice(0, 4).map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-4">
           {/* Price summary for pickup */}
           {activeTab === "pickup" && (
@@ -982,9 +1084,85 @@ const BookingPage = () => {
         </div>
       </div>
 
+      {/* ── Pre-submit Confirm Dialog ── */}
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-50 bg-foreground/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-confirm-title"
+        >
+          <div
+            className="bg-background w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-3 animate-fade-in-up max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="booking-confirm-title" className="text-lg font-extrabold text-foreground">
+              确认预约信息
+            </h3>
+            <p className="text-xs text-muted-foreground">请核对以下信息，确认后将进入支付流程。</p>
+            <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
+              <ConfirmRow label="🏷️ 服务" value={
+                activeTab === "home" ? `上门服务 · ${SERVICE_TYPES.find((s) => s.id === selectedService)?.label || ""}`
+                : activeTab === "store" ? `门店寄养 · ${selectedStore}`
+                : `宠物接送 · ${currentTier.label}`
+              } />
+              <ConfirmRow label="🐾 宠物" value={PET_TYPES.find((p) => p.id === selectedPet)?.label || "—"} />
+              {needsDateTime && (
+                <ConfirmRow
+                  label="📅 时间"
+                  value={`${selectedDate ? format(selectedDate, "yyyy-MM-dd") : "—"} ${selectedTime || ""}`.trim()}
+                />
+              )}
+              {activeTab === "pickup" && timeMode === "now" && (
+                <ConfirmRow label="📅 时间" value="立即预约（5 分钟内派单）" />
+              )}
+              {activeTab === "pickup" && (
+                <>
+                  <ConfirmRow label="🟢 上车" value={pickupAddress} />
+                  <ConfirmRow label="🔴 下车" value={dropoffAddress} />
+                  {routeKm !== null && (
+                    <ConfirmRow
+                      label="🗺️ 路线"
+                      value={`约 ${routeKm.toFixed(1)} km · ${routeDurationMin ?? "—"} 分钟`}
+                    />
+                  )}
+                </>
+              )}
+              {notes && <ConfirmRow label="📝 备注" value={notes} />}
+              <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
+                <span>合计</span>
+                <span className="text-primary">
+                  ¥{activeTab === "pickup"
+                    ? pickupTotal
+                    : activeTab === "store"
+                      ? 199
+                      : Number((SERVICE_TYPES.find((s) => s.id === selectedService)?.price || "0").replace(/[^0-9]/g, ""))}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
+                返回修改
+              </Button>
+              <Button className="flex-1" onClick={proceedToPayment}>
+                确认并支付
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   );
 };
+
+const ConfirmRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between gap-3">
+    <span className="text-muted-foreground shrink-0">{label}</span>
+    <span className="text-foreground text-right break-all">{value}</span>
+  </div>
+);
 
 export default BookingPage;
