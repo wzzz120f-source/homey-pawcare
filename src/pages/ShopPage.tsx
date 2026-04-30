@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { useProductReviewStats, getRecommendScore } from "@/hooks/useReviewStats";
+import { useProductReviewStats } from "@/hooks/useReviewStats";
+import { sortProductsByRecommend } from "@/lib/recommendSort";
 import { Star } from "lucide-react";
 
 interface Category {
@@ -156,11 +157,7 @@ const ShopPage = () => {
   // 好评推流统一排序：在客户端基于 reviewStats 重新排序，确保 stats 异步到达后也会更新
   const sortedProducts = useMemo(() => {
     if (sortBy !== "recommend") return products;
-    return [...products].sort(
-      (a, b) =>
-        getRecommendScore(reviewStats?.[b.id], b.sales_count) -
-        getRecommendScore(reviewStats?.[a.id], a.sales_count),
-    );
+    return sortProductsByRecommend(products, reviewStats);
   }, [products, reviewStats, sortBy]);
 
   const handleAddToCart = (product: Product) => {
