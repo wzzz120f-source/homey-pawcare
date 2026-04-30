@@ -41,12 +41,14 @@ const AIChatWidget = () => {
 
   if (HIDE_ON.some((p) => location.pathname.startsWith(p))) return null;
 
-  const send = async (text: string) => {
+  const send = async (text: string, attempt = 0) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
-    const next: Msg[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(next);
-    setInput("");
+    const next: Msg[] = attempt === 0 ? [...messages, { role: "user", content: trimmed }] : messages;
+    if (attempt === 0) {
+      setMessages(next);
+      setInput("");
+    }
     setStreaming(true);
 
     let acc = "";
@@ -61,6 +63,17 @@ const AIChatWidget = () => {
       });
     };
 
+    const showFallbackMessage = (note: string) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            `⚠️ ${note}\n\n你可以：\n- 点击下方「**完整客服**」转人工\n- 或直接前往对应预约页面（首页·服务 / 宠物酒店 / 接送预约）\n- 系统会保留你的对话上下文，稍后可重试`,
+        },
+      ]);
+    };
+
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
@@ -71,12 +84,14 @@ const AIChatWidget = () => {
         body: JSON.stringify({ messages: next }),
       });
       if (resp.status === 429) {
-        toast.error("请求过于频繁，请稍后再试");
+        toast.error("请求过于频繁，已为你提供人工客服入口");
+        showFallbackMessage("AI 当前请求过于频繁。");
         setStreaming(false);
         return;
       }
       if (resp.status === 402) {
-        toast.error("AI 额度不足，请联系管理员充值");
+        toast.error("AI 额度不足，已为你提供人工客服入口");
+        showFallbackMessage("AI 服务额度不足，请联系管理员或转人工客服。");
         setStreaming(false);
         return;
       }
@@ -112,7 +127,14 @@ const AIChatWidget = () => {
         }
       }
     } catch (e) {
+      // Auto-retry once for transient network errors
+      if (attempt < 1) {
+        setStreaming(false);
+        await new Promise((r) => setTimeout(r, 600));
+        return send(text, attempt + 1);
+      }
       toast.error(e instanceof Error ? e.message : "网络异常");
+      showFallbackMessage("AI 暂时无法响应。");
     } finally {
       setStreaming(false);
     }

@@ -18,7 +18,15 @@ import {
 } from "lucide-react";
 import AMapReal from "@/components/AMapReal";
 import ReactMarkdown from "react-markdown";
-import { fetchAISummary } from "@/lib/aiSummary";
+import {
+  fetchAISummary,
+  AIServiceError,
+  type AdvicePlan,
+  type TimelineStep,
+  getOfflineFallback,
+} from "@/lib/aiSummary";
+import { toast } from "sonner";
+import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -136,38 +144,71 @@ const BookingPage = () => {
   // ── AI assistant state ────────────────────────────────────────────────
   const [aiRouteText, setAiRouteText] = useState("");
   const [aiRouteLoading, setAiRouteLoading] = useState(false);
-  const [aiAdviceText, setAiAdviceText] = useState("");
-  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+  const [aiRouteError, setAiRouteError] = useState<AIServiceError | null>(null);
+  const [aiTimeline, setAiTimeline] = useState<TimelineStep[]>([]);
+  const [aiTimelineLoading, setAiTimelineLoading] = useState(false);
 
-  // Debounced AI route explanation when route is ready
+  const [aiPlans, setAiPlans] = useState<AdvicePlan[]>([]);
+  const [aiAdviceFallbackText, setAiAdviceFallbackText] = useState("");
+  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+  const [aiAdviceError, setAiAdviceError] = useState<AIServiceError | null>(null);
+  const [selectedPlanIdx, setSelectedPlanIdx] = useState(0);
+
+  const draftKey = "booking_draft_v1";
+  const saveDraft = () => {
+    try {
+      const draft = {
+        activeTab, selectedPet, selectedService, selectedDate: selectedDate?.toISOString(),
+        selectedTime, selectedStore, notes, pickupAddress, dropoffAddress,
+        selectedTier, driverGender, addInsurance, addPhoto, timeMode,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+      toast.success("草稿已保存，下次回到此页面可继续下单");
+    } catch {
+      toast.error("草稿保存失败");
+    }
+  };
+
+  // Debounced AI route explanation + timeline when route is ready
   useEffect(() => {
     if (activeTab !== "pickup" || routeStatus !== "ok" || routeKm === null || routeDurationMin === null) {
-      setAiRouteText("");
+      setAiRouteText(""); setAiTimeline([]); setAiRouteError(null);
       return;
     }
     const handle = setTimeout(() => {
       let cancelled = false;
       setAiRouteLoading(true);
-      fetchAISummary("route_explain", {
+      setAiTimelineLoading(true);
+      const ctx = {
         上车点: pickupAddress,
         下车点: dropoffAddress,
         预计里程_公里: routeKm,
         预计耗时_分钟: routeDurationMin,
         宠物类型: PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择",
         时间安排: timeMode === "now" ? "立即出发" : "预约时段",
-      })
-        .then((t) => { if (!cancelled) setAiRouteText(t); })
-        .catch((err) => { if (!cancelled) setAiRouteText(""); console.warn("AI route explain failed:", err.message); })
+      };
+      fetchAISummary("route_explain", ctx)
+        .then((r) => { if (!cancelled) { setAiRouteText(r.text || ""); setAiRouteError(null); } })
+        .catch((err: AIServiceError) => {
+          if (!cancelled) { setAiRouteText(getOfflineFallback("route_explain")); setAiRouteError(err); }
+        })
         .finally(() => { if (!cancelled) setAiRouteLoading(false); });
+
+      fetchAISummary("route_timeline", ctx)
+        .then((r) => { if (!cancelled) setAiTimeline(r.timeline || []); })
+        .catch(() => { if (!cancelled) setAiTimeline([]); })
+        .finally(() => { if (!cancelled) setAiTimelineLoading(false); });
+
       return () => { cancelled = true; };
     }, 600);
     return () => clearTimeout(handle);
   }, [activeTab, routeStatus, routeKm, routeDurationMin, pickupAddress, dropoffAddress, selectedPet, timeMode]);
 
-  // Generate AI booking advice when confirm dialog opens
+  // Generate AI booking advice (multi-plan) when confirm dialog opens
   useEffect(() => {
     if (!showConfirm) {
-      setAiAdviceText("");
+      setAiPlans([]); setAiAdviceFallbackText(""); setAiAdviceError(null); setSelectedPlanIdx(0);
       return;
     }
     let cancelled = false;
@@ -186,11 +227,39 @@ const BookingPage = () => {
       接送方式: activeTab === "pickup" ? `路线 ${routeKm?.toFixed(1) ?? "—"} km / ${routeDurationMin ?? "—"} 分钟` : "无需接送",
       时间安排: timeMode === "now" ? "立即预约" : "预约时段",
     })
-      .then((t) => { if (!cancelled) setAiAdviceText(t); })
-      .catch((err) => { if (!cancelled) setAiAdviceText(""); console.warn("AI advice failed:", err.message); })
+      .then((r) => {
+        if (cancelled) return;
+        const plans = (r.plans || []) as AdvicePlan[];
+        setAiPlans(plans);
+        setAiAdviceFallbackText(plans.length ? "" : (r.text || ""));
+        const recIdx = plans.findIndex((p) => p.recommended);
+        setSelectedPlanIdx(recIdx >= 0 ? recIdx : 0);
+        setAiAdviceError(null);
+      })
+      .catch((err: AIServiceError) => {
+        if (!cancelled) {
+          setAiPlans([]); setAiAdviceFallbackText(getOfflineFallback("booking_advice")); setAiAdviceError(err);
+        }
+      })
       .finally(() => { if (!cancelled) setAiAdviceLoading(false); });
     return () => { cancelled = true; };
   }, [showConfirm, activeTab, selectedPet, selectedService, notes, routeKm, routeDurationMin, timeMode]);
+
+  const retryAdvice = () => {
+    // Re-trigger via toggle of showConfirm-driven effect by bumping a state
+    setAiAdviceError(null);
+    setAiPlans([]);
+    setAiAdviceLoading(true);
+    const petLabel = PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择";
+    fetchAISummary("booking_advice", { 重试: true, 宠物类型: petLabel, 备注: notes || "无", 服务: activeTab })
+      .then((r) => {
+        const plans = (r.plans || []) as AdvicePlan[];
+        setAiPlans(plans);
+        setAiAdviceFallbackText(plans.length ? "" : (r.text || ""));
+      })
+      .catch((err: AIServiceError) => { setAiAdviceError(err); setAiAdviceFallbackText(getOfflineFallback("booking_advice")); })
+      .finally(() => setAiAdviceLoading(false));
+  };
 
 
   // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
@@ -710,20 +779,74 @@ const BookingPage = () => {
                 </div>
               )}
 
-              {/* AI 路线解读 */}
-              {routeStatus === "ok" && routeKm !== null && (aiRouteLoading || aiRouteText) && (
-                <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                    <Sparkles className="w-3.5 h-3.5" /> AI 路线解读 · 上下车贴士
+              {/* AI 路线解读 + 上车/下车流程时间线 */}
+              {routeStatus === "ok" && routeKm !== null && (aiRouteLoading || aiRouteText || aiTimeline.length > 0) && (
+                <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                      <Sparkles className="w-3.5 h-3.5" /> AI 路线解读 · 上下车贴士
+                    </div>
+                    {aiRouteError && (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/customer-service")}
+                        className="text-[11px] text-primary underline-offset-2 hover:underline flex items-center gap-1"
+                      >
+                        <Headphones className="w-3 h-3" /> 转人工
+                      </button>
+                    )}
                   </div>
                   {aiRouteLoading ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Loader2 className="w-3 h-3 animate-spin" /> AI 正在分析路线…
                     </div>
-                  ) : (
+                  ) : aiRouteText ? (
                     <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
                       <ReactMarkdown>{aiRouteText}</ReactMarkdown>
                     </div>
+                  ) : null}
+
+                  {/* 上车 / 下车流程时间线 */}
+                  {(aiTimelineLoading || aiTimeline.length > 0) && (
+                    <div className="pt-2 border-t border-primary/15">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary mb-1.5">
+                        <Clock className="w-3 h-3" /> 上车/下车流程时间线
+                      </div>
+                      {aiTimelineLoading ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" /> 生成流程清单…
+                        </div>
+                      ) : (
+                        <ol className="space-y-1.5">
+                          {aiTimeline.map((s, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs">
+                              <span className="shrink-0 mt-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold tabular-nums">
+                                {s.time}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-foreground">{s.title}</p>
+                                <p className="text-muted-foreground leading-snug">{s.detail}</p>
+                                {s.wait && (
+                                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                    ⏳ 建议等待 {s.wait}
+                                  </p>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  )}
+
+                  {aiRouteError && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug">
+                      {aiRouteError.kind === "rate_limit"
+                        ? "请求过于频繁，已显示离线兜底建议。"
+                        : aiRouteError.kind === "credit"
+                          ? "AI 额度不足，已显示离线兜底建议。"
+                          : "AI 服务暂时不可用，已显示离线兜底建议。"}
+                    </p>
                   )}
                 </div>
               )}
@@ -1224,21 +1347,109 @@ const BookingPage = () => {
               </div>
             </div>
 
-            {/* AI 预约助手 */}
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 建议与注意事项
+            {/* AI 预约助手 · 多方案 */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Sparkles className="w-3.5 h-3.5" /> AI 预约助手 · 为你推荐 2-3 个方案
+                </div>
+                {aiAdviceError && (
+                  <button
+                    type="button"
+                    onClick={retryAdvice}
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> 重试
+                  </button>
+                )}
               </div>
+
               {aiAdviceLoading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你准备贴心建议…
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在生成可选方案…
                 </div>
-              ) : aiAdviceText ? (
+              ) : aiPlans.length > 0 ? (
+                <div className="space-y-2">
+                  {aiPlans.map((plan, idx) => {
+                    const active = idx === selectedPlanIdx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedPlanIdx(idx)}
+                        className={cn(
+                          "w-full text-left rounded-lg border p-2.5 transition-all",
+                          active
+                            ? "border-primary bg-card ring-1 ring-primary"
+                            : "border-border bg-card/50 hover:border-primary/50",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
+                            {plan.recommended && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
+                                ⭐ 推荐
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
+                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div>
+                            <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
+                            <ul className="space-y-0.5 text-foreground">
+                              {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
+                            <ul className="space-y-0.5 text-foreground">
+                              {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+                        {plan.reason && (
+                          <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : aiAdviceFallbackText ? (
                 <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
-                  <ReactMarkdown>{aiAdviceText}</ReactMarkdown>
+                  <ReactMarkdown>{aiAdviceFallbackText}</ReactMarkdown>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">提交前请核对宠物类型与备注 ☑️</p>
+              )}
+
+              {aiAdviceError && (
+                <div className="flex flex-wrap gap-2 pt-1.5 border-t border-primary/15">
+                  <p className="w-full text-[11px] text-amber-600 dark:text-amber-400">
+                    {aiAdviceError.kind === "rate_limit"
+                      ? "⚠️ 请求过于频繁。"
+                      : aiAdviceError.kind === "credit"
+                        ? "⚠️ AI 额度不足。"
+                        : "⚠️ AI 暂不可用。"}
+                    可改用人工客服，或保存草稿稍后继续下单。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowConfirm(false); navigate("/customer-service"); }}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
+                  >
+                    <Headphones className="w-3 h-3" /> 转人工客服
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveDraft}
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                  >
+                    <Save className="w-3 h-3" /> 保存草稿
+                  </button>
+                </div>
               )}
             </div>
 
