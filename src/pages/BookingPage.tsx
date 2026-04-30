@@ -985,12 +985,14 @@ const BookingPage = () => {
           </h2>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.target.value.slice(0, 300))}
             placeholder="请填写宠物特殊情况（如：性格、过敏、特殊需求等）"
             rows={3}
+            maxLength={300}
             className="w-full p-4 rounded-xl bg-card card-shadow text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
             aria-label="备注信息输入框"
           />
+          <p className="mt-1 text-[10px] text-muted-foreground text-right">{notes.length}/300</p>
         </section>
       </main>
 
