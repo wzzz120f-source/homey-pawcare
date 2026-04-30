@@ -1058,7 +1058,11 @@ const HotelDetailPage = () => {
                     </p>
                     <button
                       type="button"
-                      onClick={() => { setReceipt(null); navigate("/customer-service"); }}
+                      onClick={() => handoffToCustomerService(
+                        aiReceiptError.kind === "rate_limit" ? "ai_rate_limit"
+                        : aiReceiptError.kind === "credit" ? "ai_credit"
+                        : "ai_offline"
+                      )}
                       className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
                     >
                       <Headphones className="w-3 h-3" /> 转人工客服
@@ -1069,6 +1073,34 @@ const HotelDetailPage = () => {
                       className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
                     >
                       <Save className="w-3 h-3" /> 保存草稿
+                    </button>
+                  </div>
+                )}
+                {pdfError && (
+                  <div className="flex flex-wrap gap-2 pt-1.5 border-t border-primary/15">
+                    <p className="w-full text-[11px] text-amber-600 dark:text-amber-400">
+                      ⚠️ PDF 生成失败：{pdfError.slice(0, 60)}。已自动尝试纯文本下载，可重试或转人工。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={downloadReceiptPDF}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> 重试 PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => receipt && downloadReceiptText(receipt)}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                    >
+                      <FileDown className="w-3 h-3" /> 改下载纯文本
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handoffToCustomerService("pdf_failed")}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                    >
+                      <Headphones className="w-3 h-3" /> 转人工客服
                     </button>
                   </div>
                 )}
