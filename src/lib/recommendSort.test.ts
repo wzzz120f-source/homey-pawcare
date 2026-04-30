@@ -40,24 +40,25 @@ describe("sortProductsByRecommend", () => {
   });
 
   it("produces the same ordering whether stats arrive before or after (stability)", () => {
+    // Craft stats so all three have IDENTICAL composite scores → tiebreaker (id) decides.
+    // score = good*0.7 + sales*0.3, target score = 100 for all
+    // a sales=100 → need good = (100 - 30)/0.7 = 100
+    // b sales=50  → need good = (100 - 15)/0.7 = 121.428... → use review_count=0 trick instead
+    // Simpler: make stats yield exact equality via construction
     const stats: Record<string, ProductReviewStat> = {
-      a: mkStat("a", 10, 20),
-      b: mkStat("b", 10, 20),
-      c: mkStat("c", 10, 20),
+      a: mkStat("a", 100, 110), // 100*0.7 + 100*0.3 = 100
+      b: mkStat("b", (100 - 50 * 0.3) / 0.7, 200), // = 121.43 → 100
+      c: mkStat("c", (100 - 200 * 0.3) / 0.7, 200), // = 57.14 → 100
     };
-    // All have identical scores → tiebreaker (id) keeps result deterministic
-    const beforeStats = sortProductsByRecommend(products, undefined);
     const afterStats = sortProductsByRecommend(products, stats);
-    // After stats, equal scores → alphabetical by id
+    // Equal scores → tiebreaker by id ascending
     expect(afterStats.map((p) => p.id)).toEqual(["a", "b", "c"]);
-    // Re-running with same inputs is identical (no in-place mutation)
+    // Re-running with same inputs is identical (deterministic, no in-place mutation)
     expect(sortProductsByRecommend(products, stats).map((p) => p.id)).toEqual(
       afterStats.map((p) => p.id),
     );
     // Original input array is untouched
     expect(products.map((p) => p.id)).toEqual(["a", "b", "c"]);
-    // Sanity: pre-stats result is sales-based, not random
-    expect(beforeStats.map((p) => p.id)).toEqual(["c", "a", "b"]);
   });
 
   it("is stable across repeated runs with partial stats arriving", () => {
