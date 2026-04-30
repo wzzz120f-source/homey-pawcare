@@ -758,8 +758,8 @@ const HotelDetailPage = () => {
       </main>
 
       {/* Bottom CTA */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-background/90 backdrop-blur border-t border-border px-4 py-3 rounded-lg">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+      <BottomCta>
+        <div className="flex items-center justify-between">
           <div>
             <span className="text-lg font-extrabold text-primary">¥{hotel.price_min}</span>
             <span className="text-xs text-muted-foreground">/晚起</span>
@@ -768,7 +768,7 @@ const HotelDetailPage = () => {
             <CalendarDays className="w-4 h-4 mr-1" /> 立即预订
           </Button>
         </div>
-      </div>
+      </BottomCta>
 
       {/* Booking Modal */}
       {showBooking && (
