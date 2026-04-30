@@ -122,9 +122,11 @@ const BookingPage = () => {
   const [addPhoto, setAddPhoto] = useState(false);
   const [timeMode, setTimeMode] = useState<"now" | "scheduled" | "habit">("now");
   const [routeKm, setRouteKm] = useState<number | null>(null);
+  const [routeDurationMin, setRouteDurationMin] = useState<number | null>(null);
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
 
   // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
