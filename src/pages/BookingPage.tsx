@@ -709,6 +709,24 @@ const BookingPage = () => {
                       : "正在规划路线…"}
                 </div>
               )}
+
+              {/* AI 路线解读 */}
+              {routeStatus === "ok" && routeKm !== null && (aiRouteLoading || aiRouteText) && (
+                <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Sparkles className="w-3.5 h-3.5" /> AI 路线解读 · 上下车贴士
+                  </div>
+                  {aiRouteLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" /> AI 正在分析路线…
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
+                      <ReactMarkdown>{aiRouteText}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* ── Service Tiers (DiDi-style) ── */}
