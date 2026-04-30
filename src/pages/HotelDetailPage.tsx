@@ -571,6 +571,44 @@ const HotelDetailPage = () => {
       </div>
 
       <main className="max-w-lg mx-auto">
+        {pendingDraft && (
+          <div className="mx-4 mt-3 rounded-xl border border-primary/40 bg-primary/5 p-3 flex items-start gap-2 animate-fade-in-up">
+            <Save className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">检测到上次未完成的预订草稿</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                保存于 {formatSavedAt(pendingDraft.savedAt)}
+                {pendingDraft.bookingDate && ` · ${pendingDraft.bookingDate}`}
+                {pendingDraft.bookingTimeSlot && ` ${pendingDraft.bookingTimeSlot}`}
+                {pendingDraft.bookingPetType && ` · 宠物 ${pendingDraft.bookingPetType}`}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={restoreDraft}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground"
+                >
+                  恢复并继续
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissDraft}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border text-muted-foreground"
+                >
+                  忽略
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={dismissDraft}
+              aria-label="关闭"
+              className="p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* Quick Info */}
         <div className="px-4 py-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
