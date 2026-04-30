@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import { fetchAISummary } from "@/lib/aiSummary";
+import { Sparkles } from "lucide-react";
 
 import hotelDogFriendly from "@/assets/hotel-dog-friendly.jpg";
 import hotelCatFriendly from "@/assets/hotel-cat-friendly.jpg";
