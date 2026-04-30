@@ -970,8 +970,11 @@ const BookingPage = () => {
 
             {/* ── Service Tiers (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="接送方式">
-              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">🚗 选择接送方式</h2>
-              <div className="flex flex-col gap-2" role="radiogroup" aria-label="接送方式选择">
+              <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
+                🚗 选择接送方式
+                {isLocked("tier") && <LockBadge label="方案锁定" />}
+              </h2>
+              <div className={cn("flex flex-col gap-2", isLocked("tier") && "pointer-events-none opacity-70")} role="radiogroup" aria-label="接送方式选择" aria-disabled={isLocked("tier")}>
                 {PICKUP_TIERS.map((tier) => (
                   <button
                     key={tier.id}
