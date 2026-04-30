@@ -36,6 +36,7 @@ import hotelPetSpa from "@/assets/hotel-pet-spa.jpg";
 import hotelLuxury from "@/assets/hotel-luxury.jpg";
 import hotelGarden from "@/assets/hotel-garden.jpg";
 import hotelBudget from "@/assets/hotel-budget.jpg";
+import { BottomCta } from "@/components/BottomCta";
 
 const ALL_IMAGES = [hotelDogFriendly, hotelCatFriendly, hotelPetSpa, hotelLuxury, hotelGarden, hotelBudget];
 
