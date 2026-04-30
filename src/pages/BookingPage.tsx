@@ -1240,13 +1240,14 @@ const BookingPage = () => {
               <p role="alert" className="text-xs text-destructive">⚠️ {errors.date}</p>
             )}
 
-            <div>
+            <div className={cn(isLocked("time") && "opacity-70")}>
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" /> 选择时段
+                {isLocked("time") && <LockBadge label="方案锁定" />}
               </p>
               {activeTab === "pickup" && timeMode === "scheduled" ? (
                 <>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <Select value={selectedTime} onValueChange={setSelectedTime} disabled={isLocked("time")}>
                     <SelectTrigger
                       className={cn(
                         "w-full",
