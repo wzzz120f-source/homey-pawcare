@@ -4,10 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, ArrowLeft, Bot, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { Send, ArrowLeft, Bot, Sparkles, Loader2, Trash2, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { consumeHandoffContext, type HandoffContext } from "@/lib/bookingDraft";
 
 interface Message {
   role: "user" | "assistant";
