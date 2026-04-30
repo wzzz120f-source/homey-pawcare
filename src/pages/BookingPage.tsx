@@ -18,7 +18,15 @@ import {
 } from "lucide-react";
 import AMapReal from "@/components/AMapReal";
 import ReactMarkdown from "react-markdown";
-import { fetchAISummary } from "@/lib/aiSummary";
+import {
+  fetchAISummary,
+  AIServiceError,
+  type AdvicePlan,
+  type TimelineStep,
+  getOfflineFallback,
+} from "@/lib/aiSummary";
+import { toast } from "sonner";
+import { Headphones, Save, RefreshCw, CheckCircle2 as CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -136,38 +144,71 @@ const BookingPage = () => {
   // ── AI assistant state ────────────────────────────────────────────────
   const [aiRouteText, setAiRouteText] = useState("");
   const [aiRouteLoading, setAiRouteLoading] = useState(false);
-  const [aiAdviceText, setAiAdviceText] = useState("");
-  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+  const [aiRouteError, setAiRouteError] = useState<AIServiceError | null>(null);
+  const [aiTimeline, setAiTimeline] = useState<TimelineStep[]>([]);
+  const [aiTimelineLoading, setAiTimelineLoading] = useState(false);
 
-  // Debounced AI route explanation when route is ready
+  const [aiPlans, setAiPlans] = useState<AdvicePlan[]>([]);
+  const [aiAdviceFallbackText, setAiAdviceFallbackText] = useState("");
+  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+  const [aiAdviceError, setAiAdviceError] = useState<AIServiceError | null>(null);
+  const [selectedPlanIdx, setSelectedPlanIdx] = useState(0);
+
+  const draftKey = "booking_draft_v1";
+  const saveDraft = () => {
+    try {
+      const draft = {
+        activeTab, selectedPet, selectedService, selectedDate: selectedDate?.toISOString(),
+        selectedTime, selectedStore, notes, pickupAddress, dropoffAddress,
+        selectedTier, driverGender, addInsurance, addPhoto, timeMode,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+      toast.success("草稿已保存，下次回到此页面可继续下单");
+    } catch {
+      toast.error("草稿保存失败");
+    }
+  };
+
+  // Debounced AI route explanation + timeline when route is ready
   useEffect(() => {
     if (activeTab !== "pickup" || routeStatus !== "ok" || routeKm === null || routeDurationMin === null) {
-      setAiRouteText("");
+      setAiRouteText(""); setAiTimeline([]); setAiRouteError(null);
       return;
     }
     const handle = setTimeout(() => {
       let cancelled = false;
       setAiRouteLoading(true);
-      fetchAISummary("route_explain", {
+      setAiTimelineLoading(true);
+      const ctx = {
         上车点: pickupAddress,
         下车点: dropoffAddress,
         预计里程_公里: routeKm,
         预计耗时_分钟: routeDurationMin,
         宠物类型: PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择",
         时间安排: timeMode === "now" ? "立即出发" : "预约时段",
-      })
-        .then((t) => { if (!cancelled) setAiRouteText(t); })
-        .catch((err) => { if (!cancelled) setAiRouteText(""); console.warn("AI route explain failed:", err.message); })
+      };
+      fetchAISummary("route_explain", ctx)
+        .then((r) => { if (!cancelled) { setAiRouteText(r.text || ""); setAiRouteError(null); } })
+        .catch((err: AIServiceError) => {
+          if (!cancelled) { setAiRouteText(getOfflineFallback("route_explain")); setAiRouteError(err); }
+        })
         .finally(() => { if (!cancelled) setAiRouteLoading(false); });
+
+      fetchAISummary("route_timeline", ctx)
+        .then((r) => { if (!cancelled) setAiTimeline(r.timeline || []); })
+        .catch(() => { if (!cancelled) setAiTimeline([]); })
+        .finally(() => { if (!cancelled) setAiTimelineLoading(false); });
+
       return () => { cancelled = true; };
     }, 600);
     return () => clearTimeout(handle);
   }, [activeTab, routeStatus, routeKm, routeDurationMin, pickupAddress, dropoffAddress, selectedPet, timeMode]);
 
-  // Generate AI booking advice when confirm dialog opens
+  // Generate AI booking advice (multi-plan) when confirm dialog opens
   useEffect(() => {
     if (!showConfirm) {
-      setAiAdviceText("");
+      setAiPlans([]); setAiAdviceFallbackText(""); setAiAdviceError(null); setSelectedPlanIdx(0);
       return;
     }
     let cancelled = false;
@@ -186,11 +227,39 @@ const BookingPage = () => {
       接送方式: activeTab === "pickup" ? `路线 ${routeKm?.toFixed(1) ?? "—"} km / ${routeDurationMin ?? "—"} 分钟` : "无需接送",
       时间安排: timeMode === "now" ? "立即预约" : "预约时段",
     })
-      .then((t) => { if (!cancelled) setAiAdviceText(t); })
-      .catch((err) => { if (!cancelled) setAiAdviceText(""); console.warn("AI advice failed:", err.message); })
+      .then((r) => {
+        if (cancelled) return;
+        const plans = (r.plans || []) as AdvicePlan[];
+        setAiPlans(plans);
+        setAiAdviceFallbackText(plans.length ? "" : (r.text || ""));
+        const recIdx = plans.findIndex((p) => p.recommended);
+        setSelectedPlanIdx(recIdx >= 0 ? recIdx : 0);
+        setAiAdviceError(null);
+      })
+      .catch((err: AIServiceError) => {
+        if (!cancelled) {
+          setAiPlans([]); setAiAdviceFallbackText(getOfflineFallback("booking_advice")); setAiAdviceError(err);
+        }
+      })
       .finally(() => { if (!cancelled) setAiAdviceLoading(false); });
     return () => { cancelled = true; };
   }, [showConfirm, activeTab, selectedPet, selectedService, notes, routeKm, routeDurationMin, timeMode]);
+
+  const retryAdvice = () => {
+    // Re-trigger via toggle of showConfirm-driven effect by bumping a state
+    setAiAdviceError(null);
+    setAiPlans([]);
+    setAiAdviceLoading(true);
+    const petLabel = PET_TYPES.find((p) => p.id === selectedPet)?.label || "未选择";
+    fetchAISummary("booking_advice", { 重试: true, 宠物类型: petLabel, 备注: notes || "无", 服务: activeTab })
+      .then((r) => {
+        const plans = (r.plans || []) as AdvicePlan[];
+        setAiPlans(plans);
+        setAiAdviceFallbackText(plans.length ? "" : (r.text || ""));
+      })
+      .catch((err: AIServiceError) => { setAiAdviceError(err); setAiAdviceFallbackText(getOfflineFallback("booking_advice")); })
+      .finally(() => setAiAdviceLoading(false));
+  };
 
 
   // 切换 time_mode 时清空已选时段并重置校验状态，避免旧选择残留
