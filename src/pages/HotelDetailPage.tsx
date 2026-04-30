@@ -518,44 +518,263 @@ const HotelDetailPage = () => {
 
       {/* Booking Modal */}
       {showBooking && (
-        <div className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center" onClick={() => setShowBooking(false)}>
-          <div className="bg-background w-full max-w-lg rounded-t-2xl p-5 space-y-4 animate-fade-in-up" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 bg-foreground/50 flex items-end justify-center"
+          onClick={() => { setShowBooking(false); resetBookingForm(); }}
+        >
+          <div
+            className="bg-background w-full max-w-lg rounded-t-2xl p-5 space-y-4 animate-fade-in-up max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
             <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" /> 预订 {hotel.name}
+              <CalendarDays className="w-5 h-5 text-primary" />
+              {bookingStep === "form" ? `预订 ${hotel.name}` : "确认预订信息"}
             </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-semibold text-foreground mb-1 block">入住日期</label>
-                <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full px-3 py-2.5 rounded-xl bg-secondary text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-foreground mb-1 block">入住天数</label>
-                <div className="flex items-center gap-3">
-                  <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.max(1, bookingNights - 1))}>-</button>
-                  <span className="text-lg font-extrabold text-foreground w-8 text-center">{bookingNights}</span>
-                  <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.min(30, bookingNights + 1))}>+</button>
-                  <span className="text-sm text-muted-foreground">晚</span>
+
+            {bookingStep === "form" ? (
+              <div className="space-y-4">
+                {/* Pet type */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+                    <PawPrint className="w-3.5 h-3.5 text-primary" /> 宠物类型 <span className="text-destructive">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PET_TYPES.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setBookingPetType(p.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-0.5 py-2 rounded-xl text-xs font-medium border transition-all",
+                          bookingPetType === p.id
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-secondary border-transparent text-foreground",
+                        )}
+                      >
+                        <span className="text-xl">{p.emoji}</span>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  {submitAttempted && bookingErrors.petType && (
+                    <p role="alert" className="mt-1.5 text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {bookingErrors.petType}
+                    </p>
+                  )}
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5 text-primary" /> 入住日期 <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={e => setBookingDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className={cn(
+                      "w-full px-3 py-2.5 rounded-xl bg-secondary text-sm text-foreground outline-none focus:ring-2 focus:ring-primary",
+                      submitAttempted && bookingErrors.date && "ring-2 ring-destructive",
+                    )}
+                  />
+                  {submitAttempted && bookingErrors.date && (
+                    <p role="alert" className="mt-1.5 text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {bookingErrors.date}
+                    </p>
+                  )}
+                </div>
+
+                {/* Time slot */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-primary" /> 预约入住时段 <span className="text-destructive">*</span>
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {TIME_SLOTS.map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setBookingTimeSlot(t)}
+                        className={cn(
+                          "py-2 rounded-lg text-xs font-medium border transition-all",
+                          bookingTimeSlot === t
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-secondary border-transparent text-foreground",
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  {submitAttempted && bookingErrors.timeSlot && (
+                    <p role="alert" className="mt-1.5 text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {bookingErrors.timeSlot}
+                    </p>
+                  )}
+                </div>
+
+                {/* Nights */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1 block">入住天数</label>
+                  <div className="flex items-center gap-3">
+                    <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.max(1, bookingNights - 1))}>-</button>
+                    <span className="text-lg font-extrabold text-foreground w-8 text-center">{bookingNights}</span>
+                    <button className="w-10 h-10 rounded-xl bg-secondary text-foreground font-bold text-lg" onClick={() => setBookingNights(Math.min(30, bookingNights + 1))}>+</button>
+                    <span className="text-sm text-muted-foreground">晚</span>
+                  </div>
+                </div>
+
+                {/* Pickup method */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+                    <Car className="w-3.5 h-3.5 text-primary" /> 接送方式 <span className="text-destructive">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPickupMethod("self")}
+                      className={cn(
+                        "py-2.5 rounded-xl text-xs font-medium border transition-all",
+                        pickupMethod === "self"
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-secondary border-transparent text-foreground",
+                      )}
+                    >
+                      🚶 自行送达
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickupMethod("pickup")}
+                      className={cn(
+                        "py-2.5 rounded-xl text-xs font-medium border transition-all",
+                        pickupMethod === "pickup"
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-secondary border-transparent text-foreground",
+                      )}
+                    >
+                      🚗 专车接送
+                    </button>
+                  </div>
+                  {pickupMethod === "pickup" && (
+                    <>
+                      <input
+                        type="text"
+                        value={pickupAddress}
+                        onChange={e => setPickupAddress(e.target.value)}
+                        placeholder="请输入接送起点地址"
+                        className={cn(
+                          "mt-2 w-full px-3 py-2.5 rounded-xl bg-secondary text-sm text-foreground outline-none focus:ring-2 focus:ring-primary",
+                          submitAttempted && bookingErrors.pickupAddress && "ring-2 ring-destructive",
+                        )}
+                      />
+                      {submitAttempted && bookingErrors.pickupAddress && (
+                        <p role="alert" className="mt-1.5 text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {bookingErrors.pickupAddress}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5 text-primary" /> 备注信息
+                  </label>
+                  <Textarea
+                    value={bookingNotes}
+                    onChange={e => setBookingNotes(e.target.value)}
+                    maxLength={200}
+                    placeholder="如：宠物饮食偏好、特殊需求等（选填）"
+                    className="min-h-[72px] rounded-xl bg-secondary border-none text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground text-right mt-0.5">{bookingNotes.length}/200</p>
+                </div>
+
+                {/* Total */}
+                <div className="bg-secondary rounded-xl p-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">房费</span>
+                    <span className="text-foreground">¥{hotel.price_min}/晚 × {bookingNights}晚</span>
+                  </div>
+                  <div className="flex justify-between text-base font-extrabold border-t border-border pt-2 mt-2">
+                    <span className="text-foreground">合计</span>
+                    <span className="text-primary">¥{hotel.price_min * bookingNights}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button variant="outline" className="flex-1" onClick={() => { setShowBooking(false); resetBookingForm(); }}>取消</Button>
+                  <Button className="flex-1" onClick={goToConfirm}>下一步：确认</Button>
                 </div>
               </div>
-              <div className="bg-secondary rounded-xl p-3 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">房费</span>
-                  <span className="text-foreground">¥{hotel.price_min}/晚 × {bookingNights}晚</span>
+            ) : (
+              /* Confirm step */
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">请核对以下信息，确认后将提交预订。</p>
+                <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
+                  <Row label="🏨 酒店" value={hotel.name} />
+                  <Row label="🐾 宠物" value={PET_TYPES.find(p => p.id === bookingPetType)?.label || "—"} />
+                  <Row label="📅 入住日期" value={`${bookingDate} ${bookingTimeSlot}`} />
+                  <Row label="🛏️ 时长" value={`${bookingNights} 晚`} />
+                  <Row label="🚗 接送" value={pickupMethod === "pickup" ? `专车接送 · ${pickupAddress}` : "自行送达"} />
+                  {bookingNotes && <Row label="📝 备注" value={bookingNotes} />}
+                  <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
+                    <span>合计</span>
+                    <span className="text-primary">¥{hotel.price_min * bookingNights}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-base font-extrabold border-t border-border pt-2 mt-2">
-                  <span className="text-foreground">合计</span>
-                  <span className="text-primary">¥{hotel.price_min * bookingNights}</span>
+                <div className="flex gap-3 pt-1">
+                  <Button variant="outline" className="flex-1" onClick={() => setBookingStep("form")}>返回修改</Button>
+                  <Button className="flex-1" onClick={handleBooking} disabled={submitting}>
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                    确认提交
+                  </Button>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Dialog */}
+      {receipt && (
+        <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4" onClick={() => setReceipt(null)}>
+          <div
+            className="bg-background w-full max-w-md rounded-2xl p-5 space-y-4 animate-fade-in-up"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="receipt-title"
+          >
+            <div className="text-center space-y-1">
+              <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <PartyPopper className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 id="receipt-title" className="text-lg font-extrabold text-foreground">预订成功！</h3>
+              <p className="text-xs text-muted-foreground">订单号：{receipt.orderNo}</p>
+            </div>
+            <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
+              <Row label="🏨 酒店" value={`${receipt.hotelName}（${receipt.hotelAddress}）`} />
+              <Row label="🐾 宠物" value={receipt.petLabel} />
+              <Row label="📅 入住" value={`${receipt.date} ${receipt.timeSlot}`} />
+              <Row label="🛏️ 时长" value={`${receipt.nights} 晚`} />
+              <Row
+                label="🚗 接送/抵达"
+                value={receipt.pickupMethod === "pickup"
+                  ? `专车接送 · 起点：${receipt.pickupAddress}`
+                  : "自行送达酒店"}
+              />
+              <Row label="⏰ 预计抵达" value={receipt.estimatedArrival} />
+              {receipt.notes && <Row label="📝 备注" value={receipt.notes} />}
+              <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
+                <span>已下单金额</span>
+                <span className="text-primary">¥{receipt.total}</span>
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowBooking(false)}>取消</Button>
-              <Button className="flex-1" onClick={handleBooking} disabled={submitting}>
-                {submitting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                确认预订
-              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setReceipt(null)}>继续浏览</Button>
+              <Button className="flex-1" onClick={() => { setReceipt(null); navigate("/orders"); }}>查看订单</Button>
             </div>
           </div>
         </div>
