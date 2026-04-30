@@ -909,6 +909,9 @@ const BookingPage = () => {
                 />
               </PopoverContent>
             </Popover>
+            {submitAttempted && errors.date && (
+              <p role="alert" className="text-xs text-destructive">⚠️ {errors.date}</p>
+            )}
 
             <div>
               <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
