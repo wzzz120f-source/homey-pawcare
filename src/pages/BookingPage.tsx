@@ -1488,50 +1488,99 @@ const BookingPage = () => {
                 <div className="space-y-2">
                   {aiPlans.map((plan, idx) => {
                     const active = idx === selectedPlanIdx;
+                    const applied = appliedPlanTitle === plan.title;
                     return (
-                      <button
+                      <div
                         key={idx}
-                        type="button"
-                        onClick={() => setSelectedPlanIdx(idx)}
                         className={cn(
-                          "w-full text-left rounded-lg border p-2.5 transition-all",
+                          "rounded-lg border p-2.5 transition-all",
                           active
                             ? "border-primary bg-card ring-1 ring-primary"
-                            : "border-border bg-card/50 hover:border-primary/50",
+                            : "border-border bg-card/50",
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
-                            <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
-                            {plan.recommended && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
-                                ⭐ 推荐
-                              </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlanIdx(idx)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
+                              <span className="text-sm font-bold text-foreground truncate">{plan.title}</span>
+                              {plan.recommended && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold shrink-0">
+                                  ⭐ 推荐
+                                </span>
+                              )}
+                              {applied && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold shrink-0 flex items-center gap-0.5">
+                                  <Lock className="w-2.5 h-2.5" /> 已应用
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
+                          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div>
+                              <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
+                              <ul className="space-y-0.5 text-foreground">
+                                {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
+                              <ul className="space-y-0.5 text-foreground">
+                                {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
+                              </ul>
+                            </div>
+                          </div>
+                          {plan.reason && (
+                            <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
+                          )}
+                        </button>
+                        <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/60">
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                            {plan.applyTo?.suggestedTime && <span>📅 {plan.applyTo.suggestedTime}</span>}
+                            {plan.applyTo?.suggestedTier && (
+                              <span>🚗 {PICKUP_TIERS.find((t) => t.id === plan.applyTo!.suggestedTier)?.label || plan.applyTo.suggestedTier}</span>
                             )}
+                            {plan.applyTo?.lockFields?.length ? (
+                              <span className="text-primary">将锁定 {plan.applyTo.lockFields.length} 项</span>
+                            ) : null}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => applyPlan(plan, idx)}
+                            disabled={applied}
+                            className={cn(
+                              "text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors",
+                              applied
+                                ? "bg-primary/15 text-primary cursor-default"
+                                : "bg-primary text-primary-foreground hover:opacity-90",
+                            )}
+                          >
+                            {applied ? <><Lock className="w-3 h-3" /> 已选择</> : <>选择该方案</>}
+                          </button>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mb-1.5 leading-snug">{plan.summary}</p>
-                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                          <div>
-                            <p className="text-emerald-600 dark:text-emerald-400 font-semibold mb-0.5">优点</p>
-                            <ul className="space-y-0.5 text-foreground">
-                              {plan.pros?.map((p, i) => <li key={i}>· {p}</li>)}
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="text-rose-600 dark:text-rose-400 font-semibold mb-0.5">缺点</p>
-                            <ul className="space-y-0.5 text-foreground">
-                              {plan.cons?.map((c, i) => <li key={i}>· {c}</li>)}
-                            </ul>
-                          </div>
-                        </div>
-                        {plan.reason && (
-                          <p className="mt-1.5 text-[11px] text-primary leading-snug">💡 {plan.reason}</p>
-                        )}
-                      </button>
+                      </div>
                     );
                   })}
+                  {appliedPlanTitle && lockedFields.size > 0 && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
+                      <span className="flex items-center gap-1 min-w-0">
+                        <Lock className="w-3 h-3 shrink-0" />
+                        已锁定 {Array.from(lockedFields).join("/")} 以匹配「{appliedPlanTitle}」
+                      </span>
+                      <button
+                        type="button"
+                        onClick={clearPlanLocks}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-card border border-primary/40 hover:bg-card/80"
+                      >
+                        <Unlock className="w-3 h-3" /> 解除锁定
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : aiAdviceFallbackText ? (
                 <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary">
