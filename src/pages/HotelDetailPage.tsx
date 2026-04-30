@@ -148,23 +148,80 @@ const HotelDetailPage = () => {
     setLoadingReviews(false);
   };
 
+  // Validation errors (only surfaced after submit attempt)
+  const bookingErrors = {
+    petType: !bookingPetType ? "请选择宠物类型" : "",
+    date: !bookingDate ? "请选择入住日期" : "",
+    timeSlot: !bookingTimeSlot ? "请选择入住时段" : "",
+    pickupAddress:
+      pickupMethod === "pickup" && !pickupAddress.trim() ? "请填写接送地址" : "",
+  } as const;
+  const hasBookingErrors = Object.values(bookingErrors).some(Boolean);
+
+  const resetBookingForm = () => {
+    setBookingStep("form");
+    setSubmitAttempted(false);
+    setBookingDate(""); setBookingNights(1); setBookingPetType("");
+    setBookingTimeSlot(""); setBookingNotes(""); setPickupMethod("self");
+    setPickupAddress("");
+  };
+
+  const goToConfirm = () => {
+    setSubmitAttempted(true);
+    if (hasBookingErrors) {
+      toast.error("请检查并补充必填项");
+      return;
+    }
+    setBookingStep("confirm");
+  };
+
   const handleBooking = async () => {
     if (!user) { navigate("/auth"); return; }
-    if (!hotel || !bookingDate) { toast.error("请选择入住日期"); return; }
+    if (!hotel) return;
     setSubmitting(true);
     try {
       const totalAmount = hotel.price_min * bookingNights;
-      const { error } = await supabase.from("orders").insert({
-        user_id: user.id, order_type: "hotel",
+      const petLabel = PET_TYPES.find(p => p.id === bookingPetType)?.label || bookingPetType;
+      const checkInTime = pickupMethod === "pickup"
+        ? `${bookingDate} ${bookingTimeSlot} 由专车送达酒店`
+        : `${bookingDate} ${bookingTimeSlot} 自行抵达酒店`;
+      const composedNotes = [
+        `宠物：${petLabel}`,
+        `入住${bookingNights}晚`,
+        bookingNotes && `备注：${bookingNotes}`,
+        pickupMethod === "pickup" && `接送地址：${pickupAddress}`,
+      ].filter(Boolean).join("；");
+
+      const { data, error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        order_type: "hotel",
         service_type: `宠物友好酒店 - ${hotel.name}`,
-        store_name: hotel.name, booking_date: bookingDate,
-        notes: `入住${bookingNights}晚，地址：${hotel.address}`,
-        total_amount: totalAmount, pickup_address: hotel.address,
-      });
+        store_name: hotel.name,
+        booking_date: bookingDate,
+        booking_time: bookingTimeSlot,
+        pet_type: bookingPetType,
+        notes: composedNotes,
+        total_amount: totalAmount,
+        pickup_address: pickupMethod === "pickup" ? pickupAddress : hotel.address,
+      }).select("order_no").single();
       if (error) throw error;
-      toast.success("预订成功！");
+
+      setReceipt({
+        orderNo: (data as any)?.order_no || "—",
+        petLabel,
+        date: bookingDate,
+        nights: bookingNights,
+        timeSlot: bookingTimeSlot,
+        notes: bookingNotes,
+        pickupMethod,
+        pickupAddress,
+        hotelName: hotel.name,
+        hotelAddress: hotel.address,
+        total: totalAmount,
+        estimatedArrival: checkInTime,
+      });
       setShowBooking(false);
-      navigate("/profile");
+      resetBookingForm();
     } catch (err: any) {
       toast.error(err.message || "预订失败");
     } finally { setSubmitting(false); }
