@@ -326,7 +326,31 @@ const HotelDetailPage = () => {
         setLoading(false);
       });
     fetchReviews(id);
+    // Surface any saved draft for this hotel so the user can resume.
+    const draft = loadHotelDraft();
+    if (draft && draft.hotelId === id) setPendingDraft(draft);
   }, [id]);
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    if (pendingDraft.bookingDate) setBookingDate(pendingDraft.bookingDate);
+    if (pendingDraft.bookingNights) setBookingNights(pendingDraft.bookingNights);
+    if (pendingDraft.bookingPetType) setBookingPetType(pendingDraft.bookingPetType);
+    if (pendingDraft.bookingTimeSlot) setBookingTimeSlot(pendingDraft.bookingTimeSlot);
+    if (pendingDraft.bookingNotes !== undefined) setBookingNotes(pendingDraft.bookingNotes);
+    if (pendingDraft.pickupMethod) setPickupMethod(pendingDraft.pickupMethod);
+    if (pendingDraft.pickupAddress) setPickupAddress(pendingDraft.pickupAddress);
+    setShowBooking(true);
+    setBookingStep("form");
+    setPendingDraft(null);
+    clearHotelDraft();
+    toast.success("已恢复上次草稿，请核对后继续");
+  };
+
+  const dismissDraft = () => {
+    setPendingDraft(null);
+    clearHotelDraft();
+  };
 
   const fetchReviews = async (hotelId: string) => {
     setLoadingReviews(true);
