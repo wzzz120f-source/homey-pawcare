@@ -39,7 +39,14 @@ const CustomerServicePage = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [handoff, setHandoff] = useState<HandoffContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Pick up any handoff context saved by the booking / hotel pages.
+  useEffect(() => {
+    const ctx = consumeHandoffContext();
+    if (ctx) setHandoff(ctx);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
