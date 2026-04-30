@@ -1141,4 +1141,11 @@ const BookingPage = () => {
   );
 };
 
+const ConfirmRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between gap-3">
+    <span className="text-muted-foreground shrink-0">{label}</span>
+    <span className="text-foreground text-right break-all">{value}</span>
+  </div>
+);
+
 export default BookingPage;
