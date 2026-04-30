@@ -84,8 +84,29 @@ const HotelDetailPage = () => {
   // Booking
   const [bookingDate, setBookingDate] = useState("");
   const [bookingNights, setBookingNights] = useState(1);
+  const [bookingPetType, setBookingPetType] = useState("");
+  const [bookingTimeSlot, setBookingTimeSlot] = useState("");
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [pickupMethod, setPickupMethod] = useState<"self" | "pickup">("self");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [bookingStep, setBookingStep] = useState<"form" | "confirm">("form");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [receipt, setReceipt] = useState<{
+    orderNo: string;
+    petLabel: string;
+    date: string;
+    nights: number;
+    timeSlot: string;
+    notes: string;
+    pickupMethod: "self" | "pickup";
+    pickupAddress: string;
+    hotelName: string;
+    hotelAddress: string;
+    total: number;
+    estimatedArrival: string;
+  } | null>(null);
 
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
