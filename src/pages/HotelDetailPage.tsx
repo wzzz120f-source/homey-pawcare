@@ -121,6 +121,8 @@ const HotelDetailPage = () => {
   const [aiReceiptSummary, setAiReceiptSummary] = useState<string>("");
   const [aiReceiptLoading, setAiReceiptLoading] = useState(false);
   const [aiReceiptError, setAiReceiptError] = useState<AIServiceError | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<HotelBookingDraft | null>(null);
   const receiptCardRef = useRef<HTMLDivElement>(null);
 
   const fetchReceiptSummary = (rec: NonNullable<typeof receipt>) => {
