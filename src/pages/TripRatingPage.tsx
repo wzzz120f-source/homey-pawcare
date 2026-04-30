@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BottomCtaShell } from "@/components/BottomCta";
 
 const OVERALL_LABELS = ["很差", "一般", "还行", "满意", "完美"];
 const SUBS = [
@@ -151,13 +152,13 @@ const TripRatingPage = () => {
         </section>
       </main>
 
-      <div className="fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur border-t p-4">
+      <BottomCtaShell offset="bottom" className="bg-background/95 backdrop-blur border-t p-4">
         <div className="max-w-md mx-auto">
           <Button className="w-full h-12" onClick={submit} disabled={submitting}>
             {submitting ? "提交中…" : "提交评价"}
           </Button>
         </div>
-      </div>
+      </BottomCtaShell>
     </div>
   );
 };

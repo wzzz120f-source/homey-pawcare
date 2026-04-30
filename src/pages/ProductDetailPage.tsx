@@ -347,7 +347,7 @@ const ProductDetailPage = () => {
       </main>
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40">
+      <BottomCtaShell offset="bottom" className="bg-background border-t border-border z-40">
         <div className="max-w-lg mx-auto flex items-center gap-2 px-4 py-3">
           <button type="button" onClick={toggleFav} className="flex flex-col items-center gap-0.5 min-w-[44px]">
             <Heart className={cn("w-5 h-5", isFav ? "text-primary fill-primary" : "text-muted-foreground")} />
@@ -364,7 +364,7 @@ const ProductDetailPage = () => {
             立即购买
           </Button>
         </div>
-      </div>
+      </BottomCtaShell>
     </div>
   );
 };
