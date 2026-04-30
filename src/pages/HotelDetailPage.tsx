@@ -852,48 +852,106 @@ const HotelDetailPage = () => {
             role="dialog"
             aria-labelledby="receipt-title"
           >
-            <div className="text-center space-y-1">
-              <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <PartyPopper className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+            <div ref={receiptCardRef} className="bg-background space-y-4">
+              <div className="text-center space-y-1">
+                <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <PartyPopper className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h3 id="receipt-title" className="text-lg font-extrabold text-foreground">预订成功！</h3>
+                <p className="text-xs text-muted-foreground">订单号：{receipt.orderNo}</p>
               </div>
-              <h3 id="receipt-title" className="text-lg font-extrabold text-foreground">预订成功！</h3>
-              <p className="text-xs text-muted-foreground">订单号：{receipt.orderNo}</p>
-            </div>
-            <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
-              <Row label="🏨 酒店" value={`${receipt.hotelName}（${receipt.hotelAddress}）`} />
-              <Row label="🐾 宠物" value={receipt.petLabel} />
-              <Row label="📅 入住" value={`${receipt.date} ${receipt.timeSlot}`} />
-              <Row label="🛏️ 时长" value={`${receipt.nights} 晚`} />
-              <Row
-                label="🚗 接送/抵达"
-                value={receipt.pickupMethod === "pickup"
-                  ? `专车接送 · 起点：${receipt.pickupAddress}`
-                  : "自行送达酒店"}
-              />
-              <Row label="⏰ 预计抵达" value={receipt.estimatedArrival} />
-              {receipt.notes && <Row label="📝 备注" value={receipt.notes} />}
-              <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
-                <span>已下单金额</span>
-                <span className="text-primary">¥{receipt.total}</span>
+              <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
+                <Row label="🏨 酒店" value={`${receipt.hotelName}（${receipt.hotelAddress}）`} />
+                <Row label="🐾 宠物" value={receipt.petLabel} />
+                <Row label="📅 入住" value={`${receipt.date} ${receipt.timeSlot}`} />
+                <Row label="🛏️ 时长" value={`${receipt.nights} 晚`} />
+                <Row
+                  label="🚗 接送/抵达"
+                  value={receipt.pickupMethod === "pickup"
+                    ? `专车接送 · 起点：${receipt.pickupAddress}`
+                    : "自行送达酒店"}
+                />
+                <Row label="⏰ 预计抵达" value={receipt.estimatedArrival} />
+                {receipt.notes && <Row label="📝 备注" value={receipt.notes} />}
+                <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
+                  <span>已下单金额</span>
+                  <span className="text-primary">¥{receipt.total}</span>
+                </div>
               </div>
-            </div>
 
-            {/* AI 智能摘要 */}
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Sparkles className="w-3.5 h-3.5" /> AI 订单摘要
+              {/* AI 智能摘要 */}
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Sparkles className="w-3.5 h-3.5" /> AI 订单摘要
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {aiReceiptError && (
+                      <button
+                        type="button"
+                        onClick={() => receipt && fetchReceiptSummary(receipt)}
+                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                        aria-label="重新生成 AI 摘要"
+                      >
+                        <RefreshCw className="w-3 h-3" /> 重试
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={copyReceipt}
+                      className="text-[11px] px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
+                      aria-label="复制订单与 AI 摘要"
+                    >
+                      <Copy className="w-3 h-3" /> 复制
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadReceiptPDF}
+                      className="text-[11px] px-2 py-0.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1"
+                      aria-label="下载订单 PDF"
+                    >
+                      <Download className="w-3 h-3" /> PDF
+                    </button>
+                  </div>
+                </div>
+                {aiReceiptLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你梳理订单要点…
+                  </div>
+                ) : aiReceiptSummary ? (
+                  <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_strong]:text-primary">
+                    <ReactMarkdown>{aiReceiptSummary}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{getOfflineFallback("booking_receipt")}</p>
+                )}
+                {aiReceiptError && (
+                  <div className="flex flex-wrap gap-2 pt-1.5 border-t border-primary/15">
+                    <p className="w-full text-[11px] text-amber-600 dark:text-amber-400">
+                      {aiReceiptError.kind === "rate_limit"
+                        ? "⚠️ 请求过于频繁。"
+                        : aiReceiptError.kind === "credit"
+                          ? "⚠️ AI 额度不足。"
+                          : "⚠️ AI 暂不可用。"}
+                      可改用人工客服，或保存草稿稍后继续操作。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setReceipt(null); navigate("/customer-service"); }}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-primary-foreground flex items-center gap-1"
+                    >
+                      <Headphones className="w-3 h-3" /> 转人工客服
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveBookingDraft}
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-card border border-border flex items-center gap-1"
+                    >
+                      <Save className="w-3 h-3" /> 保存草稿
+                    </button>
+                  </div>
+                )}
               </div>
-              {aiReceiptLoading ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" /> AI 正在为你梳理订单要点…
-                </div>
-              ) : aiReceiptSummary ? (
-                <div className="prose prose-sm max-w-none text-foreground [&_p]:my-1 [&_strong]:text-primary">
-                  <ReactMarkdown>{aiReceiptSummary}</ReactMarkdown>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">AI 摘要稍后可用，请直接查看上方订单详情。</p>
-              )}
             </div>
 
             <div className="flex gap-3">
