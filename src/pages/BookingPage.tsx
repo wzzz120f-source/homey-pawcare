@@ -515,10 +515,11 @@ const BookingPage = () => {
                 </button>
               ))}
             </div>
+            {submitAttempted && errors.store && (
+              <p role="alert" className="mt-2 text-xs text-destructive">⚠️ {errors.store}</p>
+            )}
           </section>
         )}
-
-        {/* ── Pickup Tab ── */}
         {activeTab === "pickup" && (
           <>
             {/* Map / Address */}
