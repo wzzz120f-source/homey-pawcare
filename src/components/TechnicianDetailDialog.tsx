@@ -22,12 +22,6 @@ interface Props {
   onBook?: () => void;
 }
 
-interface Props {
-  technician: Technician | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onBook?: () => void;
-}
 
 const LEVEL_META: Record<
   string,
