@@ -1048,6 +1048,56 @@ const BookingPage = () => {
               )}
             </section>
 
+            {/* ── Unified Error Report (address / route / submit) ── */}
+            {(() => {
+              const items: ErrorReportItem[] = [];
+              const addrErr =
+                pickupAddress && !pickupCoord
+                  ? "pickup address could not be resolved to coordinates"
+                  : dropoffAddress && !dropoffCoord
+                    ? "dropoff address could not be resolved to coordinates"
+                    : null;
+              if (addrErr && routeStatus !== "ok") {
+                items.push({
+                  kind: "address_search",
+                  detail: addrErr,
+                  onRetry: () => planRouteRef.current?.(),
+                  retryDisabled: !pickupAddress || !dropoffAddress,
+                });
+              }
+              if (routeStatus === "error") {
+                items.push({
+                  kind: "route_planning",
+                  detail: routeError || "amap.plan returned error",
+                  onRetry: () => planRouteRef.current?.(),
+                  retryDisabled: !pickupAddress || !dropoffAddress,
+                });
+              }
+              if (submitError) {
+                items.push({
+                  kind: "order_submit",
+                  detail: submitError,
+                  onRetry: () => handleSubmit(),
+                });
+              }
+              if (!items.length) return null;
+              return (
+                <section className="mb-6 animate-fade-in-up" aria-label={t("errors.title")}>
+                  <ErrorReport
+                    items={items}
+                    context={{
+                      tab: activeTab,
+                      pickup: pickupAddress,
+                      dropoff: dropoffAddress,
+                      route_km: routeKm,
+                      route_min: routeDurationMin,
+                      tier: selectedTier,
+                    }}
+                  />
+                </section>
+              );
+            })()}
+
             {/* ── Service Tiers (DiDi-style) ── */}
             <section className="mb-6 animate-fade-in-up" aria-label="接送方式">
               <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
