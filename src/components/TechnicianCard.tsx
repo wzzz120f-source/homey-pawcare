@@ -1,4 +1,4 @@
-import { Star, MapPin } from "lucide-react";
+import { Star, MapPin, ChevronRight } from "lucide-react";
 import type { Technician } from "@/types";
 
 type TechnicianCardProps = Technician & {
@@ -9,8 +9,8 @@ const TechnicianCard = ({ name, avatar, specialty, rating, reviews, distance, on
   <button
     type="button"
     onClick={onClick}
-    aria-label={`技师 ${name} - ${specialty}`}
-    className="flex items-center gap-4 p-4 bg-card rounded-2xl card-shadow hover:card-shadow-hover transition-all duration-300 cursor-pointer text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+    aria-label={`技师 ${name} - ${specialty}，点击查看详情`}
+    className="group flex items-center gap-4 p-4 bg-card rounded-2xl card-shadow hover:card-shadow-hover transition-all duration-300 cursor-pointer text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
   >
     <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-primary/20">
       <img
@@ -36,6 +36,10 @@ const TechnicianCard = ({ name, avatar, specialty, rating, reviews, distance, on
         </div>
       </div>
     </div>
+    <ChevronRight
+      className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+      aria-hidden="true"
+    />
   </button>
 );
 
