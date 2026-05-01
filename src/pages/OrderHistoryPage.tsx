@@ -92,7 +92,11 @@ const OrderHistoryPage = () => {
           pickup_address: o.pickup_address,
           dropoff_address: o.dropoff_address,
           pet_snapshot: o.pet_snapshot,
+          pet_type: o.pet_type,
           service_type: o.service_type,
+          notes: (o as any).notes ?? null,
+          rebook: true,
+          source_order_no: o.order_no,
         },
       },
     });
