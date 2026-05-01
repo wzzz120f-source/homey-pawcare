@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, LocateFixed, Route } from "lucide-react";
 
+export interface LngLat {
+  lng: number;
+  lat: number;
+}
+
 interface AMapRealProps {
   pickupAddress: string;
   onPickupAddressChange: (addr: string) => void;
@@ -16,6 +21,10 @@ interface AMapRealProps {
   }) => void;
   /** 暴露 planRoute 方法给父组件，便于外部「重试」按钮触发 */
   onPlanRouteReady?: (planRoute: () => void) => void;
+  /** 取宠地址被解析/选中时回填的经纬度 */
+  onPickupCoordChange?: (coord: LngLat | null) => void;
+  /** 送达地址被解析/选中时回填的经纬度 */
+  onDropoffCoordChange?: (coord: LngLat | null) => void;
 }
 
 declare global {
@@ -28,7 +37,16 @@ declare global {
 const AMAP_KEY = "f1be18c642140d1114b326946ab357cc";
 const AMAP_SECURITY_KEY = "99a72147fee06b466b18e76ded5cc55c";
 
-const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDropoffAddressChange, onRouteChange, onPlanRouteReady }: AMapRealProps) => {
+const AMapReal = ({
+  pickupAddress,
+  onPickupAddressChange,
+  dropoffAddress,
+  onDropoffAddressChange,
+  onRouteChange,
+  onPlanRouteReady,
+  onPickupCoordChange,
+  onDropoffCoordChange,
+}: AMapRealProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
