@@ -105,6 +105,7 @@ const HotelDetailPage = () => {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [selectedRoomIdx, setSelectedRoomIdx] = useState(0);
   const [receipt, setReceipt] = useState<{
     orderNo: string;
     petLabel: string;
