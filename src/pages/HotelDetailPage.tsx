@@ -61,6 +61,16 @@ const ROOM_TYPES = [
   { name: "VIP套房", desc: "独立活动区+专属管家服务", priceLabel: "高" },
 ];
 
+const getRoomPrice = (
+  hotel: { price_min: number; price_max: number },
+  idx: number,
+): number =>
+  idx === 0
+    ? hotel.price_min
+    : idx === 1
+      ? Math.round((hotel.price_min + hotel.price_max) / 2)
+      : hotel.price_max;
+
 const CHECK_IN_RULES = [
   "入住需提供宠物健康证明及疫苗接种记录",
   "宠物需佩戴牵引绳，攻击性犬种需佩戴嘴套",
