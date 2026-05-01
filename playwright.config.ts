@@ -1,9 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright config for BottomCta e2e tests.
- * Run: npx playwright install && npx playwright test
- * Targets: iPhone (iOS Safari) + Pixel (Android Chrome).
+ * Playwright config for BottomCta + booking e2e.
+ * Multi-viewport coverage of common iPhone/Android sizes.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -14,8 +13,13 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "ios-iphone-13", use: { ...devices["iPhone 13"] } },
-    { name: "android-pixel-7", use: { ...devices["Pixel 7"] } },
+    { name: "iphone-se", use: { ...devices["iPhone SE"] } },
+    { name: "iphone-12", use: { ...devices["iPhone 12"] } },
+    { name: "iphone-13", use: { ...devices["iPhone 13"] } },
+    { name: "iphone-14-pro-max", use: { ...devices["iPhone 14 Pro Max"] } },
+    { name: "pixel-5", use: { ...devices["Pixel 5"] } },
+    { name: "pixel-7", use: { ...devices["Pixel 7"] } },
+    { name: "galaxy-s9", use: { ...devices["Galaxy S9+"] } },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
