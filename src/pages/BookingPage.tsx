@@ -45,6 +45,9 @@ import BottomNav from "@/components/BottomNav";
 import { BottomCtaShell } from "@/components/BottomCta";
 import { PET_TYPES, SERVICE_TYPES, TIME_SLOTS, NEARBY_STORES } from "@/config/booking";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ErrorReport, { type ErrorReportItem } from "@/components/ErrorReport";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
@@ -117,7 +120,7 @@ const TAB_OPTIONS: readonly { key: BookingTab; label: string; icon: typeof PawPr
 // ─── Component ────────────────────────────────────────────────────────────────
 const BookingPage = () => {
   const navigate = useNavigate();
-
+  const { t } = useTranslation();
   const location = useLocation();
   const { user } = useAuth();
   const prefill = (location.state as any)?.prefill;
@@ -527,12 +530,13 @@ const BookingPage = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="返回"
+            className="p-2 rounded-lg hover:bg-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={t("common.back")}
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="font-extrabold text-lg text-foreground">预约详情</h1>
+          <h1 className="font-extrabold text-lg text-foreground flex-1 truncate">{t("booking.title")}</h1>
+          <LanguageSwitcher />
         </div>
       </header>
 
