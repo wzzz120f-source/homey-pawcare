@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, ShoppingBag, MessageSquare, User, Headphones } from "lucide-react";
 import type { NavTab } from "@/types";
@@ -10,11 +11,12 @@ const TABS: readonly NavTab[] = [
   { path: "/profile", icon: User, label: "我的" },
 ];
 
-const BottomNav = () => {
+const BottomNav = forwardRef<HTMLElement>((_props, ref) => {
   const { pathname } = useLocation();
 
   return (
     <nav
+      ref={ref}
       data-bottom-nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
       aria-label="主导航"
@@ -46,6 +48,7 @@ const BottomNav = () => {
       </div>
     </nav>
   );
-};
+});
+BottomNav.displayName = "BottomNav";
 
 export default BottomNav;
