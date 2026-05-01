@@ -400,6 +400,42 @@ export type Database = {
         }
         Relationships: []
       }
+      emergency_reports: {
+        Row: {
+          contact_phone: string | null
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string | null
+          report_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          report_type: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          report_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1576,6 +1612,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      safety_badges: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          description_en: string | null
+          icon: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+          title_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          description_en?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title: string
+          title_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          description_en?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          title_en?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      technician_stats: {
+        Row: {
+          avg_rating: number
+          bio: string | null
+          certifications: string[]
+          created_at: string
+          display_name: string
+          id: string
+          insurance_no: string | null
+          level: string
+          review_count: number
+          technician_code: string
+          total_services: number
+          updated_at: string
+          years_of_experience: number
+        }
+        Insert: {
+          avg_rating?: number
+          bio?: string | null
+          certifications?: string[]
+          created_at?: string
+          display_name: string
+          id?: string
+          insurance_no?: string | null
+          level?: string
+          review_count?: number
+          technician_code: string
+          total_services?: number
+          updated_at?: string
+          years_of_experience?: number
+        }
+        Update: {
+          avg_rating?: number
+          bio?: string | null
+          certifications?: string[]
+          created_at?: string
+          display_name?: string
+          id?: string
+          insurance_no?: string | null
+          level?: string
+          review_count?: number
+          technician_code?: string
+          total_services?: number
+          updated_at?: string
+          years_of_experience?: number
+        }
+        Relationships: []
       }
       tnr_collaborations: {
         Row: {
