@@ -51,7 +51,11 @@ const zh = {
     copyDetails: "一键复制错误详情",
     detailsLabel: "错误详情",
   },
-} as const;
+};
 
-export default zh;
-export type Translation = typeof zh;
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends object ? DeepStringify<T[K]> : string;
+};
+
+export type Translation = DeepStringify<typeof zh>;
+export default zh as Translation;
