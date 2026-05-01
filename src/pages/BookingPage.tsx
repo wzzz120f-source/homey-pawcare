@@ -1419,6 +1419,7 @@ const BookingPage = () => {
                     date={selectedDate}
                     selectedTime={selectedTime}
                     onChange={setSelectedTime}
+                    onJumpToDate={(d) => setSelectedDate(d)}
                   />
                 </div>
               )}
