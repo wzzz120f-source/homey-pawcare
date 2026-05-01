@@ -15,6 +15,7 @@ const BottomNav = () => {
 
   return (
     <nav
+      data-bottom-nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
       aria-label="主导航"
     >
