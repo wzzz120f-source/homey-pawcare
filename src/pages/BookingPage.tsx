@@ -1356,7 +1356,7 @@ const BookingPage = () => {
 
         {/* ── Date & Time (skipped for pickup unless 预约时段 selected) ── */}
         {needsDateTime && (
-        <section className="mb-6 animate-fade-in-up" aria-label="预约时间">
+        <section id="booking-time-section" className="mb-6 animate-fade-in-up" aria-label="预约时间">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-primary" aria-hidden="true" /> 预约时间
           </h2>
