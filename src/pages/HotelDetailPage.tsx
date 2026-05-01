@@ -657,20 +657,61 @@ const HotelDetailPage = () => {
           {/* Room Types */}
           <TabsContent value="rooms" className="space-y-3 mt-3">
             {ROOM_TYPES.map((room, i) => {
-              const price = i === 0 ? hotel.price_min : i === 1 ? Math.round((hotel.price_min + hotel.price_max) / 2) : hotel.price_max;
+              const price = getRoomPrice(hotel, i);
+              const active = selectedRoomIdx === i;
               return (
-                <Card key={room.name}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex-1">
+                <Card
+                  key={room.name}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={active}
+                  data-testid={`room-card-${i}`}
+                  onClick={() => {
+                    setSelectedRoomIdx(i);
+                    setShowBooking(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedRoomIdx(i);
+                      setShowBooking(true);
+                    }
+                  }}
+                  className={cn(
+                    "cursor-pointer transition-all hover:border-primary/60 hover:shadow-md",
+                    active && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                         <Hotel className="w-4 h-4 text-primary" />
                         {room.name}
+                        {active && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            已选
+                          </Badge>
+                        )}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-1">{room.desc}</p>
                     </div>
-                    <div className="text-right ml-3">
-                      <p className="text-base font-extrabold text-primary">¥{price}</p>
-                      <p className="text-[10px] text-muted-foreground">/晚</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-right">
+                        <p className="text-base font-extrabold text-primary">¥{price}</p>
+                        <p className="text-[10px] text-muted-foreground">/晚</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        className="h-7 px-3 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRoomIdx(i);
+                          setShowBooking(true);
+                        }}
+                      >
+                        选择
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
