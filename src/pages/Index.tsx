@@ -313,6 +313,15 @@ const Index = () => {
 
       <BottomNav />
       <LostPetAlert />
+      <TechnicianDetailDialog
+        technician={activeTechnician}
+        open={!!activeTechnician}
+        onOpenChange={(o) => !o && setActiveTechnician(null)}
+        onBook={() => {
+          setActiveTechnician(null);
+          navigate("/booking");
+        }}
+      />
     </div>
   );
 };
