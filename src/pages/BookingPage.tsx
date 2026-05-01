@@ -48,6 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ErrorReport, { type ErrorReportItem } from "@/components/ErrorReport";
+import BookingTimeCalendar from "@/components/BookingTimeCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
@@ -1410,24 +1411,15 @@ const BookingPage = () => {
                   )}
                 </>
               ) : (
-                <div className={cn("grid grid-cols-3 gap-2", isLocked("time") && "pointer-events-none")} role="radiogroup" aria-label="时段选择" aria-disabled={isLocked("time")}>
-                  {TIME_SLOTS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedTime === t}
-                      onClick={() => setSelectedTime(t)}
-                      className={cn(
-                        "py-2 rounded-lg text-sm font-medium transition-all min-h-[44px]",
-                        selectedTime === t
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground hover:bg-muted",
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                <div className={cn(isLocked("time") && "pointer-events-none opacity-70")} aria-disabled={isLocked("time")}>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {t("booking.timeSlotsHint", "灰色为已约满，可点击其他时段")}
+                  </p>
+                  <BookingTimeCalendar
+                    date={selectedDate}
+                    selectedTime={selectedTime}
+                    onChange={setSelectedTime}
+                  />
                 </div>
               )}
               {submitAttempted && errors.time && !(activeTab === "pickup" && timeMode === "scheduled") && (
