@@ -201,6 +201,7 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
+              data-testid="pickup-address-input"
               value={pickupAddress}
               onChange={(e) => onPickupAddressChange(e.target.value)}
               onFocus={() => setFocusedInput("pickup")}
@@ -234,6 +235,7 @@ const AMapReal = ({ pickupAddress, onPickupAddressChange, dropoffAddress, onDrop
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
+              data-testid="dropoff-address-input"
               value={dropoffAddress}
               onChange={(e) => onDropoffAddressChange(e.target.value)}
               onFocus={() => setFocusedInput("dropoff")}
