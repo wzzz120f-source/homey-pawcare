@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "./i18n";
 import { installGlobalChunkRecovery, prefetchChunk } from "./lib/chunkRecovery";
 
 // Global blank-screen recovery: reload once (capped) when a critical lazy
