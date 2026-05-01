@@ -18,20 +18,30 @@ function setMatchMedia(reduceMotion: boolean) {
   });
 }
 
+let rafQueue: FrameRequestCallback[] = [];
+
+function flushRaf() {
+  const queue = rafQueue;
+  rafQueue = [];
+  queue.forEach((cb) => cb(0));
+}
+
 function scrollTo(y: number) {
   Object.defineProperty(window, "scrollY", { value: y, writable: true, configurable: true });
   act(() => {
     window.dispatchEvent(new Event("scroll"));
+    flushRaf();
   });
 }
 
 beforeEach(() => {
   setMatchMedia(false);
   Object.defineProperty(window, "scrollY", { value: 0, writable: true, configurable: true });
-  // Run rAF synchronously
+  rafQueue = [];
+  // Queue rAF callbacks to run after the scroll handler finishes setting `ticking = true`
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-    cb(0);
-    return 0 as unknown as number;
+    rafQueue.push(cb);
+    return rafQueue.length as unknown as number;
   });
 });
 
