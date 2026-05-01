@@ -192,8 +192,8 @@ const OrderHistoryPage = () => {
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/order/${o.id}`)}>
                   查看详情
                 </Button>
-                <Button size="sm" className="flex-1 gap-1" onClick={() => reuse(o)}>
-                  <Repeat className="w-3.5 h-3.5" /> 再来一单 ↗
+                <Button size="sm" className="flex-1 gap-1" onClick={() => reuse(o)} data-testid="rebook-btn">
+                  <Repeat className="w-3.5 h-3.5" /> 再次预约
                 </Button>
               </div>
             </article>
