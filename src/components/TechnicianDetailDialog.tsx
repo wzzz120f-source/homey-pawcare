@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Star, ShieldCheck, Award, BadgeCheck, Briefcase } from "lucide-react";
+import { Star, ShieldCheck, Award, BadgeCheck, Briefcase, MessageSquare } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +11,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { useTechnicianStat } from "@/hooks/useSafetyData";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTechnicianStat, useTechnicianReviews } from "@/hooks/useSafetyData";
 import type { Technician } from "@/types";
+
+interface Props {
+  technician: Technician | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onBook?: () => void;
+}
 
 interface Props {
   technician: Technician | null;
