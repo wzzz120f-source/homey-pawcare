@@ -146,6 +146,8 @@ const BookingPage = () => {
   const [routeDurationMin, setRouteDurationMin] = useState<number | null>(null);
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
+  const [pickupCoord, setPickupCoord] = useState<{ lng: number; lat: number } | null>(null);
+  const [dropoffCoord, setDropoffCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
@@ -804,9 +806,18 @@ const BookingPage = () => {
               </h2>
               <AMapReal
                 pickupAddress={pickupAddress}
-                onPickupAddressChange={setPickupAddress}
+                onPickupAddressChange={(a) => {
+                  setPickupAddress(a);
+                  // Manual edit invalidates the previously resolved coord.
+                  setPickupCoord(null);
+                }}
                 dropoffAddress={dropoffAddress}
-                onDropoffAddressChange={setDropoffAddress}
+                onDropoffAddressChange={(a) => {
+                  setDropoffAddress(a);
+                  setDropoffCoord(null);
+                }}
+                onPickupCoordChange={setPickupCoord}
+                onDropoffCoordChange={setDropoffCoord}
                 onPlanRouteReady={(fn) => {
                   planRouteRef.current = fn;
                 }}
@@ -864,6 +875,45 @@ const BookingPage = () => {
                 <div role="alert" className="mt-2 text-xs text-destructive space-y-0.5">
                   {errors.pickupAddress && <p>⚠️ {errors.pickupAddress}</p>}
                   {errors.dropoffAddress && <p>⚠️ {errors.dropoffAddress}</p>}
+                </div>
+              )}
+
+              {/* Address summary — verifies geocoded text + lat/lng before submission */}
+              {(pickupAddress || dropoffAddress) && (
+                <div
+                  data-testid="address-summary"
+                  className="mt-3 rounded-xl border border-border bg-card p-3 text-xs space-y-2"
+                  aria-label="地址确认摘要"
+                >
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    ✅ 地址确认
+                  </p>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 inline-block w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground font-semibold truncate" data-testid="summary-pickup-addr">
+                        {pickupAddress || "未填写"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground" data-testid="summary-pickup-coord">
+                        {pickupCoord
+                          ? `经纬度 ${pickupCoord.lng.toFixed(5)}, ${pickupCoord.lat.toFixed(5)}`
+                          : "经纬度待解析（提交前将自动规划）"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 inline-block w-2 h-2 rounded-full bg-destructive shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground font-semibold truncate" data-testid="summary-dropoff-addr">
+                        {dropoffAddress || "未填写"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground" data-testid="summary-dropoff-coord">
+                        {dropoffCoord
+                          ? `经纬度 ${dropoffCoord.lng.toFixed(5)}, ${dropoffCoord.lat.toFixed(5)}`
+                          : "经纬度待解析（提交前将自动规划）"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </section>

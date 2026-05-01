@@ -366,12 +366,35 @@ const HotelDetailPage = () => {
 
   const fetchReviews = async (hotelId: string) => {
     setLoadingReviews(true);
-    const { data } = await supabase
+    // No FK between hotel_reviews.user_id and profiles, so PostgREST embed
+    // returns 400. Fetch reviews first, then look up profiles in a single
+    // follow-up query and merge client-side.
+    const { data: reviewRows, error } = await supabase
       .from("hotel_reviews" as any)
-      .select("*, profiles:user_id(username, avatar_url)")
+      .select("*")
       .eq("hotel_id", hotelId)
       .order("created_at", { ascending: false });
-    if (data) setReviews(data as any);
+    if (error) console.error("[HotelDetailPage] fetchReviews error:", error);
+
+    const list = (reviewRows ?? []) as any[];
+    if (list.length > 0) {
+      const userIds = Array.from(new Set(list.map((r) => r.user_id).filter(Boolean)));
+      let profileMap: Record<string, { username: string; avatar_url: string | null }> = {};
+      if (userIds.length) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, username, avatar_url")
+          .in("id", userIds);
+        profileMap = Object.fromEntries(
+          (profileRows ?? []).map((p: any) => [p.id, { username: p.username, avatar_url: p.avatar_url }]),
+        );
+      }
+      setReviews(
+        list.map((r) => ({ ...r, profiles: profileMap[r.user_id] ?? null })) as any,
+      );
+    } else {
+      setReviews([]);
+    }
     setLoadingReviews(false);
   };
 
