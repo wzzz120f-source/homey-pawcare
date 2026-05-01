@@ -47,7 +47,7 @@ const OrderHistoryPage = () => {
     setLoading(true);
     supabase
       .from("orders")
-      .select("id, order_no, order_status, service_type, pickup_address, dropoff_address, total_amount, created_at, pet_snapshot, pet_type")
+      .select("id, order_no, order_status, service_type, pickup_address, dropoff_address, total_amount, created_at, pet_snapshot, pet_type, notes")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50)
