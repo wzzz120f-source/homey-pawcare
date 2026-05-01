@@ -152,6 +152,7 @@ const BookingPage = () => {
   const [pickupCoord, setPickupCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [dropoffCoord, setDropoffCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [submitError, setSubmitError] = useState<string>("");
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
 
