@@ -10,9 +10,14 @@ interface BottomCtaProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Polished bottom CTA: rounded card, max-w-lg, safe-area aware.
- * Use for new/simple bottom bars.
+ * Unified safe-area padding: max(0.75rem, safe-area-inset-bottom).
+ * Spring-like easing (cubic-bezier with overshoot) for inertial feel.
+ * Reduced-motion: no transition.
  */
+const SAFE_AREA_PB = "pb-[max(0.75rem,env(safe-area-inset-bottom))]";
+const SPRING_TRANSITION =
+  "transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none motion-reduce:duration-0";
+
 export const BottomCta = forwardRef<HTMLDivElement, BottomCtaProps>(
   ({ className, children, offset = "above-nav", forceHidden, disableAutoHide, ...rest }, ref) => {
     const autoHidden = useScrollHidden();
@@ -27,10 +32,11 @@ export const BottomCta = forwardRef<HTMLDivElement, BottomCtaProps>(
         role="region"
         aria-label="底部操作栏"
         aria-hidden={hidden}
+        data-state={hidden ? "hidden" : "visible"}
         className={cn(
           "fixed left-0 right-0 z-30 px-2 sm:px-4 pointer-events-none",
           offsetClass,
-          "transition-transform duration-300 ease-out motion-reduce:transition-none",
+          SPRING_TRANSITION,
           hidden ? "translate-y-[140%]" : "translate-y-0",
         )}
       >
@@ -39,7 +45,7 @@ export const BottomCta = forwardRef<HTMLDivElement, BottomCtaProps>(
             "pointer-events-auto mx-auto max-w-lg",
             "bg-background/95 backdrop-blur-md border border-border/60 rounded-2xl shadow-lg",
             "px-4 py-3",
-            "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            SAFE_AREA_PB,
             className,
           )}
           {...rest}
@@ -54,7 +60,7 @@ BottomCta.displayName = "BottomCta";
 
 /**
  * Raw shell: full-width fixed bar with auto-hide + safe-area, but no inner card.
- * Use to wrap existing complex bottom bars without restructuring their content.
+ * Shares identical safe-area + spring animation with BottomCta.
  */
 export const BottomCtaShell = forwardRef<HTMLDivElement, BottomCtaProps>(
   ({ className, children, offset = "above-nav", forceHidden, disableAutoHide, ...rest }, ref) => {
@@ -70,12 +76,13 @@ export const BottomCtaShell = forwardRef<HTMLDivElement, BottomCtaProps>(
         role="region"
         aria-label="底部操作栏"
         aria-hidden={hidden}
+        data-state={hidden ? "hidden" : "visible"}
         className={cn(
           "fixed left-0 right-0 z-30",
           offsetClass,
-          "transition-transform duration-300 ease-out motion-reduce:transition-none",
+          SPRING_TRANSITION,
           hidden ? "translate-y-[140%]" : "translate-y-0",
-          "pb-[env(safe-area-inset-bottom)]",
+          SAFE_AREA_PB,
           className,
         )}
         {...rest}
