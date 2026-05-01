@@ -44,13 +44,48 @@ const toCode = (id: string | undefined): string | undefined => {
   return `tech_${m[1].padStart(3, "0")}`;
 };
 
+const SERVICE_LABEL: Record<string, { zh: string; en: string }> = {
+  pet_walking: { zh: "遛狗陪伴", en: "Dog walking" },
+  pet_sitting: { zh: "上门照看", en: "Pet sitting" },
+  pet_grooming: { zh: "宠物美容", en: "Grooming" },
+  pet_pickup: { zh: "宠物接送", en: "Pickup" },
+};
+
+const formatTime = (iso: string, isEn: boolean) => {
+  const d = new Date(iso);
+  const now = Date.now();
+  const diffH = (now - d.getTime()) / 3600000;
+  if (diffH < 1) return isEn ? "Just now" : "刚刚";
+  if (diffH < 24) return isEn ? `${Math.floor(diffH)}h ago` : `${Math.floor(diffH)} 小时前`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 30) return isEn ? `${diffD}d ago` : `${diffD} 天前`;
+  return d.toLocaleDateString(isEn ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit" });
+};
+
 const TechnicianDetailDialog = ({ technician, open, onOpenChange, onBook }: Props) => {
   const { i18n, t } = useTranslation();
   const isEn = i18n.language?.startsWith("en");
   const code = toCode(technician?.id);
   const { data: stat, isLoading } = useTechnicianStat(open ? code : undefined);
 
+  // ── Reviews state: 等级筛选 + 分页加载 ──
+  const [reviewLevel, setReviewLevel] = useState<string>("all");
+  const [reviewLimit, setReviewLimit] = useState<number>(5);
+  const { data: reviews = [], isLoading: reviewsLoading } = useTechnicianReviews(
+    open ? code : undefined,
+    reviewLevel,
+    reviewLimit,
+  );
+  const canLoadMore = reviews.length >= reviewLimit;
+
   const level = stat ? LEVEL_META[stat.level] || LEVEL_META.silver : null;
+
+  const filterChips: { value: string; label: string }[] = [
+    { value: "all", label: isEn ? "All levels" : "全部等级" },
+    { value: "gold", label: isEn ? "Gold" : "金牌" },
+    { value: "platinum", label: isEn ? "Platinum" : "白金" },
+    { value: "silver", label: isEn ? "Silver" : "银牌" },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
