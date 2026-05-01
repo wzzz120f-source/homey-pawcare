@@ -397,7 +397,8 @@ const HotelDetailPage = () => {
     if (!hotel) return;
     setSubmitting(true);
     try {
-      const totalAmount = hotel.price_min * bookingNights;
+      const roomPrice = getRoomPrice(hotel, selectedRoomIdx);
+      const totalAmount = roomPrice * bookingNights;
       const petLabel = PET_TYPES.find(p => p.id === bookingPetType)?.label || bookingPetType;
       const checkInTime = pickupMethod === "pickup"
         ? `${bookingDate} ${bookingTimeSlot} 由专车送达酒店`
