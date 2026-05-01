@@ -61,6 +61,16 @@ const ROOM_TYPES = [
   { name: "VIP套房", desc: "独立活动区+专属管家服务", priceLabel: "高" },
 ];
 
+const getRoomPrice = (
+  hotel: { price_min: number; price_max: number },
+  idx: number,
+): number =>
+  idx === 0
+    ? hotel.price_min
+    : idx === 1
+      ? Math.round((hotel.price_min + hotel.price_max) / 2)
+      : hotel.price_max;
+
 const CHECK_IN_RULES = [
   "入住需提供宠物健康证明及疫苗接种记录",
   "宠物需佩戴牵引绳，攻击性犬种需佩戴嘴套",
@@ -105,6 +115,7 @@ const HotelDetailPage = () => {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [selectedRoomIdx, setSelectedRoomIdx] = useState(0);
   const [receipt, setReceipt] = useState<{
     orderNo: string;
     petLabel: string;
@@ -396,7 +407,8 @@ const HotelDetailPage = () => {
     if (!hotel) return;
     setSubmitting(true);
     try {
-      const totalAmount = hotel.price_min * bookingNights;
+      const roomPrice = getRoomPrice(hotel, selectedRoomIdx);
+      const totalAmount = roomPrice * bookingNights;
       const petLabel = PET_TYPES.find(p => p.id === bookingPetType)?.label || bookingPetType;
       const checkInTime = pickupMethod === "pickup"
         ? `${bookingDate} ${bookingTimeSlot} 由专车送达酒店`
@@ -645,20 +657,61 @@ const HotelDetailPage = () => {
           {/* Room Types */}
           <TabsContent value="rooms" className="space-y-3 mt-3">
             {ROOM_TYPES.map((room, i) => {
-              const price = i === 0 ? hotel.price_min : i === 1 ? Math.round((hotel.price_min + hotel.price_max) / 2) : hotel.price_max;
+              const price = getRoomPrice(hotel, i);
+              const active = selectedRoomIdx === i;
               return (
-                <Card key={room.name}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex-1">
+                <Card
+                  key={room.name}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={active}
+                  data-testid={`room-card-${i}`}
+                  onClick={() => {
+                    setSelectedRoomIdx(i);
+                    setShowBooking(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedRoomIdx(i);
+                      setShowBooking(true);
+                    }
+                  }}
+                  className={cn(
+                    "cursor-pointer transition-all hover:border-primary/60 hover:shadow-md",
+                    active && "border-primary ring-2 ring-primary/30",
+                  )}
+                >
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                         <Hotel className="w-4 h-4 text-primary" />
                         {room.name}
+                        {active && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            已选
+                          </Badge>
+                        )}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-1">{room.desc}</p>
                     </div>
-                    <div className="text-right ml-3">
-                      <p className="text-base font-extrabold text-primary">¥{price}</p>
-                      <p className="text-[10px] text-muted-foreground">/晚</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-right">
+                        <p className="text-base font-extrabold text-primary">¥{price}</p>
+                        <p className="text-[10px] text-muted-foreground">/晚</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        className="h-7 px-3 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRoomIdx(i);
+                          setShowBooking(true);
+                        }}
+                      >
+                        选择
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -778,16 +831,74 @@ const HotelDetailPage = () => {
           onClick={() => { setShowBooking(false); resetBookingForm(); }}
         >
           <div
-            className="bg-background w-full max-w-lg rounded-t-2xl p-5 space-y-4 animate-fade-in-up max-h-[90vh] overflow-y-auto"
+            className="bg-background w-full max-w-lg rounded-t-2xl flex flex-col animate-fade-in-up max-h-[92vh]"
             onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="预订房型"
           >
-            <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" />
-              {bookingStep === "form" ? `预订 ${hotel.name}` : "确认预订信息"}
-            </h3>
+            {/* Sticky header */}
+            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3 border-b border-border/60">
+              <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 min-w-0">
+                <CalendarDays className="w-5 h-5 text-primary shrink-0" />
+                <span className="truncate">
+                  {bookingStep === "form" ? `预订 ${hotel.name}` : "确认预订信息"}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowBooking(false); resetBookingForm(); }}
+                aria-label="关闭"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full text-muted-foreground hover:bg-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
             {bookingStep === "form" ? (
               <div className="space-y-4">
+                {/* Room type selection */}
+                <div>
+                  <label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+                    <Hotel className="w-3.5 h-3.5 text-primary" /> 房型 <span className="text-destructive">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {ROOM_TYPES.map((room, i) => {
+                      const price = getRoomPrice(hotel, i);
+                      const active = selectedRoomIdx === i;
+                      return (
+                        <button
+                          key={room.name}
+                          type="button"
+                          data-testid={`modal-room-${i}`}
+                          onClick={() => setSelectedRoomIdx(i)}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
+                            active
+                              ? "bg-primary/10 border-primary text-foreground"
+                              : "bg-secondary border-transparent text-foreground hover:border-primary/40",
+                          )}
+                          aria-pressed={active}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold flex items-center gap-1.5">
+                              {room.name}
+                              {active && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground truncate">{room.desc}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-extrabold text-primary">¥{price}</p>
+                            <p className="text-[10px] text-muted-foreground">/晚</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Pet type */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
@@ -947,21 +1058,16 @@ const HotelDetailPage = () => {
                   <p className="text-[10px] text-muted-foreground text-right mt-0.5">{bookingNotes.length}/200</p>
                 </div>
 
-                {/* Total */}
+                {/* In-body cost breakdown (full detail) */}
                 <div className="bg-secondary rounded-xl p-3 space-y-1">
                   <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">房型</span>
+                    <span className="text-foreground">{ROOM_TYPES[selectedRoomIdx].name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">房费</span>
-                    <span className="text-foreground">¥{hotel.price_min}/晚 × {bookingNights}晚</span>
+                    <span className="text-foreground">¥{getRoomPrice(hotel, selectedRoomIdx)}/晚 × {bookingNights}晚</span>
                   </div>
-                  <div className="flex justify-between text-base font-extrabold border-t border-border pt-2 mt-2">
-                    <span className="text-foreground">合计</span>
-                    <span className="text-primary">¥{hotel.price_min * bookingNights}</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-1">
-                  <Button variant="outline" className="flex-1" onClick={() => { setShowBooking(false); resetBookingForm(); }}>取消</Button>
-                  <Button className="flex-1" onClick={goToConfirm}>下一步：确认</Button>
                 </div>
               </div>
             ) : (
@@ -970,25 +1076,60 @@ const HotelDetailPage = () => {
                 <p className="text-xs text-muted-foreground">请核对以下信息，确认后将提交预订。</p>
                 <div className="bg-secondary rounded-xl p-3 text-sm space-y-2">
                   <Row label="🏨 酒店" value={hotel.name} />
+                  <Row label="🛏️ 房型" value={ROOM_TYPES[selectedRoomIdx].name} />
                   <Row label="🐾 宠物" value={PET_TYPES.find(p => p.id === bookingPetType)?.label || "—"} />
                   <Row label="📅 入住日期" value={`${bookingDate} ${bookingTimeSlot}`} />
-                  <Row label="🛏️ 时长" value={`${bookingNights} 晚`} />
+                  <Row label="⏳ 时长" value={`${bookingNights} 晚`} />
                   <Row label="🚗 接送" value={pickupMethod === "pickup" ? `专车接送 · ${pickupAddress}` : "自行送达"} />
                   {bookingNotes && <Row label="📝 备注" value={bookingNotes} />}
-                  <div className="flex justify-between border-t border-border pt-2 mt-1 text-base font-extrabold">
-                    <span>合计</span>
-                    <span className="text-primary">¥{hotel.price_min * bookingNights}</span>
-                  </div>
                 </div>
-                <div className="flex gap-3 pt-1">
-                  <Button variant="outline" className="flex-1" onClick={() => setBookingStep("form")}>返回修改</Button>
-                  <Button className="flex-1" onClick={handleBooking} disabled={submitting}>
+              </div>
+            )}
+            </div>
+
+            {/* Sticky footer: 合计 + 操作 (always visible, safe-area aware) */}
+            <div
+              className="border-t border-border bg-background/95 backdrop-blur px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 rounded-b-none"
+              data-testid="booking-modal-footer"
+            >
+              <div className="flex items-center justify-between text-base">
+                <span className="text-sm text-muted-foreground">
+                  合计 <span className="text-[11px]">({bookingNights}晚)</span>
+                </span>
+                <span className="text-xl font-extrabold text-primary">
+                  ¥{getRoomPrice(hotel, selectedRoomIdx) * bookingNights}
+                </span>
+              </div>
+              {bookingStep === "form" ? (
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setShowBooking(false); resetBookingForm(); }}
+                  >
+                    取消
+                  </Button>
+                  <Button className="flex-1" onClick={goToConfirm} data-testid="btn-next-confirm">
+                    下一步：确认
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setBookingStep("form")}>
+                    返回修改
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleBooking}
+                    disabled={submitting}
+                    data-testid="btn-submit-booking"
+                  >
                     {submitting && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
                     确认提交
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
