@@ -450,6 +450,7 @@ const BookingPage = () => {
   // ─── Submit handler (open confirm dialog) ────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
+    setSubmitError("");
     if (isDisabled) return;
     setShowConfirm(true);
   };
