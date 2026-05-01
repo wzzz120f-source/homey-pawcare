@@ -585,6 +585,37 @@ const BookingPage = () => {
             </button>
           </div>
         )}
+        {rebookBanner && (
+          <div
+            className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/20 p-3 flex items-start gap-2 animate-fade-in-up"
+            role="status"
+            aria-live="polite"
+            data-testid="rebook-banner"
+          >
+            <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">
+                已复用上次预约{rebookBanner.orderNo ? `（${rebookBanner.orderNo}）` : ""}，仅需选择新的时间 ⏰
+              </p>
+              {rebookBanner.addressSummary && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  📍 {rebookBanner.addressSummary}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                宠物类型与备注已自动回填，可在下方核对后修改。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRebookBanner(null)}
+              aria-label="关闭"
+              className="p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* ── Service Tabs ── */}
         <div className="flex gap-2 mb-6" role="tablist" aria-label="服务类型">
           {TAB_OPTIONS.map((tab) => (
