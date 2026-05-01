@@ -409,13 +409,29 @@ const BookingPage = () => {
       });
   }, [user]);
 
-  // 历史订单复用：预填地址 + 宠物快照
+  // 历史订单复用 / 一键复约：预填地址 + 宠物快照 + 备注
+  const [rebookBanner, setRebookBanner] = useState<{ orderNo?: string; addressSummary?: string } | null>(null);
   useEffect(() => {
     if (!prefill) return;
     if (prefill.pickup_address) setPickupAddress(prefill.pickup_address);
     if (prefill.dropoff_address) setDropoffAddress(prefill.dropoff_address);
     if (prefill.pet_snapshot?.pet_type) setSelectedPet(prefill.pet_snapshot.pet_type);
+    else if (prefill.pet_type) setSelectedPet(prefill.pet_type);
+    if (prefill.notes) setNotes(prefill.notes);
     if ((prefill.pickup_address || prefill.dropoff_address) && activeTab !== "pickup") setActiveTab("pickup");
+    if (prefill.rebook) {
+      const summaryParts = [prefill.pickup_address, prefill.dropoff_address].filter(Boolean);
+      const addressSummary = summaryParts.length
+        ? summaryParts.map((s: string) => (s.length > 14 ? s.slice(0, 14) + "…" : s)).join(" → ")
+        : undefined;
+      setRebookBanner({ orderNo: prefill.source_order_no, addressSummary });
+      // 滚动到时间区块，提醒用户只需选时间
+      setTimeout(() => {
+        const el = document.getElementById("booking-time-section");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 350);
+      toast.success("已复用上次预约，仅需选择新的时间", { duration: 4000 });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
