@@ -7,10 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import ServiceCard from "@/components/ServiceCard";
 import TechnicianCard from "@/components/TechnicianCard";
+import TechnicianDetailDialog from "@/components/TechnicianDetailDialog";
+import SafetyBadges from "@/components/SafetyBadges";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import LostPetAlert from "@/components/LostPetAlert";
 import { useServices, useTechnicians } from "@/hooks/useHomeData";
+import type { Technician } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -103,6 +106,7 @@ const Index = () => {
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [activeTechnician, setActiveTechnician] = useState<Technician | null>(null);
 
   useEffect(() => {
     supabase
@@ -159,11 +163,20 @@ const Index = () => {
         </section>
 
 
+        {/* Safety Badges — 五重安全保障 */}
+        <SafetyBadges />
+
         {/* CTA */}
         <div className="px-4 mt-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-          <Button variant="hero" size="xl" className="w-full gap-2" onClick={() => navigate("/booking")}>
-            <Sparkles className="w-5 h-5" aria-hidden="true" />
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full gap-2 cta-strong text-primary-foreground font-extrabold tracking-wide"
+            onClick={() => navigate("/booking")}
+          >
+            <PawPrint className="w-5 h-5" aria-hidden="true" />
             立即预约上门服务
+            <Sparkles className="w-4 h-4 opacity-80" aria-hidden="true" />
           </Button>
         </div>
 
@@ -270,7 +283,9 @@ const Index = () => {
           <div className="flex flex-col gap-3" role="list">
             {loadingTechnicians
               ? Array.from({ length: 3 }).map((_, i) => <TechnicianSkeleton key={i} />)
-              : technicians?.map((t) => <TechnicianCard key={t.id} {...t} />)}
+              : technicians?.map((t) => (
+                  <TechnicianCard key={t.id} {...t} onClick={() => setActiveTechnician(t)} />
+                ))}
           </div>
         </section>
 
@@ -298,6 +313,15 @@ const Index = () => {
 
       <BottomNav />
       <LostPetAlert />
+      <TechnicianDetailDialog
+        technician={activeTechnician}
+        open={!!activeTechnician}
+        onOpenChange={(o) => !o && setActiveTechnician(null)}
+        onBook={() => {
+          setActiveTechnician(null);
+          navigate("/booking");
+        }}
+      />
     </div>
   );
 };

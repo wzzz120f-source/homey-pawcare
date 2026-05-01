@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import EmergencySosFab from "@/components/EmergencySosFab";
 
 const STAGES = [
   { key: "departed", label: "已出发", emoji: "🚗" },
@@ -421,6 +422,7 @@ const TripTrackingPage = () => {
           </Button>
         )}
       </main>
+      <EmergencySosFab orderId={orderId} />
     </div>
   );
 };
