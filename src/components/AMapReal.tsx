@@ -136,8 +136,17 @@ const AMapReal = ({
 
   const handleSelectSuggestion = (tip: any) => {
     const addr = tip.district + tip.name;
-    if (focusedInput === "pickup") onPickupAddressChange(addr);
-    else if (focusedInput === "dropoff") onDropoffAddressChange(addr);
+    const coord: LngLat | null =
+      tip.location && typeof tip.location.lng === "number"
+        ? { lng: tip.location.lng, lat: tip.location.lat }
+        : null;
+    if (focusedInput === "pickup") {
+      onPickupAddressChange(addr);
+      onPickupCoordChange?.(coord);
+    } else if (focusedInput === "dropoff") {
+      onDropoffAddressChange(addr);
+      onDropoffCoordChange?.(coord);
+    }
     setFocusedInput(null);
     setSuggestions([]);
   };
@@ -145,6 +154,9 @@ const AMapReal = ({
   const useCurrentLocation = () => {
     if (currentLocation) {
       onPickupAddressChange(currentLocation);
+      // Coord is unknown here without re-geocoding; clear so the parent UI
+      // does not show stale lat/lng for a different address.
+      onPickupCoordChange?.(null);
     }
   };
 
@@ -164,6 +176,7 @@ const AMapReal = ({
         return;
       }
       const start = r1.geocodes[0].location;
+      onPickupCoordChange?.({ lng: start.lng, lat: start.lat });
 
       geocoder.getLocation(dropoffAddress, (s2: string, r2: any) => {
         if (s2 !== "complete" || !r2.geocodes?.[0]) {
@@ -171,6 +184,7 @@ const AMapReal = ({
           return;
         }
         const end = r2.geocodes[0].location;
+        onDropoffCoordChange?.({ lng: end.lng, lat: end.lat });
 
         mapInstance.current.clearMap();
 
