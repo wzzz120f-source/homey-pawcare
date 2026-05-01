@@ -405,10 +405,13 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           description: string | null
+          eta_minutes: number | null
           id: string
           order_id: string | null
           report_type: string
+          resolved_at: string | null
           status: string
+          ticket_no: string | null
           updated_at: string
           user_id: string
         }
@@ -416,10 +419,13 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           description?: string | null
+          eta_minutes?: number | null
           id?: string
           order_id?: string | null
           report_type: string
+          resolved_at?: string | null
           status?: string
+          ticket_no?: string | null
           updated_at?: string
           user_id: string
         }
@@ -427,10 +433,13 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           description?: string | null
+          eta_minutes?: number | null
           id?: string
           order_id?: string | null
           report_type?: string
+          resolved_at?: string | null
           status?: string
+          ticket_no?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1652,6 +1661,42 @@ export type Database = {
           title?: string
           title_en?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      technician_reviews: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          rating: number
+          reviewer_avatar: string | null
+          reviewer_name: string
+          service_type: string
+          technician_code: string
+          technician_level: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          rating: number
+          reviewer_avatar?: string | null
+          reviewer_name: string
+          service_type: string
+          technician_code: string
+          technician_level?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          reviewer_avatar?: string | null
+          reviewer_name?: string
+          service_type?: string
+          technician_code?: string
+          technician_level?: string
         }
         Relationships: []
       }

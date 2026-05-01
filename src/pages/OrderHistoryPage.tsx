@@ -47,7 +47,7 @@ const OrderHistoryPage = () => {
     setLoading(true);
     supabase
       .from("orders")
-      .select("id, order_no, order_status, service_type, pickup_address, dropoff_address, total_amount, created_at, pet_snapshot, pet_type")
+      .select("id, order_no, order_status, service_type, pickup_address, dropoff_address, total_amount, created_at, pet_snapshot, pet_type, notes")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50)
@@ -92,7 +92,11 @@ const OrderHistoryPage = () => {
           pickup_address: o.pickup_address,
           dropoff_address: o.dropoff_address,
           pet_snapshot: o.pet_snapshot,
+          pet_type: o.pet_type,
           service_type: o.service_type,
+          notes: (o as any).notes ?? null,
+          rebook: true,
+          source_order_no: o.order_no,
         },
       },
     });
@@ -188,8 +192,8 @@ const OrderHistoryPage = () => {
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate(`/order/${o.id}`)}>
                   查看详情
                 </Button>
-                <Button size="sm" className="flex-1 gap-1" onClick={() => reuse(o)}>
-                  <Repeat className="w-3.5 h-3.5" /> 再来一单 ↗
+                <Button size="sm" className="flex-1 gap-1" onClick={() => reuse(o)} data-testid="rebook-btn">
+                  <Repeat className="w-3.5 h-3.5" /> 再次预约
                 </Button>
               </div>
             </article>

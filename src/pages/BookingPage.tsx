@@ -409,13 +409,29 @@ const BookingPage = () => {
       });
   }, [user]);
 
-  // 历史订单复用：预填地址 + 宠物快照
+  // 历史订单复用 / 一键复约：预填地址 + 宠物快照 + 备注
+  const [rebookBanner, setRebookBanner] = useState<{ orderNo?: string; addressSummary?: string } | null>(null);
   useEffect(() => {
     if (!prefill) return;
     if (prefill.pickup_address) setPickupAddress(prefill.pickup_address);
     if (prefill.dropoff_address) setDropoffAddress(prefill.dropoff_address);
     if (prefill.pet_snapshot?.pet_type) setSelectedPet(prefill.pet_snapshot.pet_type);
+    else if (prefill.pet_type) setSelectedPet(prefill.pet_type);
+    if (prefill.notes) setNotes(prefill.notes);
     if ((prefill.pickup_address || prefill.dropoff_address) && activeTab !== "pickup") setActiveTab("pickup");
+    if (prefill.rebook) {
+      const summaryParts = [prefill.pickup_address, prefill.dropoff_address].filter(Boolean);
+      const addressSummary = summaryParts.length
+        ? summaryParts.map((s: string) => (s.length > 14 ? s.slice(0, 14) + "…" : s)).join(" → ")
+        : undefined;
+      setRebookBanner({ orderNo: prefill.source_order_no, addressSummary });
+      // 滚动到时间区块，提醒用户只需选时间
+      setTimeout(() => {
+        const el = document.getElementById("booking-time-section");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 350);
+      toast.success("已复用上次预约，仅需选择新的时间", { duration: 4000 });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -565,6 +581,37 @@ const BookingPage = () => {
               </div>
             </div>
             <button type="button" onClick={dismissDraft} aria-label="关闭" className="p-1 text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {rebookBanner && (
+          <div
+            className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/20 p-3 flex items-start gap-2 animate-fade-in-up"
+            role="status"
+            aria-live="polite"
+            data-testid="rebook-banner"
+          >
+            <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground">
+                已复用上次预约{rebookBanner.orderNo ? `（${rebookBanner.orderNo}）` : ""}，仅需选择新的时间 ⏰
+              </p>
+              {rebookBanner.addressSummary && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  📍 {rebookBanner.addressSummary}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                宠物类型与备注已自动回填，可在下方核对后修改。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRebookBanner(null)}
+              aria-label="关闭"
+              className="p-1 text-muted-foreground hover:text-foreground"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1340,7 +1387,7 @@ const BookingPage = () => {
 
         {/* ── Date & Time (skipped for pickup unless 预约时段 selected) ── */}
         {needsDateTime && (
-        <section className="mb-6 animate-fade-in-up" aria-label="预约时间">
+        <section id="booking-time-section" className="mb-6 animate-fade-in-up" aria-label="预约时间">
           <h2 className="font-bold text-foreground mb-3 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-primary" aria-hidden="true" /> 预约时间
           </h2>
@@ -1419,6 +1466,7 @@ const BookingPage = () => {
                     date={selectedDate}
                     selectedTime={selectedTime}
                     onChange={setSelectedTime}
+                    onJumpToDate={(d) => setSelectedDate(d)}
                   />
                 </div>
               )}
