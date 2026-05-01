@@ -146,6 +146,8 @@ const BookingPage = () => {
   const [routeDurationMin, setRouteDurationMin] = useState<number | null>(null);
   const [routeStatus, setRouteStatus] = useState<"idle" | "ok" | "error" | "outdated">("idle");
   const [routeError, setRouteError] = useState<string>("");
+  const [pickupCoord, setPickupCoord] = useState<{ lng: number; lat: number } | null>(null);
+  const [dropoffCoord, setDropoffCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
@@ -804,9 +806,18 @@ const BookingPage = () => {
               </h2>
               <AMapReal
                 pickupAddress={pickupAddress}
-                onPickupAddressChange={setPickupAddress}
+                onPickupAddressChange={(a) => {
+                  setPickupAddress(a);
+                  // Manual edit invalidates the previously resolved coord.
+                  setPickupCoord(null);
+                }}
                 dropoffAddress={dropoffAddress}
-                onDropoffAddressChange={setDropoffAddress}
+                onDropoffAddressChange={(a) => {
+                  setDropoffAddress(a);
+                  setDropoffCoord(null);
+                }}
+                onPickupCoordChange={setPickupCoord}
+                onDropoffCoordChange={setDropoffCoord}
                 onPlanRouteReady={(fn) => {
                   planRouteRef.current = fn;
                 }}
