@@ -48,7 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ErrorReport, { type ErrorReportItem } from "@/components/ErrorReport";
-import BookingTimeCalendar from "@/components/BookingTimeCalendar";
+import BookingTimeCalendar, { computeSlotStatus, findAlternativeSlots } from "@/components/BookingTimeCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
