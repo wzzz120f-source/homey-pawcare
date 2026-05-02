@@ -493,10 +493,9 @@ const BookingPage = () => {
     // 仅当本次是「复约」或非接送场景下选择了具体时段时才进行额外的缓冲规则校验
     if (selectedDate && selectedTime && !(activeTab === "pickup" && timeMode === "now")) {
       const v = validateSelectedSlot();
-      if (!v.ok) {
+      if (v.ok === false) {
         const alts = findAlternativeSlots(new Date(selectedDate), undefined, LEAD_MIN, new Date(), 3);
         setSlotConflict({ reason: v.reason, alternatives: alts });
-        // 滚动到时间区块
         setTimeout(() => {
           document.getElementById("booking-time-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 50);
