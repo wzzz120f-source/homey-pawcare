@@ -154,6 +154,10 @@ const BookingPage = () => {
   const [dropoffCoord, setDropoffCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
+  const [slotConflict, setSlotConflict] = useState<{
+    reason: "past" | "full";
+    alternatives: Array<{ date: Date; slot: string }>;
+  } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
 
