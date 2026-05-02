@@ -17,7 +17,7 @@ interface Props {
 }
 
 /** 生成给定日期的可预约状态 */
-const computeStatus = (
+export const computeSlotStatus = (
   date: Date,
   bookedSlots: string[] | undefined,
   leadTimeMinutes: number,
