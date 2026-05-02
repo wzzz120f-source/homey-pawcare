@@ -17,7 +17,7 @@ interface Props {
 }
 
 /** 生成给定日期的可预约状态 */
-const computeStatus = (
+export const computeSlotStatus = (
   date: Date,
   bookedSlots: string[] | undefined,
   leadTimeMinutes: number,
@@ -66,7 +66,7 @@ const BookingTimeCalendar = ({
 
   const { full, pastCutoff } = useMemo(() => {
     if (!date) return { full: new Set<string>(), pastCutoff: new Set<string>() };
-    return computeStatus(new Date(date), bookedSlots, leadTimeMinutes, now);
+    return computeSlotStatus(new Date(date), bookedSlots, leadTimeMinutes, now);
   }, [date, bookedSlots, leadTimeMinutes, now]);
 
   // 当前日期完全无可用 → 找最近一个可用日期（往后搜索 7 天）
@@ -79,7 +79,7 @@ const BookingTimeCalendar = ({
     for (let i = 1; i <= 7; i++) {
       const candidate = new Date(date);
       candidate.setDate(candidate.getDate() + i);
-      const { full: f, pastCutoff: p } = computeStatus(new Date(candidate), bookedSlots, leadTimeMinutes, now);
+      const { full: f, pastCutoff: p } = computeSlotStatus(new Date(candidate), bookedSlots, leadTimeMinutes, now);
       const firstSlot = TIME_SLOTS.find((s) => !f.has(s) && !p.has(s));
       if (firstSlot) return { date: candidate, slot: firstSlot };
     }
@@ -188,4 +188,31 @@ const BookingTimeCalendar = ({
   );
 };
 
+/**
+ * 在给定起始日期之后查找若干个可预约的 (date, slot) 替代方案。
+ * 优先返回当天剩余可约时段，其次往后扩展日期。
+ */
+export const findAlternativeSlots = (
+  startDate: Date,
+  bookedSlots: string[] | undefined,
+  leadTimeMinutes: number,
+  now: Date,
+  limit = 3,
+  searchDays = 7,
+): Array<{ date: Date; slot: string }> => {
+  const out: Array<{ date: Date; slot: string }> = [];
+  for (let i = 0; i <= searchDays && out.length < limit; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const { full, pastCutoff } = computeSlotStatus(new Date(d), bookedSlots, leadTimeMinutes, now);
+    for (const s of TIME_SLOTS) {
+      if (full.has(s) || pastCutoff.has(s)) continue;
+      out.push({ date: new Date(d), slot: s });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+};
+
 export default BookingTimeCalendar;
+

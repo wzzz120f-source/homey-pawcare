@@ -48,7 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ErrorReport, { type ErrorReportItem } from "@/components/ErrorReport";
-import BookingTimeCalendar from "@/components/BookingTimeCalendar";
+import BookingTimeCalendar, { computeSlotStatus, findAlternativeSlots } from "@/components/BookingTimeCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BookingTab = "home" | "store" | "pickup";
@@ -154,6 +154,10 @@ const BookingPage = () => {
   const [dropoffCoord, setDropoffCoord] = useState<{ lng: number; lat: number } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
+  const [slotConflict, setSlotConflict] = useState<{
+    reason: "past" | "full";
+    alternatives: Array<{ date: Date; slot: string }>;
+  } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const planRouteRef = useRef<(() => void) | null>(null);
 
@@ -391,6 +395,11 @@ const BookingPage = () => {
     setSubmitAttempted(false);
   }, [timeMode]);
 
+  // 用户调整时间或日期后，自动清除上一次的时段冲突提示
+  useEffect(() => {
+    setSlotConflict(null);
+  }, [selectedDate, selectedTime]);
+
   // 加载用户的宠物档案
   useEffect(() => {
     if (!user) return;
@@ -464,11 +473,41 @@ const BookingPage = () => {
   const errorList = Object.values(errors).filter(Boolean) as string[];
   const isDisabled = errorList.length > 0;
 
+  // ─── 复约时段冲突校验 ───────────────────────────────────────────────────
+  const LEAD_MIN = 60;
+
+  const validateSelectedSlot = (): { ok: true } | { ok: false; reason: "past" | "full" } => {
+    if (!selectedDate || !selectedTime) return { ok: true };
+    const { full, pastCutoff } = computeSlotStatus(
+      new Date(selectedDate),
+      undefined,
+      LEAD_MIN,
+      new Date(),
+    );
+    if (pastCutoff.has(selectedTime)) return { ok: false, reason: "past" };
+    if (full.has(selectedTime)) return { ok: false, reason: "full" };
+    return { ok: true };
+  };
+
   // ─── Submit handler (open confirm dialog) ────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
     setSubmitError("");
+    setSlotConflict(null);
     if (isDisabled) return;
+    // 仅当本次是「复约」或非接送场景下选择了具体时段时才进行额外的缓冲规则校验
+    if (selectedDate && selectedTime && !(activeTab === "pickup" && timeMode === "now")) {
+      const v = validateSelectedSlot();
+      if (v.ok === false) {
+        const alts = findAlternativeSlots(new Date(selectedDate), undefined, LEAD_MIN, new Date(), 3);
+        setSlotConflict({ reason: v.reason, alternatives: alts });
+        setTimeout(() => {
+          document.getElementById("booking-time-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+        toast.error(v.reason === "past" ? "所选时段已过缓冲时间" : "所选时段已被预约");
+        return;
+      }
+    }
     setShowConfirm(true);
   };
 
@@ -1472,6 +1511,60 @@ const BookingPage = () => {
               )}
               {submitAttempted && errors.time && !(activeTab === "pickup" && timeMode === "scheduled") && (
                 <p role="alert" className="mt-1.5 text-xs text-destructive">⚠️ {errors.time}</p>
+              )}
+              {slotConflict && (
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  data-testid="slot-conflict-alert"
+                  className="mt-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 space-y-2"
+                >
+                  <p className="text-xs font-semibold text-destructive">
+                    ⚠️ {slotConflict.reason === "past"
+                      ? `所选时段距当前不足 ${LEAD_MIN} 分钟，无法预约。`
+                      : "所选时段已被约满，请更换其他时段。"}
+                  </p>
+                  {slotConflict.alternatives.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] text-muted-foreground">可选替代时段：</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {slotConflict.alternatives.map((alt, i) => {
+                          const isToday =
+                            alt.date.toDateString() === new Date().toDateString();
+                          const dayLabel = isToday
+                            ? "今天"
+                            : alt.date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(alt.date);
+                                setSelectedTime(alt.slot);
+                                setSlotConflict(null);
+                                toast.success(`已切换到 ${dayLabel} ${alt.slot}`);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 min-h-[32px]"
+                            >
+                              {dayLabel} {alt.slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      未来 7 天暂无可约时段，建议联系客服安排。
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSlotConflict(null)}
+                    className="text-[11px] text-muted-foreground underline"
+                  >
+                    我知道了
+                  </button>
+                </div>
               )}
             </div>
           </div>
