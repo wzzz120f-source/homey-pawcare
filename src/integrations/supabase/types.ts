@@ -521,6 +521,92 @@ export type Database = {
           },
         ]
       }
+      group_order_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          order_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_order_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "group_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_orders: {
+        Row: {
+          address_summary: string
+          community_name: string
+          created_at: string
+          discount_per_member: number
+          id: string
+          initiator_id: string
+          latitude: number | null
+          longitude: number | null
+          member_count: number
+          service_date: string
+          service_type: string | null
+          status: string
+          target_count: number
+          technician_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_summary: string
+          community_name: string
+          created_at?: string
+          discount_per_member?: number
+          id?: string
+          initiator_id: string
+          latitude?: number | null
+          longitude?: number | null
+          member_count?: number
+          service_date: string
+          service_type?: string | null
+          status?: string
+          target_count?: number
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_summary?: string
+          community_name?: string
+          created_at?: string
+          discount_per_member?: number
+          id?: string
+          initiator_id?: string
+          latitude?: number | null
+          longitude?: number | null
+          member_count?: number
+          service_date?: string
+          service_type?: string | null
+          status?: string
+          target_count?: number
+          technician_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hotel_reviews: {
         Row: {
           content: string | null
@@ -1661,6 +1747,90 @@ export type Database = {
           title?: string
           title_en?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      service_recommendation_rules: {
+        Row: {
+          age_max_months: number | null
+          age_min_months: number | null
+          breed_keywords: string[] | null
+          created_at: string
+          id: string
+          is_active: boolean
+          pet_type: string | null
+          priority: number
+          reason_text: string
+          service_emoji: string | null
+          service_id: string
+          service_title: string
+          updated_at: string
+        }
+        Insert: {
+          age_max_months?: number | null
+          age_min_months?: number | null
+          breed_keywords?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pet_type?: string | null
+          priority?: number
+          reason_text: string
+          service_emoji?: string | null
+          service_id: string
+          service_title: string
+          updated_at?: string
+        }
+        Update: {
+          age_max_months?: number | null
+          age_min_months?: number | null
+          breed_keywords?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pet_type?: string | null
+          priority?: number
+          reason_text?: string
+          service_emoji?: string | null
+          service_id?: string
+          service_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_timeline_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          occurred_at: string
+          order_id: string
+          technician_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          occurred_at?: string
+          order_id: string
+          technician_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          occurred_at?: string
+          order_id?: string
+          technician_id?: string | null
         }
         Relationships: []
       }
