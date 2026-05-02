@@ -188,4 +188,31 @@ const BookingTimeCalendar = ({
   );
 };
 
+/**
+ * 在给定起始日期之后查找若干个可预约的 (date, slot) 替代方案。
+ * 优先返回当天剩余可约时段，其次往后扩展日期。
+ */
+export const findAlternativeSlots = (
+  startDate: Date,
+  bookedSlots: string[] | undefined,
+  leadTimeMinutes: number,
+  now: Date,
+  limit = 3,
+  searchDays = 7,
+): Array<{ date: Date; slot: string }> => {
+  const out: Array<{ date: Date; slot: string }> = [];
+  for (let i = 0; i <= searchDays && out.length < limit; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const { full, pastCutoff } = computeSlotStatus(new Date(d), bookedSlots, leadTimeMinutes, now);
+    for (const s of TIME_SLOTS) {
+      if (full.has(s) || pastCutoff.has(s)) continue;
+      out.push({ date: new Date(d), slot: s });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+};
+
 export default BookingTimeCalendar;
+
