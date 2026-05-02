@@ -471,10 +471,6 @@ const BookingPage = () => {
 
   // ─── 复约时段冲突校验 ───────────────────────────────────────────────────
   const LEAD_MIN = 60;
-  const [slotConflict, setSlotConflict] = useState<{
-    reason: "past" | "full";
-    alternatives: Array<{ date: Date; slot: string }>;
-  } | null>(null);
 
   const validateSelectedSlot = (): { ok: true } | { ok: false; reason: "past" | "full" } => {
     if (!selectedDate || !selectedTime) return { ok: true };
