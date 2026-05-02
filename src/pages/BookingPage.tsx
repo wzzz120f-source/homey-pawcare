@@ -1507,6 +1507,60 @@ const BookingPage = () => {
               {submitAttempted && errors.time && !(activeTab === "pickup" && timeMode === "scheduled") && (
                 <p role="alert" className="mt-1.5 text-xs text-destructive">⚠️ {errors.time}</p>
               )}
+              {slotConflict && (
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  data-testid="slot-conflict-alert"
+                  className="mt-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 space-y-2"
+                >
+                  <p className="text-xs font-semibold text-destructive">
+                    ⚠️ {slotConflict.reason === "past"
+                      ? `所选时段距当前不足 ${LEAD_MIN} 分钟，无法预约。`
+                      : "所选时段已被约满，请更换其他时段。"}
+                  </p>
+                  {slotConflict.alternatives.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] text-muted-foreground">可选替代时段：</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {slotConflict.alternatives.map((alt, i) => {
+                          const isToday =
+                            alt.date.toDateString() === new Date().toDateString();
+                          const dayLabel = isToday
+                            ? "今天"
+                            : alt.date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(alt.date);
+                                setSelectedTime(alt.slot);
+                                setSlotConflict(null);
+                                toast.success(`已切换到 ${dayLabel} ${alt.slot}`);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90 min-h-[32px]"
+                            >
+                              {dayLabel} {alt.slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      未来 7 天暂无可约时段，建议联系客服安排。
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSlotConflict(null)}
+                    className="text-[11px] text-muted-foreground underline"
+                  >
+                    我知道了
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
