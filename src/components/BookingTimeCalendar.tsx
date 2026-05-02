@@ -66,7 +66,7 @@ const BookingTimeCalendar = ({
 
   const { full, pastCutoff } = useMemo(() => {
     if (!date) return { full: new Set<string>(), pastCutoff: new Set<string>() };
-    return computeStatus(new Date(date), bookedSlots, leadTimeMinutes, now);
+    return computeSlotStatus(new Date(date), bookedSlots, leadTimeMinutes, now);
   }, [date, bookedSlots, leadTimeMinutes, now]);
 
   // 当前日期完全无可用 → 找最近一个可用日期（往后搜索 7 天）
@@ -79,7 +79,7 @@ const BookingTimeCalendar = ({
     for (let i = 1; i <= 7; i++) {
       const candidate = new Date(date);
       candidate.setDate(candidate.getDate() + i);
-      const { full: f, pastCutoff: p } = computeStatus(new Date(candidate), bookedSlots, leadTimeMinutes, now);
+      const { full: f, pastCutoff: p } = computeSlotStatus(new Date(candidate), bookedSlots, leadTimeMinutes, now);
       const firstSlot = TIME_SLOTS.find((s) => !f.has(s) && !p.has(s));
       if (firstSlot) return { date: candidate, slot: firstSlot };
     }
