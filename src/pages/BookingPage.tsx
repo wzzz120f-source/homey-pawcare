@@ -391,6 +391,11 @@ const BookingPage = () => {
     setSubmitAttempted(false);
   }, [timeMode]);
 
+  // 用户调整时间或日期后，自动清除上一次的时段冲突提示
+  useEffect(() => {
+    setSlotConflict(null);
+  }, [selectedDate, selectedTime]);
+
   // 加载用户的宠物档案
   useEffect(() => {
     if (!user) return;
