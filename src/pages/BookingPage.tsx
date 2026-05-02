@@ -464,11 +464,46 @@ const BookingPage = () => {
   const errorList = Object.values(errors).filter(Boolean) as string[];
   const isDisabled = errorList.length > 0;
 
+  // ─── 复约时段冲突校验 ───────────────────────────────────────────────────
+  const LEAD_MIN = 60;
+  const [slotConflict, setSlotConflict] = useState<{
+    reason: "past" | "full";
+    alternatives: Array<{ date: Date; slot: string }>;
+  } | null>(null);
+
+  const validateSelectedSlot = (): { ok: true } | { ok: false; reason: "past" | "full" } => {
+    if (!selectedDate || !selectedTime) return { ok: true };
+    const { full, pastCutoff } = computeSlotStatus(
+      new Date(selectedDate),
+      undefined,
+      LEAD_MIN,
+      new Date(),
+    );
+    if (pastCutoff.has(selectedTime)) return { ok: false, reason: "past" };
+    if (full.has(selectedTime)) return { ok: false, reason: "full" };
+    return { ok: true };
+  };
+
   // ─── Submit handler (open confirm dialog) ────────────────────────────────
   const handleSubmit = () => {
     setSubmitAttempted(true);
     setSubmitError("");
+    setSlotConflict(null);
     if (isDisabled) return;
+    // 仅当本次是「复约」或非接送场景下选择了具体时段时才进行额外的缓冲规则校验
+    if (selectedDate && selectedTime && !(activeTab === "pickup" && timeMode === "now")) {
+      const v = validateSelectedSlot();
+      if (!v.ok) {
+        const alts = findAlternativeSlots(new Date(selectedDate), undefined, LEAD_MIN, new Date(), 3);
+        setSlotConflict({ reason: v.reason, alternatives: alts });
+        // 滚动到时间区块
+        setTimeout(() => {
+          document.getElementById("booking-time-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+        toast.error(v.reason === "past" ? "所选时段已过缓冲时间" : "所选时段已被预约");
+        return;
+      }
+    }
     setShowConfirm(true);
   };
 
