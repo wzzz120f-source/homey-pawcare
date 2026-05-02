@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import EmergencySosFab from "@/components/EmergencySosFab";
+import ServiceTimeline from "@/components/ServiceTimeline";
 
 const STAGES = [
   { key: "departed", label: "已出发", emoji: "🚗" },
@@ -376,6 +377,9 @@ const TripTrackingPage = () => {
         </section>
         </>
         )}
+
+        {/* 云陪伴时间轴（实时） */}
+        {orderId && <ServiceTimeline orderId={orderId} />}
 
         {/* 快捷按钮 */}
         <section className="grid grid-cols-3 gap-2">

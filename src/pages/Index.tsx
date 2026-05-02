@@ -9,6 +9,8 @@ import ServiceCard from "@/components/ServiceCard";
 import TechnicianCard from "@/components/TechnicianCard";
 import TechnicianDetailDialog from "@/components/TechnicianDetailDialog";
 import SafetyBadges from "@/components/SafetyBadges";
+import PetRecommendationSection from "@/components/PetRecommendationSection";
+import EmergencyCardGenerator from "@/components/EmergencyCardGenerator";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import LostPetAlert from "@/components/LostPetAlert";
@@ -180,6 +182,9 @@ const Index = () => {
           </Button>
         </div>
 
+        {/* 宠物名片驱动的智能推荐 */}
+        <PetRecommendationSection />
+
         {/* Recent Orders */}
         {(loadingOrders || recentOrders.length > 0) && (
           <section className="mt-6 px-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }} aria-label="最近订单">
@@ -297,16 +302,19 @@ const Index = () => {
               <span className="font-bold text-xs">宠物寄养</span>
               <span className="text-[10px] text-muted-foreground">附近优质门店</span>
             </Button>
-            <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/booking")}>
-              <span className="text-2xl" aria-hidden="true">🚗</span>
-              <span className="font-bold text-xs">宠物接送</span>
-              <span className="text-[10px] text-muted-foreground">安全专车服务</span>
+            <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/group-booking")}>
+              <span className="text-2xl" aria-hidden="true">👫</span>
+              <span className="font-bold text-xs">邻里拼单</span>
+              <span className="text-[10px] text-muted-foreground">同小区减¥10</span>
             </Button>
             <Button variant="warm" size="lg" className="h-auto py-4 flex-col gap-1" onClick={() => navigate("/pet-hotel")}>
               <span className="text-2xl" aria-hidden="true">🏨</span>
               <span className="font-bold text-xs">友好酒店</span>
               <span className="text-[10px] text-muted-foreground">携宠入住</span>
             </Button>
+          </div>
+          <div className="mt-3 flex justify-center">
+            <EmergencyCardGenerator />
           </div>
         </section>
       </main>
