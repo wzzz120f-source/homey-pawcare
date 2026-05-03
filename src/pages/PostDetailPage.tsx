@@ -383,7 +383,7 @@ const PostDetailPage = () => {
       </main>
 
       {/* Composer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border z-30">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border z-30 pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
           {replyTarget && (
             <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-secondary text-muted-foreground">
