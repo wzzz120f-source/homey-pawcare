@@ -240,7 +240,7 @@ const TripTrackingPage = () => {
   const isReplaying = replayIdx !== null;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
         <div className="max-w-md mx-auto flex items-center gap-3 px-4 h-14">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2" aria-label="返回">
