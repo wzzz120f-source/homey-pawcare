@@ -452,73 +452,7 @@ const PostDetailPage = () => {
         </section>
       </main>
 
-      {/* Composer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border z-30 pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
-          {replyTarget && (
-            <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-secondary text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <CornerDownRight className="w-3 h-3" /> 回复 <span className="text-primary font-semibold">@{replyTarget.username}</span>
-              </span>
-              <button onClick={cancelReply} className="text-muted-foreground hover:text-foreground font-medium">取消</button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Popover open={mentionOpen && candidates.length > 0} onOpenChange={setMentionOpen}>
-              <PopoverTrigger asChild>
-                <div className="flex-1 relative">
-                  <Input
-                    ref={inputRef}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={user ? (replyTarget ? `回复 @${replyTarget.username}…` : "盖楼评论… 输入 @ 提及好友") : "登录后参与评论"}
-                    disabled={!user}
-                    maxLength={500}
-                    className="pr-9 h-11 text-sm"
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !mentionOpen) { e.preventDefault(); submit(); } }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setText((prev) => prev + "@"); setTimeout(() => inputRef.current?.focus(), 0); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-primary"
-                    aria-label="@提及"
-                  >
-                    <AtSign className="w-4 h-4" />
-                  </button>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-72 p-1" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <ul className="max-h-64 overflow-y-auto">
-                  {candidates.map((p) => (
-                    <li key={p.user_id}>
-                      <button
-                        type="button"
-                        onClick={() => insertMention(p)}
-                        className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-secondary text-left"
-                      >
-                        <Avatar className="w-7 h-7">
-                          <AvatarImage src={p.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px]">{p.username[0]}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm text-foreground truncate">{p.username}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </PopoverContent>
-            </Popover>
-            <Button variant="hero" size="sm" className="h-11 rounded-xl gap-1" onClick={submit} disabled={submitting || !text.trim() || !user}>
-              <Send className="w-4 h-4" /> 发送
-            </Button>
-          </div>
-          {!user && (
-            <p className="text-xs text-center text-muted-foreground">
-              <Link to="/auth" className="text-primary font-semibold">登录</Link> 后可评论盖楼
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+    </SafeAreaBottomLayout>
   );
 };
 
