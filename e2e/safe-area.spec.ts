@@ -45,7 +45,8 @@ async function rect(page: Page, selector: string) {
   return page.locator(selector).boundingBox();
 }
 
-for (const [project, px] of Object.entries(SAFE_AREA_PX_BY_DEVICE)) {
+for (const entry of ACTIVE_DEVICES) {
+  const { name: project, safeAreaBottomPx: px } = entry;
   test.describe(`safe-area · ${project}`, () => {
     test.skip(({}, testInfo) => testInfo.project.name !== project, "device-scoped");
 
