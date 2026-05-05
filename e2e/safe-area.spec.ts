@@ -1,48 +1,15 @@
 import { test, expect, Page } from "@playwright/test";
+import { resolveDeviceMatrix } from "./device-matrix";
 
 /**
  * Safe-area visual regression tests
- * ---------------------------------
- * 验证在 iPhone 全面屏（含小横条）以及 Android 多分辨率下：
- *  1) 全局 BottomNav 的内容不会被系统手势区压住 —— 元素底边 ≤ 视口高度，
- *     且容器 padding-bottom 至少为 safe-area-inset-bottom（≥0）。
- *  2) SafeAreaBottomLayout 渲染的固定底栏：
- *     - 完整位于视口内
- *     - 主体末尾留有 spacer，等高于底栏 + safe-area
- *  3) 原 BottomCta 的 safe-area padding 仍生效。
- *
- * 我们在 `/` 路径上注入一个 SAFE-AREA 模拟环境变量：
- *   document.documentElement.style.setProperty("--mock-safe-area-bottom", "34px")
- * 然后通过运行时注入测试 DOM 来覆盖各场景，以避免改动业务代码。
+ * 设备矩阵 / safe-area px 来自 e2e/device-matrix.ts，
+ * 通过 E2E_DEVICE_PROFILE=smoke|core|full 控制子集。
  */
 
-const SAFE_AREA_PX_BY_DEVICE: Record<string, number> = {
-  // —— iPhone 竖屏 ——
-  "iphone-se": 0,                       // 经典 Home 键
-  "iphone-12": 34,
-  "iphone-13": 34,
-  "iphone-13-mini": 34,
-  "iphone-14": 34,
-  "iphone-14-pro-max": 34,
-  "iphone-15-pro": 34,
-  // —— iPhone 横屏（小横条在右侧，但底部 inset 仍非零） ——
-  "iphone-12-landscape": 21,
-  "iphone-13-landscape": 21,
-  "iphone-14-pro-max-landscape": 21,
-  // —— Android 刘海/手势 ——
-  "pixel-5": 24,
-  "pixel-7": 24,
-  "galaxy-s9": 0,
-  "galaxy-s8": 0,
-  "galaxy-tab-s4": 16,
-  "nexus-10": 0,
-};
+const ACTIVE_DEVICES = resolveDeviceMatrix();
 
 async function withMockSafeArea(page: Page, px: number) {
-  // 通过覆写 padding 工具类计算结果来模拟 env(safe-area-inset-bottom)。
-  // CSS env() 在 headless Chromium 中默认为 0；这里注入一个 CSS 变量并改写
-  // 任何带 `pb-[env(safe-area-inset-bottom)]` 或 `.safe-pb` / `.pb-nav`
-  // 的元素，让其至少包含 px 像素，作为视觉回归断言基准。
   await page.addStyleTag({
     content: `
       :root { --mock-safe-area-bottom: ${px}px; }
