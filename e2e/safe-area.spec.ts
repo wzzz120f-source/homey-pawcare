@@ -17,13 +17,25 @@ import { test, expect, Page } from "@playwright/test";
  */
 
 const SAFE_AREA_PX_BY_DEVICE: Record<string, number> = {
-  "iphone-se": 0,            // 经典 Home 键，无小横条
+  // —— iPhone 竖屏 ——
+  "iphone-se": 0,                       // 经典 Home 键
   "iphone-12": 34,
   "iphone-13": 34,
+  "iphone-13-mini": 34,
+  "iphone-14": 34,
   "iphone-14-pro-max": 34,
-  "pixel-5": 24,             // Android 手势导航
+  "iphone-15-pro": 34,
+  // —— iPhone 横屏（小横条在右侧，但底部 inset 仍非零） ——
+  "iphone-12-landscape": 21,
+  "iphone-13-landscape": 21,
+  "iphone-14-pro-max-landscape": 21,
+  // —— Android 刘海/手势 ——
+  "pixel-5": 24,
   "pixel-7": 24,
   "galaxy-s9": 0,
+  "galaxy-s8": 0,
+  "galaxy-tab-s4": 16,
+  "nexus-10": 0,
 };
 
 async function withMockSafeArea(page: Page, px: number) {
