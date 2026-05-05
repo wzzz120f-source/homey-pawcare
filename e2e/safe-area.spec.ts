@@ -17,13 +17,25 @@ import { test, expect, Page } from "@playwright/test";
  */
 
 const SAFE_AREA_PX_BY_DEVICE: Record<string, number> = {
-  "iphone-se": 0,            // 经典 Home 键，无小横条
+  // —— iPhone 竖屏 ——
+  "iphone-se": 0,                       // 经典 Home 键
   "iphone-12": 34,
   "iphone-13": 34,
+  "iphone-13-mini": 34,
+  "iphone-14": 34,
   "iphone-14-pro-max": 34,
-  "pixel-5": 24,             // Android 手势导航
+  "iphone-15-pro": 34,
+  // —— iPhone 横屏（小横条在右侧，但底部 inset 仍非零） ——
+  "iphone-12-landscape": 21,
+  "iphone-13-landscape": 21,
+  "iphone-14-pro-max-landscape": 21,
+  // —— Android 刘海/手势 ——
+  "pixel-5": 24,
   "pixel-7": 24,
   "galaxy-s9": 0,
+  "galaxy-s8": 0,
+  "galaxy-tab-s4": 16,
+  "nexus-10": 0,
 };
 
 async function withMockSafeArea(page: Page, px: number) {
@@ -68,57 +80,58 @@ async function rect(page: Page, selector: string) {
 
 for (const [project, px] of Object.entries(SAFE_AREA_PX_BY_DEVICE)) {
   test.describe(`safe-area · ${project}`, () => {
-    test("固定底栏完整位于视口内（不被小横条压住）", async ({ page }, testInfo) => {
-      test.skip(!testInfo.project.name.includes(project), "device-scoped");
+    test.skip(({}, testInfo) => testInfo.project.name !== project, "device-scoped");
+
+    test("固定底栏完整位于视口内（不被小横条压住）", async ({ page }) => {
       await mountFixedBar(page, { withGlobalNav: false });
       await withMockSafeArea(page, px);
+      await page.waitForTimeout(50); // 让样式应用稳定后再测量
 
       const vp = page.viewportSize()!;
       const bar = await rect(page, "[data-safe-area-bottom-bar]");
       const cta = await rect(page, "[data-testid='primary-cta']");
       expect(bar).not.toBeNull();
       expect(cta).not.toBeNull();
-      // 整条底栏在视口里
       expect(bar!.y + bar!.height).toBeLessThanOrEqual(vp.height + 1);
-      // CTA 中线距底栏底边 ≥ safe-area，避免按钮被小横条压住
       const ctaBottomGap = bar!.y + bar!.height - (cta!.y + cta!.height);
       expect(ctaBottomGap).toBeGreaterThanOrEqual(px);
     });
 
-    test("底栏 + 全局 BottomNav 同时存在时彼此不重叠", async ({ page }, testInfo) => {
-      test.skip(!testInfo.project.name.includes(project), "device-scoped");
+    test("底栏 + 全局 BottomNav 同时存在时彼此不重叠", async ({ page }) => {
       await mountFixedBar(page, { withGlobalNav: true });
       await withMockSafeArea(page, px);
+      await page.waitForTimeout(50);
 
       const bar = await rect(page, "[data-safe-area-bottom-bar]");
       const nav = await rect(page, "nav[data-bottom-nav]");
+      expect(bar).not.toBeNull();
+      expect(nav).not.toBeNull();
       expect(bar!.y + bar!.height).toBeLessThanOrEqual(nav!.y + 1);
-      // BottomNav 自身底部 padding ≥ safe-area
       const navPadBottom = await page.evaluate(() => {
-        const el = document.querySelector("nav[data-bottom-nav]") as HTMLElement;
-        return parseFloat(getComputedStyle(el).paddingBottom) || 0;
+        const el = document.querySelector("nav[data-bottom-nav]") as HTMLElement | null;
+        return el ? parseFloat(getComputedStyle(el).paddingBottom) || 0 : 0;
       });
       expect(navPadBottom).toBeGreaterThanOrEqual(px);
     });
 
-    test("主体长列表最后一项可完整滚动到视口（未被结算条遮挡）", async ({ page }, testInfo) => {
-      test.skip(!testInfo.project.name.includes(project), "device-scoped");
+    test("主体长列表最后一项可完整滚动到视口（未被结算条遮挡）", async ({ page }) => {
       await mountFixedBar(page, { withGlobalNav: false });
       await withMockSafeArea(page, px);
-      // 在列表末尾追加 spacer，模拟 SafeAreaBottomLayout 自动留白
-      await page.evaluate((px) => {
+      await page.evaluate((safePx) => {
         const bar = document.querySelector("[data-safe-area-bottom-bar]") as HTMLElement;
         const h = bar.getBoundingClientRect().height;
         const spacer = document.createElement("div");
         spacer.setAttribute("data-testid", "safe-area-spacer");
-        spacer.style.height = `${Math.ceil(h) + 8 + px}px`;
+        spacer.style.height = `${Math.ceil(h) + 8 + safePx}px`;
         document.getElementById("long-list")!.appendChild(spacer);
       }, px);
 
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(50);
       const last = await rect(page, "#long-list li:last-of-type");
       const bar = await rect(page, "[data-safe-area-bottom-bar]");
-      // 最后一条的底边在底栏顶边之上（未被压住）
+      expect(last).not.toBeNull();
+      expect(bar).not.toBeNull();
       expect(last!.y + last!.height).toBeLessThanOrEqual(bar!.y + 1);
     });
   });
