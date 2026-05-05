@@ -1,10 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { resolveDeviceMatrix } from "./e2e/device-matrix";
 
 /**
- * Playwright config for BottomCta + booking + safe-area e2e.
- * Multi-viewport coverage of iPhone (portrait + landscape) and a wide
- * range of Android notch / gesture-bar resolutions.
+ * Playwright config — 设备矩阵来自 e2e/device-matrix.ts。
+ * 通过 E2E_DEVICE_PROFILE=smoke|core|full 或 E2E_DEVICES=<csv> 选择子集。
+ * CI 默认 smoke，本地默认 full。
  */
+const matrix = resolveDeviceMatrix();
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
@@ -16,27 +19,18 @@ export default defineConfig({
     actionTimeout: 10_000,
     navigationTimeout: 20_000,
   },
-  projects: [
-    // —— iPhone portrait ——
-    { name: "iphone-se", use: { ...devices["iPhone SE"] } },
-    { name: "iphone-12", use: { ...devices["iPhone 12"] } },
-    { name: "iphone-13", use: { ...devices["iPhone 13"] } },
-    { name: "iphone-13-mini", use: { ...devices["iPhone 13 Mini"] } },
-    { name: "iphone-14", use: { ...devices["iPhone 14"] } },
-    { name: "iphone-14-pro-max", use: { ...devices["iPhone 14 Pro Max"] } },
-    { name: "iphone-15-pro", use: { ...devices["iPhone 15 Pro"] ?? devices["iPhone 14 Pro"] } },
-    // —— iPhone landscape (homebar 在右侧/侧边的横屏小横条) ——
-    { name: "iphone-12-landscape", use: { ...devices["iPhone 12 landscape"] } },
-    { name: "iphone-13-landscape", use: { ...devices["iPhone 13 landscape"] } },
-    { name: "iphone-14-pro-max-landscape", use: { ...devices["iPhone 14 Pro Max landscape"] } },
-    // —— Android: 不同刘海/挖孔 + 手势区差异 ——
-    { name: "pixel-5", use: { ...devices["Pixel 5"] } },
-    { name: "pixel-7", use: { ...devices["Pixel 7"] } },
-    { name: "galaxy-s9", use: { ...devices["Galaxy S9+"] } },
-    { name: "galaxy-s8", use: { ...devices["Galaxy S8"] } },
-    { name: "galaxy-tab-s4", use: { ...devices["Galaxy Tab S4"] } },
-    { name: "nexus-10", use: { ...devices["Nexus 10"] } },
-  ],
+  projects: matrix.map((entry) => {
+    const dev =
+      (devices as Record<string, unknown>)[entry.device] ??
+      (entry.fallbackDevice ? (devices as Record<string, unknown>)[entry.fallbackDevice] : undefined);
+    if (!dev) {
+      throw new Error(
+        `[playwright] Unknown device "${entry.device}" for project "${entry.name}". ` +
+          `Update e2e/device-matrix.ts or set fallbackDevice.`,
+      );
+    }
+    return { name: entry.name, use: { ...(dev as object) } };
+  }),
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
