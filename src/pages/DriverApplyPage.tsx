@@ -760,21 +760,41 @@ const DriverApplyPage = () => {
               您上传的证件仅用于身份审核，全程加密存储，平台严格遵守《个人信息保护法》，未经您的同意不会向第三方披露。
             </div>
 
-            <Button
-              variant="hero"
-              size="xl"
-              className="w-full"
-              disabled={submitting || latestApp?.status === "pending"}
-              onClick={handleSubmit}
-            >
-              {submitting
-                ? "提交中…"
-                : latestApp?.status === "pending"
-                  ? "审核中，请耐心等待"
-                  : latestApp?.status === "rejected"
-                    ? "重新提交审核"
-                    : "提交审核"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("profile")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("exam")}>
+                下一步:在线认证
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Step 5: Online certification exam ── */}
+          <TabsContent value="exam" className="space-y-4">
+            <DriverCertificationQuiz onComplete={(passed) => setExamPassed(passed)} />
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("docs")}>
+                上一步
+              </Button>
+              <Button
+                variant="hero"
+                size="lg"
+                disabled={submitting || latestApp?.status === "pending" || !examPassed}
+                onClick={handleSubmit}
+              >
+                {submitting
+                  ? "提交中…"
+                  : latestApp?.status === "pending"
+                    ? "审核中"
+                    : !examPassed
+                      ? "请先通过认证"
+                      : latestApp?.status === "rejected"
+                        ? "重新提交"
+                        : "提交申请"}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
