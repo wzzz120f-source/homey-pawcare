@@ -15,6 +15,9 @@ import {
   Car,
   IdCard,
   FileText,
+  User as UserIcon,
+  Building2,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +29,15 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import DriverCertificationQuiz from "@/components/DriverCertificationQuiz";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 type ApplicationStatus = "pending" | "approved" | "rejected";
+type ApplicantKind = "individual" | "institution";
+type StepKey = "intro" | "identity" | "profile" | "docs" | "exam";
+
 interface LatestApplication {
   id: string;
   status: ApplicationStatus;
@@ -48,16 +55,24 @@ const INCOME_STATS = [
 ];
 
 const REQUIREMENTS = [
-  "年龄 22–55 岁，持 C1 及以上驾照满 3 年",
+  "年龄 22–55 岁,持 C1 及以上驾照满 3 年",
   "名下或可使用车辆 5 年内、车况良好",
-  "热爱小动物，无虐待动物记录",
+  "热爱小动物,无虐待动物记录",
   "无重大交通违法 / 犯罪记录",
+];
+
+const STEPS: { key: StepKey; title: string; short: string }[] = [
+  { key: "intro", title: "了解权益", short: "卖点" },
+  { key: "identity", title: "选择身份", short: "身份" },
+  { key: "profile", title: "填写资料", short: "资料" },
+  { key: "docs", title: "上传证件", short: "证件" },
+  { key: "exam", title: "在线认证", short: "认证" },
 ];
 
 const FLOW_STEPS = [
   { step: 1, title: "在线注册", desc: "填写资料、上传证件" },
-  { step: 2, title: "平台审核", desc: "1–3 个工作日内完成" },
-  { step: 3, title: "线上培训", desc: "宠物安全 + 平台规则" },
+  { step: 2, title: "在线认证", desc: "宠物常识 5 题考核" },
+  { step: 3, title: "平台审核", desc: "1–3 个工作日完成" },
   { step: 4, title: "接单上线", desc: "通过即可开始接单" },
 ];
 
@@ -69,7 +84,7 @@ const PET_EXPERIENCE = [
   { id: "vet", label: "🩺 宠物医院 / 助理" },
   { id: "shelter", label: "🏠 救助站志愿者" },
   { id: "trainer", label: "🦮 宠物训练师" },
-  { id: "none", label: "💡 仅有热爱，无经验" },
+  { id: "none", label: "💡 仅有热爱,无经验" },
 ];
 
 const DOC_FIELDS = [
@@ -96,7 +111,9 @@ const profileSchema = z.object({
 const DriverApplyPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState<"intro" | "profile" | "docs">("intro");
+  const [step, setStep] = useState<StepKey>("intro");
+  const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
+  const [examPassed, setExamPassed] = useState(false);
 
   // Profile state
   const [fullName, setFullName] = useState("");
@@ -270,12 +287,18 @@ const DriverApplyPage = () => {
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "请检查表单");
-      setTab("profile");
+      setStep("profile");
       return;
     }
     const missing = DOC_FIELDS.filter((f) => !docs[f.key]);
     if (missing.length > 0) {
-      toast.error(`请上传：${missing.map((m) => m.label).join("、")}`);
+      toast.error(`请上传:${missing.map((m) => m.label).join("、")}`);
+      setStep("docs");
+      return;
+    }
+    if (!examPassed) {
+      toast.error("请先完成在线认证测试");
+      setStep("exam");
       return;
     }
 
@@ -385,14 +408,32 @@ const DriverApplyPage = () => {
           </section>
         )}
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="intro">成为司机</TabsTrigger>
-            <TabsTrigger value="profile">填写资料</TabsTrigger>
-            <TabsTrigger value="docs">上传证件</TabsTrigger>
+        <Tabs value={step} onValueChange={(v) => setStep(v as StepKey)} className="w-full">
+          {/* 进度条 */}
+          {(() => {
+            const idx = STEPS.findIndex((s) => s.key === step);
+            const pct = ((idx + 1) / STEPS.length) * 100;
+            return (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    第 {idx + 1} / {STEPS.length} 步 · {STEPS[idx]?.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{Math.round(pct)}%</span>
+                </div>
+                <Progress value={pct} className="h-1.5" />
+              </div>
+            );
+          })()}
+          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
+            {STEPS.map((s) => (
+              <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
+                {s.short}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          {/* ── Tab 1: Intro ── */}
+          {/* ── Step 1: Intro ── */}
           <TabsContent value="intro" className="space-y-5">
             {/* Hero */}
             <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-5">
@@ -452,12 +493,84 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setTab("profile")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
               立即申请 →
             </Button>
           </TabsContent>
 
-          {/* ── Tab 2: Profile ── */}
+          {/* ── Step 2: Identity selection (材料前置告知) ── */}
+          <TabsContent value="identity" className="space-y-4">
+            <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-4">
+              <p className="text-sm font-bold text-foreground mb-1">请选择您的入驻身份</p>
+              <p className="text-xs text-muted-foreground">不同身份所需材料不同,请提前准备好以提升通过率。</p>
+            </div>
+
+            <div className="grid gap-3">
+              {([
+                {
+                  key: "individual" as const,
+                  icon: UserIcon,
+                  title: "个人宠托师",
+                  hint: "灵活接单 · 单兵作战",
+                  needs: ["身份证(正反 + 手持)", "驾驶证(C1+,3 年驾龄)", "行驶证 · 5 年内车辆"],
+                },
+                {
+                  key: "institution" as const,
+                  icon: Building2,
+                  title: "专业宠物店 / 机构",
+                  hint: "团队接单 · 高优先级派单",
+                  needs: ["营业执照", "法人身份证", "店长 / 主理人手持照", "驾驶证 + 行驶证"],
+                },
+              ]).map((r) => {
+                const active = applicantKind === r.key;
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setApplicantKind(r.key)}
+                    className={cn(
+                      "w-full text-left rounded-2xl border-2 p-4 transition-all",
+                      active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}>
+                        <r.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-foreground">{r.title}</div>
+                        <div className="text-xs text-muted-foreground">{r.hint}</div>
+                      </div>
+                      {active && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                    </div>
+                    <ul className="ml-13 space-y-1 mt-2">
+                      {r.needs.map((n) => (
+                        <li key={n} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <span className="text-primary">•</span>
+                          <span>{n}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              ⚠️ 请确保所有证件清晰、未过期。资料不全将无法通过审核。
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
+                下一步:填写资料
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Step 3: Profile ── */}
           <TabsContent value="profile" className="space-y-4">
             <div className="bg-card card-shadow rounded-xl p-4 space-y-4">
               <div>
@@ -557,9 +670,14 @@ const DriverApplyPage = () => {
               </div>
             </div>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setTab("docs")}>
-              下一步：上传证件
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("identity")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("docs")}>
+                下一步:上传证件
+              </Button>
+            </div>
           </TabsContent>
 
           {/* ── Tab 3: Docs ── */}
@@ -642,21 +760,41 @@ const DriverApplyPage = () => {
               您上传的证件仅用于身份审核，全程加密存储，平台严格遵守《个人信息保护法》，未经您的同意不会向第三方披露。
             </div>
 
-            <Button
-              variant="hero"
-              size="xl"
-              className="w-full"
-              disabled={submitting || latestApp?.status === "pending"}
-              onClick={handleSubmit}
-            >
-              {submitting
-                ? "提交中…"
-                : latestApp?.status === "pending"
-                  ? "审核中，请耐心等待"
-                  : latestApp?.status === "rejected"
-                    ? "重新提交审核"
-                    : "提交审核"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("profile")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("exam")}>
+                下一步:在线认证
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Step 5: Online certification exam ── */}
+          <TabsContent value="exam" className="space-y-4">
+            <DriverCertificationQuiz onComplete={(passed) => setExamPassed(passed)} />
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("docs")}>
+                上一步
+              </Button>
+              <Button
+                variant="hero"
+                size="lg"
+                disabled={submitting || latestApp?.status === "pending" || !examPassed}
+                onClick={handleSubmit}
+              >
+                {submitting
+                  ? "提交中…"
+                  : latestApp?.status === "pending"
+                    ? "审核中"
+                    : !examPassed
+                      ? "请先通过认证"
+                      : latestApp?.status === "rejected"
+                        ? "重新提交"
+                        : "提交申请"}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
