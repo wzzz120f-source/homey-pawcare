@@ -1,0 +1,19 @@
+# Directories
+node_modules
+dist
+build
+.next
+.nuxt
+bun.lock
+bun.lockb
+
+# Files
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+.env
+.env.local
+.DS_Store

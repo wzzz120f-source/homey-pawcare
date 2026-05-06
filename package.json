@@ -1,16 +1,24 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "homey-pawcare",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "description": "一个专业的宠物上门服务预订平台",
+  "author": "wzzz120f-source",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\""
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
@@ -75,6 +83,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.48.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.0",
@@ -88,9 +97,12 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "husky": "^9.1.7",
     "jsdom": "^20.0.3",
+    "lint-staged": "^15.2.11",
     "lovable-tagger": "^1.1.13",
     "postcss": "^8.5.6",
+    "prettier": "^3.4.2",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
