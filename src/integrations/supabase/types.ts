@@ -400,6 +400,36 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_certification_tests: {
+        Row: {
+          answers: Json
+          created_at: string
+          id: string
+          passed: boolean
+          score: number
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          passed?: boolean
+          score?: number
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          passed?: boolean
+          score?: number
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       emergency_reports: {
         Row: {
           contact_phone: string | null
