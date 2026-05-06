@@ -670,9 +670,14 @@ const DriverApplyPage = () => {
               </div>
             </div>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setTab("docs")}>
-              下一步：上传证件
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("identity")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("docs")}>
+                下一步:上传证件
+              </Button>
+            </div>
           </TabsContent>
 
           {/* ── Tab 3: Docs ── */}
