@@ -493,12 +493,84 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setTab("profile")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
               立即申请 →
             </Button>
           </TabsContent>
 
-          {/* ── Tab 2: Profile ── */}
+          {/* ── Step 2: Identity selection (材料前置告知) ── */}
+          <TabsContent value="identity" className="space-y-4">
+            <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-4">
+              <p className="text-sm font-bold text-foreground mb-1">请选择您的入驻身份</p>
+              <p className="text-xs text-muted-foreground">不同身份所需材料不同,请提前准备好以提升通过率。</p>
+            </div>
+
+            <div className="grid gap-3">
+              {([
+                {
+                  key: "individual" as const,
+                  icon: UserIcon,
+                  title: "个人宠托师",
+                  hint: "灵活接单 · 单兵作战",
+                  needs: ["身份证(正反 + 手持)", "驾驶证(C1+,3 年驾龄)", "行驶证 · 5 年内车辆"],
+                },
+                {
+                  key: "institution" as const,
+                  icon: Building2,
+                  title: "专业宠物店 / 机构",
+                  hint: "团队接单 · 高优先级派单",
+                  needs: ["营业执照", "法人身份证", "店长 / 主理人手持照", "驾驶证 + 行驶证"],
+                },
+              ]).map((r) => {
+                const active = applicantKind === r.key;
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setApplicantKind(r.key)}
+                    className={cn(
+                      "w-full text-left rounded-2xl border-2 p-4 transition-all",
+                      active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}>
+                        <r.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-foreground">{r.title}</div>
+                        <div className="text-xs text-muted-foreground">{r.hint}</div>
+                      </div>
+                      {active && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                    </div>
+                    <ul className="ml-13 space-y-1 mt-2">
+                      {r.needs.map((n) => (
+                        <li key={n} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <span className="text-primary">•</span>
+                          <span>{n}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              ⚠️ 请确保所有证件清晰、未过期。资料不全将无法通过审核。
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
+                下一步:填写资料
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Step 3: Profile ── */}
           <TabsContent value="profile" className="space-y-4">
             <div className="bg-card card-shadow rounded-xl p-4 space-y-4">
               <div>
