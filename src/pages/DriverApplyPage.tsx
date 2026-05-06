@@ -287,12 +287,18 @@ const DriverApplyPage = () => {
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "请检查表单");
-      setTab("profile");
+      setStep("profile");
       return;
     }
     const missing = DOC_FIELDS.filter((f) => !docs[f.key]);
     if (missing.length > 0) {
-      toast.error(`请上传：${missing.map((m) => m.label).join("、")}`);
+      toast.error(`请上传:${missing.map((m) => m.label).join("、")}`);
+      setStep("docs");
+      return;
+    }
+    if (!examPassed) {
+      toast.error("请先完成在线认证测试");
+      setStep("exam");
       return;
     }
 
