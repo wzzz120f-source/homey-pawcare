@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, useMemo, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -15,6 +15,9 @@ import {
   Car,
   IdCard,
   FileText,
+  User as UserIcon,
+  Building2,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +29,15 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import DriverCertificationQuiz from "@/components/DriverCertificationQuiz";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 type ApplicationStatus = "pending" | "approved" | "rejected";
+type ApplicantKind = "individual" | "institution";
+type StepKey = "intro" | "identity" | "profile" | "docs" | "exam";
+
 interface LatestApplication {
   id: string;
   status: ApplicationStatus;
@@ -48,16 +55,24 @@ const INCOME_STATS = [
 ];
 
 const REQUIREMENTS = [
-  "年龄 22–55 岁，持 C1 及以上驾照满 3 年",
+  "年龄 22–55 岁,持 C1 及以上驾照满 3 年",
   "名下或可使用车辆 5 年内、车况良好",
-  "热爱小动物，无虐待动物记录",
+  "热爱小动物,无虐待动物记录",
   "无重大交通违法 / 犯罪记录",
+];
+
+const STEPS: { key: StepKey; title: string; short: string }[] = [
+  { key: "intro", title: "了解权益", short: "卖点" },
+  { key: "identity", title: "选择身份", short: "身份" },
+  { key: "profile", title: "填写资料", short: "资料" },
+  { key: "docs", title: "上传证件", short: "证件" },
+  { key: "exam", title: "在线认证", short: "认证" },
 ];
 
 const FLOW_STEPS = [
   { step: 1, title: "在线注册", desc: "填写资料、上传证件" },
-  { step: 2, title: "平台审核", desc: "1–3 个工作日内完成" },
-  { step: 3, title: "线上培训", desc: "宠物安全 + 平台规则" },
+  { step: 2, title: "在线认证", desc: "宠物常识 5 题考核" },
+  { step: 3, title: "平台审核", desc: "1–3 个工作日完成" },
   { step: 4, title: "接单上线", desc: "通过即可开始接单" },
 ];
 
@@ -69,7 +84,7 @@ const PET_EXPERIENCE = [
   { id: "vet", label: "🩺 宠物医院 / 助理" },
   { id: "shelter", label: "🏠 救助站志愿者" },
   { id: "trainer", label: "🦮 宠物训练师" },
-  { id: "none", label: "💡 仅有热爱，无经验" },
+  { id: "none", label: "💡 仅有热爱,无经验" },
 ];
 
 const DOC_FIELDS = [
@@ -96,7 +111,9 @@ const profileSchema = z.object({
 const DriverApplyPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState<"intro" | "profile" | "docs">("intro");
+  const [step, setStep] = useState<StepKey>("intro");
+  const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
+  const [examPassed, setExamPassed] = useState(false);
 
   // Profile state
   const [fullName, setFullName] = useState("");
