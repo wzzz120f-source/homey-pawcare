@@ -408,14 +408,32 @@ const DriverApplyPage = () => {
           </section>
         )}
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="intro">成为司机</TabsTrigger>
-            <TabsTrigger value="profile">填写资料</TabsTrigger>
-            <TabsTrigger value="docs">上传证件</TabsTrigger>
+        <Tabs value={step} onValueChange={(v) => setStep(v as StepKey)} className="w-full">
+          {/* 进度条 */}
+          {(() => {
+            const idx = STEPS.findIndex((s) => s.key === step);
+            const pct = ((idx + 1) / STEPS.length) * 100;
+            return (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    第 {idx + 1} / {STEPS.length} 步 · {STEPS[idx]?.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{Math.round(pct)}%</span>
+                </div>
+                <Progress value={pct} className="h-1.5" />
+              </div>
+            );
+          })()}
+          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
+            {STEPS.map((s) => (
+              <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
+                {s.short}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          {/* ── Tab 1: Intro ── */}
+          {/* ── Step 1: Intro ── */}
           <TabsContent value="intro" className="space-y-5">
             {/* Hero */}
             <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-5">
