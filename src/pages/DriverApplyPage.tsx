@@ -36,7 +36,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 type ApplicationStatus = "pending" | "approved" | "rejected";
 type ApplicantKind = "individual" | "institution";
-type StepKey = "intro" | "identity" | "profile" | "docs" | "exam";
+type ApplyRole = "sitter" | "groomer" | "driver";
+type StepKey = "intro" | "role" | "identity" | "profile" | "docs" | "exam";
 
 interface LatestApplication {
   id: string;
@@ -87,24 +88,63 @@ const PET_EXPERIENCE = [
   { id: "none", label: "💡 仅有热爱,无经验" },
 ];
 
-const DOC_FIELDS = [
+// 通用 5 类材料字段（复用 driver_applications 表字段）
+const ALL_DOCS = [
   { key: "id_card_front_url", label: "身份证 · 人像面", icon: IdCard },
   { key: "id_card_back_url", label: "身份证 · 国徽面", icon: IdCard },
+  { key: "handheld_id_url", label: "手持身份证照片", icon: ShieldCheck },
   { key: "driver_license_url", label: "驾驶证", icon: FileText },
   { key: "vehicle_license_url", label: "行驶证", icon: Car },
-  { key: "handheld_id_url", label: "手持身份证照片", icon: ShieldCheck },
 ] as const;
 
-type DocKey = (typeof DOC_FIELDS)[number]["key"];
+type DocKey = (typeof ALL_DOCS)[number]["key"];
+
+// 角色 → 所需材料 / 所需字段映射
+const ROLE_META: Record<ApplyRole, {
+  label: string;
+  emoji: string;
+  desc: string;
+  docs: DocKey[];
+  needsVehicle: boolean;
+  driverDocLabel?: string;
+  vehicleDocLabel?: string;
+}> = {
+  sitter: {
+    label: "宠托师",
+    emoji: "🤝",
+    desc: "上门喂养、遛狗、铲屎等基础陪伴",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url"],
+    needsVehicle: false,
+  },
+  groomer: {
+    label: "护理师",
+    emoji: "✂️",
+    desc: "专业洗澡、美容、医疗护理（需专业资质）",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url", "driver_license_url"],
+    needsVehicle: false,
+    driverDocLabel: "专业资质（美容证 / 兽医证）",
+  },
+  driver: {
+    label: "宠物司机",
+    emoji: "🚗",
+    desc: "宠物接送、专车跟车（需驾驶证 + 行驶证）",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url", "driver_license_url", "vehicle_license_url"],
+    needsVehicle: true,
+    driverDocLabel: "驾驶证",
+    vehicleDocLabel: "行驶证 + 车辆环境照",
+  },
+};
 
 // ─── Validation ────────────────────────────────────────────────────────────
-const profileSchema = z.object({
+const profileSchemaBase = z.object({
   full_name: z.string().trim().min(2, "请输入真实姓名").max(20),
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
   gender: z.enum(["male", "female"]),
+  pet_experience: z.array(z.string()).min(1, "请至少选择一项宠物经验"),
+});
+const driverProfileSchema = profileSchemaBase.extend({
   driving_years: z.number().int().min(3, "驾龄需满 3 年").max(50),
   vehicle_type: z.enum(VEHICLE_TYPES),
-  pet_experience: z.array(z.string()).min(1, "请至少选择一项宠物经验"),
 });
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -112,8 +152,11 @@ const DriverApplyPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<StepKey>("intro");
+  const [applyRole, setApplyRole] = useState<ApplyRole>("sitter");
   const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
   const [examPassed, setExamPassed] = useState(false);
+  const meta = ROLE_META[applyRole];
+  const requiredDocs = meta.docs;
 
   // Profile state
   const [fullName, setFullName] = useState("");
@@ -277,12 +320,12 @@ const DriverApplyPage = () => {
       navigate("/auth");
       return;
     }
-    const parsed = profileSchema.safeParse({
+    const schema = meta.needsVehicle ? driverProfileSchema : profileSchemaBase;
+    const parsed = schema.safeParse({
       full_name: fullName,
       phone,
       gender,
-      driving_years: Number(drivingYears),
-      vehicle_type: vehicleType,
+      ...(meta.needsVehicle ? { driving_years: Number(drivingYears), vehicle_type: vehicleType } : {}),
       pet_experience: petExp,
     });
     if (!parsed.success) {
@@ -290,9 +333,14 @@ const DriverApplyPage = () => {
       setStep("profile");
       return;
     }
-    const missing = DOC_FIELDS.filter((f) => !docs[f.key]);
+    const missing = requiredDocs.filter((k) => !docs[k]);
     if (missing.length > 0) {
-      toast.error(`请上传:${missing.map((m) => m.label).join("、")}`);
+      const labels = missing.map((k) => {
+        if (k === "driver_license_url" && meta.driverDocLabel) return meta.driverDocLabel;
+        if (k === "vehicle_license_url" && meta.vehicleDocLabel) return meta.vehicleDocLabel;
+        return ALL_DOCS.find((d) => d.key === k)?.label ?? k;
+      });
+      toast.error(`请上传:${labels.join("、")}`);
       setStep("docs");
       return;
     }
@@ -304,19 +352,21 @@ const DriverApplyPage = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("driver_applications").insert({
+      const payload: Record<string, unknown> = {
         user_id: user.id,
         full_name: parsed.data.full_name,
         phone: parsed.data.phone,
         gender: parsed.data.gender,
-        driving_years: parsed.data.driving_years,
-        vehicle_type: parsed.data.vehicle_type,
         pet_experience: parsed.data.pet_experience,
-        ...docs,
+        role_requested: applyRole,
+        driving_years: meta.needsVehicle ? (parsed.data as any).driving_years : 0,
+        vehicle_type: meta.needsVehicle ? (parsed.data as any).vehicle_type : "无",
+        ...Object.fromEntries(requiredDocs.map((k) => [k, docs[k]])),
         status: "pending",
-      });
+      };
+      const { error } = await supabase.from("driver_applications").insert(payload as any);
       if (error) throw error;
-      toast.success("申请已提交，1–3 个工作日内审核");
+      toast.success(`${meta.label}申请已提交，1–3 个工作日内审核`);
       navigate("/profile");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "提交失败");
@@ -338,7 +388,7 @@ const DriverApplyPage = () => {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="font-extrabold text-lg text-foreground">司机入驻</h1>
+          <h1 className="font-extrabold text-lg text-foreground">守护者入驻 · {meta.label}</h1>
         </div>
       </header>
 
@@ -425,7 +475,7 @@ const DriverApplyPage = () => {
               </div>
             );
           })()}
-          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
+          <TabsList className="grid w-full grid-cols-6 mb-4 h-auto">
             {STEPS.map((s) => (
               <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
                 {s.short}
@@ -493,9 +543,69 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("role")}>
               立即申请 →
             </Button>
+          </TabsContent>
+
+          {/* ── Step 1.5: Role selection (宠托师/护理师/司机) ── */}
+          <TabsContent value="role" className="space-y-4">
+            <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-4">
+              <p className="text-sm font-bold text-foreground mb-1">请选择您要申请的守护者角色</p>
+              <p className="text-xs text-muted-foreground">不同角色所需材料不同，可前往「我的」再次申请其他角色。</p>
+            </div>
+
+            <div className="grid gap-3">
+              {(Object.keys(ROLE_META) as ApplyRole[]).map((rk) => {
+                const r = ROLE_META[rk];
+                const active = applyRole === rk;
+                return (
+                  <button
+                    key={rk}
+                    type="button"
+                    onClick={() => setApplyRole(rk)}
+                    className={cn(
+                      "w-full text-left rounded-2xl border-2 p-4 transition-all",
+                      active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-3xl">{r.emoji}</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-foreground">{r.label}</div>
+                        <div className="text-xs text-muted-foreground">{r.desc}</div>
+                      </div>
+                      {active && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                    </div>
+                    <ul className="space-y-1 mt-2 pl-1">
+                      {r.docs.map((dk) => {
+                        const label =
+                          dk === "driver_license_url" && r.driverDocLabel
+                            ? r.driverDocLabel
+                            : dk === "vehicle_license_url" && r.vehicleDocLabel
+                              ? r.vehicleDocLabel
+                              : ALL_DOCS.find((d) => d.key === dk)?.label;
+                        return (
+                          <li key={dk} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="text-primary">•</span>
+                            <span>{label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("identity")}>
+                下一步：选择身份
+              </Button>
+            </div>
           </TabsContent>
 
           {/* ── Step 2: Identity selection (材料前置告知) ── */}
@@ -561,7 +671,7 @@ const DriverApplyPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+              <Button variant="outline" size="lg" onClick={() => setStep("role")}>
                 上一步
               </Button>
               <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
@@ -614,38 +724,42 @@ const DriverApplyPage = () => {
                   ))}
                 </div>
               </div>
-              <div>
-                <Label htmlFor="driving_years">驾龄（年）</Label>
-                <Input
-                  id="driving_years"
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={drivingYears}
-                  onChange={(e) => setDrivingYears(e.target.value)}
-                  placeholder="例如 5"
-                />
-              </div>
-              <div>
-                <Label>车型</Label>
-                <div className="grid grid-cols-4 gap-2 mt-1">
-                  {VEHICLE_TYPES.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setVehicleType(v)}
-                      className={cn(
-                        "py-2 rounded-lg text-sm font-medium border transition-all",
-                        vehicleType === v
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-card border-border text-muted-foreground",
-                      )}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {meta.needsVehicle && (
+                <>
+                  <div>
+                    <Label htmlFor="driving_years">驾龄（年）</Label>
+                    <Input
+                      id="driving_years"
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={drivingYears}
+                      onChange={(e) => setDrivingYears(e.target.value)}
+                      placeholder="例如 5"
+                    />
+                  </div>
+                  <div>
+                    <Label>车型</Label>
+                    <div className="grid grid-cols-4 gap-2 mt-1">
+                      {VEHICLE_TYPES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setVehicleType(v)}
+                          className={cn(
+                            "py-2 rounded-lg text-sm font-medium border transition-all",
+                            vehicleType === v
+                              ? "bg-primary/10 border-primary text-primary"
+                              : "bg-card border-border text-muted-foreground",
+                          )}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <Label>宠物经验（多选）</Label>
                 <div className="grid grid-cols-1 gap-2 mt-1">
@@ -683,7 +797,17 @@ const DriverApplyPage = () => {
           {/* ── Tab 3: Docs ── */}
           <TabsContent value="docs" className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
-              {DOC_FIELDS.map((f) => {
+              {requiredDocs.map((key) => {
+                const base = ALL_DOCS.find((d) => d.key === key)!;
+                const f = {
+                  ...base,
+                  label:
+                    key === "driver_license_url" && meta.driverDocLabel
+                      ? meta.driverDocLabel
+                      : key === "vehicle_license_url" && meta.vehicleDocLabel
+                        ? meta.vehicleDocLabel
+                        : base.label,
+                };
                 const uploaded = !!docs[f.key];
                 const isUploading = uploading === f.key;
                 const previewUrl = previews[f.key];
