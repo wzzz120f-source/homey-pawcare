@@ -724,38 +724,42 @@ const DriverApplyPage = () => {
                   ))}
                 </div>
               </div>
-              <div>
-                <Label htmlFor="driving_years">驾龄（年）</Label>
-                <Input
-                  id="driving_years"
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={drivingYears}
-                  onChange={(e) => setDrivingYears(e.target.value)}
-                  placeholder="例如 5"
-                />
-              </div>
-              <div>
-                <Label>车型</Label>
-                <div className="grid grid-cols-4 gap-2 mt-1">
-                  {VEHICLE_TYPES.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setVehicleType(v)}
-                      className={cn(
-                        "py-2 rounded-lg text-sm font-medium border transition-all",
-                        vehicleType === v
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-card border-border text-muted-foreground",
-                      )}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {meta.needsVehicle && (
+                <>
+                  <div>
+                    <Label htmlFor="driving_years">驾龄（年）</Label>
+                    <Input
+                      id="driving_years"
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={drivingYears}
+                      onChange={(e) => setDrivingYears(e.target.value)}
+                      placeholder="例如 5"
+                    />
+                  </div>
+                  <div>
+                    <Label>车型</Label>
+                    <div className="grid grid-cols-4 gap-2 mt-1">
+                      {VEHICLE_TYPES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setVehicleType(v)}
+                          className={cn(
+                            "py-2 rounded-lg text-sm font-medium border transition-all",
+                            vehicleType === v
+                              ? "bg-primary/10 border-primary text-primary"
+                              : "bg-card border-border text-muted-foreground",
+                          )}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <Label>宠物经验（多选）</Label>
                 <div className="grid grid-cols-1 gap-2 mt-1">
