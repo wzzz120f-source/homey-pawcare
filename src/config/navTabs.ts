@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, MessageSquare, User, Headphones, ClipboardList, Map, GraduationCap, BarChart3, Package, Store, ShieldCheck } from "lucide-react";
+import { Home, ShoppingBag, MessageSquare, User, Headphones, ClipboardList, GraduationCap, BarChart3, Package, Store, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ActiveRole } from "@/hooks/useUserRoles";
 
