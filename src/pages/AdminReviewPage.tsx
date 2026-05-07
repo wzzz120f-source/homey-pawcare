@@ -51,7 +51,10 @@ const AdminReviewPage = () => {
       .update({ status: approve ? "approved" : "rejected", reviewed_at: new Date().toISOString() })
       .eq("id", id);
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(approve ? "已通过" : "已拒绝");
     load();
   };
@@ -61,7 +64,10 @@ const AdminReviewPage = () => {
     const fn = approve ? "approve_merchant_application" : "reject_merchant_application";
     const { data, error } = await supabase.rpc(fn, { _application_id: id });
     setBusy(null);
-    if (error || (data as any)?.success === false) return toast.error(error?.message || "操作失败");
+    if (error || (data as any)?.success === false) {
+      toast.error(error?.message || "操作失败");
+      return;
+    }
     toast.success(approve ? "已通过" : "已拒绝");
     load();
   };
