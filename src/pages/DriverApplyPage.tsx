@@ -475,7 +475,7 @@ const DriverApplyPage = () => {
               </div>
             );
           })()}
-          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
+          <TabsList className="grid w-full grid-cols-6 mb-4 h-auto">
             {STEPS.map((s) => (
               <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
                 {s.short}
