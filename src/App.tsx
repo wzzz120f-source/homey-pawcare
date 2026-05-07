@@ -39,6 +39,8 @@ const TripRatingPage = lazyTracked("路由 TripRatingPage", () => import("./page
 const TripTrackingPage = lazyTracked("路由 TripTrackingPage", () => import("./pages/TripTrackingPage"));
 const OrderHistoryPage = lazyTracked("路由 OrderHistoryPage", () => import("./pages/OrderHistoryPage"));
 const GroupBookingPage = lazyTracked("路由 GroupBookingPage", () => import("./pages/GroupBookingPage"));
+const WorkerDashboardPage = lazyTracked("路由 WorkerDashboardPage", () => import("./pages/WorkerDashboardPage"));
+const AdminReviewPage = lazyTracked("路由 AdminReviewPage", () => import("./pages/AdminReviewPage"));
 
 const queryClient = new QueryClient();
 
@@ -82,6 +84,8 @@ const App = () => (
             <Route path="/track/:id" element={<TripTrackingPage />} />
             <Route path="/orders" element={<OrderHistoryPage />} />
             <Route path="/group-booking" element={<GroupBookingPage />} />
+            <Route path="/worker" element={<WorkerDashboardPage />} />
+            <Route path="/admin/review" element={<AdminReviewPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
