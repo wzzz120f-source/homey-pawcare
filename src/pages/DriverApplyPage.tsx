@@ -320,12 +320,12 @@ const DriverApplyPage = () => {
       navigate("/auth");
       return;
     }
-    const parsed = profileSchema.safeParse({
+    const schema = meta.needsVehicle ? driverProfileSchema : profileSchemaBase;
+    const parsed = schema.safeParse({
       full_name: fullName,
       phone,
       gender,
-      driving_years: Number(drivingYears),
-      vehicle_type: vehicleType,
+      ...(meta.needsVehicle ? { driving_years: Number(drivingYears), vehicle_type: vehicleType } : {}),
       pet_experience: petExp,
     });
     if (!parsed.success) {
@@ -333,9 +333,14 @@ const DriverApplyPage = () => {
       setStep("profile");
       return;
     }
-    const missing = DOC_FIELDS.filter((f) => !docs[f.key]);
+    const missing = requiredDocs.filter((k) => !docs[k]);
     if (missing.length > 0) {
-      toast.error(`请上传:${missing.map((m) => m.label).join("、")}`);
+      const labels = missing.map((k) => {
+        if (k === "driver_license_url" && meta.driverDocLabel) return meta.driverDocLabel;
+        if (k === "vehicle_license_url" && meta.vehicleDocLabel) return meta.vehicleDocLabel;
+        return ALL_DOCS.find((d) => d.key === k)?.label ?? k;
+      });
+      toast.error(`请上传:${labels.join("、")}`);
       setStep("docs");
       return;
     }
@@ -347,19 +352,21 @@ const DriverApplyPage = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("driver_applications").insert({
+      const payload: Record<string, unknown> = {
         user_id: user.id,
         full_name: parsed.data.full_name,
         phone: parsed.data.phone,
         gender: parsed.data.gender,
-        driving_years: parsed.data.driving_years,
-        vehicle_type: parsed.data.vehicle_type,
         pet_experience: parsed.data.pet_experience,
-        ...docs,
+        role_requested: applyRole,
+        driving_years: meta.needsVehicle ? (parsed.data as any).driving_years : 0,
+        vehicle_type: meta.needsVehicle ? (parsed.data as any).vehicle_type : "无",
+        ...Object.fromEntries(requiredDocs.map((k) => [k, docs[k]])),
         status: "pending",
-      });
+      };
+      const { error } = await supabase.from("driver_applications").insert(payload as any);
       if (error) throw error;
-      toast.success("申请已提交，1–3 个工作日内审核");
+      toast.success(`${meta.label}申请已提交，1–3 个工作日内审核`);
       navigate("/profile");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "提交失败");
