@@ -671,7 +671,7 @@ const DriverApplyPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+              <Button variant="outline" size="lg" onClick={() => setStep("role")}>
                 上一步
               </Button>
               <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
