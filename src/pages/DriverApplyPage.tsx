@@ -733,7 +733,17 @@ const DriverApplyPage = () => {
           {/* ── Tab 3: Docs ── */}
           <TabsContent value="docs" className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
-              {DOC_FIELDS.map((f) => {
+              {requiredDocs.map((key) => {
+                const base = ALL_DOCS.find((d) => d.key === key)!;
+                const f = {
+                  ...base,
+                  label:
+                    key === "driver_license_url" && meta.driverDocLabel
+                      ? meta.driverDocLabel
+                      : key === "vehicle_license_url" && meta.vehicleDocLabel
+                        ? meta.vehicleDocLabel
+                        : base.label,
+                };
                 const uploaded = !!docs[f.key];
                 const isUploading = uploading === f.key;
                 const previewUrl = previews[f.key];
