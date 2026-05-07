@@ -152,8 +152,11 @@ const DriverApplyPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState<StepKey>("intro");
+  const [applyRole, setApplyRole] = useState<ApplyRole>("sitter");
   const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
   const [examPassed, setExamPassed] = useState(false);
+  const meta = ROLE_META[applyRole];
+  const requiredDocs = meta.docs;
 
   // Profile state
   const [fullName, setFullName] = useState("");
