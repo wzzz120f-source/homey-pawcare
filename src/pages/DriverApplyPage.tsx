@@ -543,9 +543,69 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("role")}>
               立即申请 →
             </Button>
+          </TabsContent>
+
+          {/* ── Step 1.5: Role selection (宠托师/护理师/司机) ── */}
+          <TabsContent value="role" className="space-y-4">
+            <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-4">
+              <p className="text-sm font-bold text-foreground mb-1">请选择您要申请的守护者角色</p>
+              <p className="text-xs text-muted-foreground">不同角色所需材料不同，可前往「我的」再次申请其他角色。</p>
+            </div>
+
+            <div className="grid gap-3">
+              {(Object.keys(ROLE_META) as ApplyRole[]).map((rk) => {
+                const r = ROLE_META[rk];
+                const active = applyRole === rk;
+                return (
+                  <button
+                    key={rk}
+                    type="button"
+                    onClick={() => setApplyRole(rk)}
+                    className={cn(
+                      "w-full text-left rounded-2xl border-2 p-4 transition-all",
+                      active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-3xl">{r.emoji}</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-foreground">{r.label}</div>
+                        <div className="text-xs text-muted-foreground">{r.desc}</div>
+                      </div>
+                      {active && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                    </div>
+                    <ul className="space-y-1 mt-2 pl-1">
+                      {r.docs.map((dk) => {
+                        const label =
+                          dk === "driver_license_url" && r.driverDocLabel
+                            ? r.driverDocLabel
+                            : dk === "vehicle_license_url" && r.vehicleDocLabel
+                              ? r.vehicleDocLabel
+                              : ALL_DOCS.find((d) => d.key === dk)?.label;
+                        return (
+                          <li key={dk} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="text-primary">•</span>
+                            <span>{label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
+                上一步
+              </Button>
+              <Button variant="hero" size="lg" onClick={() => setStep("identity")}>
+                下一步：选择身份
+              </Button>
+            </div>
           </TabsContent>
 
           {/* ── Step 2: Identity selection (材料前置告知) ── */}
