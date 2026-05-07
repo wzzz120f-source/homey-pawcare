@@ -36,7 +36,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 type ApplicationStatus = "pending" | "approved" | "rejected";
 type ApplicantKind = "individual" | "institution";
-type StepKey = "intro" | "identity" | "profile" | "docs" | "exam";
+type ApplyRole = "sitter" | "groomer" | "driver";
+type StepKey = "intro" | "role" | "identity" | "profile" | "docs" | "exam";
 
 interface LatestApplication {
   id: string;
