@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft } from "lucide-react";
+import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft, Sparkles } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
+import CompanionReportGenerator from "@/components/CompanionReportGenerator";
+import RoleSwitcher from "@/components/RoleSwitcher";
 
 const WorkerDashboardPage = () => {
   const navigate = useNavigate();
@@ -11,7 +13,8 @@ const WorkerDashboardPage = () => {
         <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-secondary" aria-label="返回">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="font-extrabold text-foreground">工作台</h1>
+        <h1 className="font-extrabold text-foreground flex-1">工作台</h1>
+        <RoleSwitcher />
       </header>
 
       <main className="px-4 py-4 max-w-lg mx-auto space-y-4">
@@ -46,6 +49,14 @@ const WorkerDashboardPage = () => {
           <div className="bg-muted/40 rounded-xl h-40 flex items-center justify-center text-sm text-muted-foreground">
             地图加载中…
           </div>
+        </section>
+
+        <section className="rounded-2xl p-4 card-shadow bg-card">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="font-bold">陪伴日记 & 海报</h2>
+          </div>
+          <CompanionReportGenerator petName="毛球" sitterName="守护者" />
         </section>
 
         <section className="rounded-2xl p-4 card-shadow bg-card">
