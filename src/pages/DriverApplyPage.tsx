@@ -388,7 +388,7 @@ const DriverApplyPage = () => {
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="font-extrabold text-lg text-foreground">司机入驻</h1>
+          <h1 className="font-extrabold text-lg text-foreground">守护者入驻 · {meta.label}</h1>
         </div>
       </header>
 
