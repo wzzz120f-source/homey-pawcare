@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import RoleSwitcher from "@/components/RoleSwitcher";
 
 interface Profile {
   username: string;
@@ -370,9 +371,12 @@ const ProfilePage = () => {
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <span className="font-extrabold text-lg text-foreground">个人主页</span>
-          <Button size="sm" variant="ghost" className="text-muted-foreground gap-1" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4" /> 退出
-          </Button>
+          <div className="flex items-center gap-2">
+            <RoleSwitcher />
+            <Button size="sm" variant="ghost" className="text-muted-foreground gap-1" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4" /> 退出
+            </Button>
+          </div>
         </div>
       </header>
 

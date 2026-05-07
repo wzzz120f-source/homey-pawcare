@@ -23,6 +23,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 import heroBanner from "@/assets/hero-banner.jpg";
+import RoleSwitcher from "@/components/RoleSwitcher";
 
 interface RecentOrder {
   id: string;
@@ -146,9 +147,10 @@ const Index = () => {
             <PawPrint className="w-6 h-6 text-primary" aria-hidden="true" />
             <span className="font-extrabold text-lg text-foreground">萌宠到家</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <RoleSwitcher />
             <NotificationBell />
-            <span className="text-sm text-muted-foreground" aria-label="当前定位">📍 上海市浦东新区</span>
+            <span className="text-xs text-muted-foreground hidden sm:inline" aria-label="当前定位">📍 浦东</span>
           </div>
         </div>
       </header>
