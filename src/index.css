@@ -85,6 +85,32 @@
     --sidebar-ring: 25 85% 57%;
   }
 
+  /* ── Role-based theme overrides (一人多角主色调切换) ── */
+  /* user: 暖橙（默认） */
+  html[data-role="user"] {
+    --primary: 25 85% 57%;
+    --accent: 20 70% 50%;
+    --ring: 25 85% 57%;
+  }
+  /* worker (sitter/groomer): 明黄 → 偏向森林绿主色（按设计活力+专业平衡） */
+  html[data-role="worker"] {
+    --primary: 145 55% 42%;
+    --accent: 50 95% 55%;
+    --ring: 145 55% 42%;
+  }
+  /* merchant: 商务蓝 → 深紫（赋能/经营感） */
+  html[data-role="merchant"] {
+    --primary: 268 60% 52%;
+    --accent: 215 80% 55%;
+    --ring: 268 60% 52%;
+  }
+  /* admin: 深蓝 */
+  html[data-role="admin"] {
+    --primary: 215 75% 45%;
+    --accent: 215 60% 60%;
+    --ring: 215 75% 45%;
+  }
+
   .dark {
     --background: 25 20% 10%;
     --foreground: 35 30% 90%;
@@ -190,6 +216,11 @@
       radial-gradient(circle at 20% 30%, hsl(var(--primary) / 0.08) 6px, transparent 7px),
       radial-gradient(circle at 80% 70%, hsl(var(--primary) / 0.06) 5px, transparent 6px);
     background-size: 80px 80px;
+  }
+  /* 价格等宽数字：保证小数对齐、右对齐时尾数齐整 */
+  .num-tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 }
 
