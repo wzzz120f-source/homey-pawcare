@@ -88,24 +88,63 @@ const PET_EXPERIENCE = [
   { id: "none", label: "💡 仅有热爱,无经验" },
 ];
 
-const DOC_FIELDS = [
+// 通用 5 类材料字段（复用 driver_applications 表字段）
+const ALL_DOCS = [
   { key: "id_card_front_url", label: "身份证 · 人像面", icon: IdCard },
   { key: "id_card_back_url", label: "身份证 · 国徽面", icon: IdCard },
+  { key: "handheld_id_url", label: "手持身份证照片", icon: ShieldCheck },
   { key: "driver_license_url", label: "驾驶证", icon: FileText },
   { key: "vehicle_license_url", label: "行驶证", icon: Car },
-  { key: "handheld_id_url", label: "手持身份证照片", icon: ShieldCheck },
 ] as const;
 
-type DocKey = (typeof DOC_FIELDS)[number]["key"];
+type DocKey = (typeof ALL_DOCS)[number]["key"];
+
+// 角色 → 所需材料 / 所需字段映射
+const ROLE_META: Record<ApplyRole, {
+  label: string;
+  emoji: string;
+  desc: string;
+  docs: DocKey[];
+  needsVehicle: boolean;
+  driverDocLabel?: string;
+  vehicleDocLabel?: string;
+}> = {
+  sitter: {
+    label: "宠托师",
+    emoji: "🤝",
+    desc: "上门喂养、遛狗、铲屎等基础陪伴",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url"],
+    needsVehicle: false,
+  },
+  groomer: {
+    label: "护理师",
+    emoji: "✂️",
+    desc: "专业洗澡、美容、医疗护理（需专业资质）",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url", "driver_license_url"],
+    needsVehicle: false,
+    driverDocLabel: "专业资质（美容证 / 兽医证）",
+  },
+  driver: {
+    label: "宠物司机",
+    emoji: "🚗",
+    desc: "宠物接送、专车跟车（需驾驶证 + 行驶证）",
+    docs: ["id_card_front_url", "id_card_back_url", "handheld_id_url", "driver_license_url", "vehicle_license_url"],
+    needsVehicle: true,
+    driverDocLabel: "驾驶证",
+    vehicleDocLabel: "行驶证 + 车辆环境照",
+  },
+};
 
 // ─── Validation ────────────────────────────────────────────────────────────
-const profileSchema = z.object({
+const profileSchemaBase = z.object({
   full_name: z.string().trim().min(2, "请输入真实姓名").max(20),
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
   gender: z.enum(["male", "female"]),
+  pet_experience: z.array(z.string()).min(1, "请至少选择一项宠物经验"),
+});
+const driverProfileSchema = profileSchemaBase.extend({
   driving_years: z.number().int().min(3, "驾龄需满 3 年").max(50),
   vehicle_type: z.enum(VEHICLE_TYPES),
-  pet_experience: z.array(z.string()).min(1, "请至少选择一项宠物经验"),
 });
 
 // ─── Component ─────────────────────────────────────────────────────────────
