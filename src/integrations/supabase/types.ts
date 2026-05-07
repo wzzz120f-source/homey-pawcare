@@ -350,6 +350,7 @@ export type Database = {
           review_note: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          role_requested: string
           status: string
           updated_at: string
           user_id: string
@@ -371,6 +372,7 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          role_requested?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -392,6 +394,7 @@ export type Database = {
           review_note?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          role_requested?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -2246,7 +2249,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "merchant" | "user"
+      app_role: "admin" | "merchant" | "user" | "sitter" | "groomer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2374,7 +2377,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "merchant", "user"],
+      app_role: ["admin", "merchant", "user", "sitter", "groomer"],
     },
   },
 } as const

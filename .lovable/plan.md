@@ -1,38 +1,69 @@
+# 统一注册入口 & 多角色系统
 
+将现有「用户/服务商」二选一改造为四角色统一注册流程，并基于角色自动切换导航与主题色，新增轻量审核中台。
 
-## 修复结账时购物车下拉看不全
+## 一、注册流程改造（AuthPage）
 
-**问题**：在商城点购物车图标后弹出的"购物车抽屉"是一个**居中 Dialog**（`max-w-md max-h-[80vh]`），里面又嵌了一层 `max-h-[50vh] overflow-y-auto` 的商品列表。当商品较多 / 视口较小 / 移动端浏览器地址栏占位时：
+将 `AuthPage.tsx` 改成三步式向导：
 
-1. Dialog 居中定位 + `translate(-50%, -50%)`，内容超过视口高度时**底部"去结算"按钮和合计金额被裁掉**且无法滚动到（外层蒙层吞掉滚动手势）。
-2. 内层 `50vh` + 头部 + 底部按钮加起来可能超过外层 `80vh`，footer 被挤出 Dialog 边界。
+```text
+Step1 基础验证        Step2 角色选择            Step3 资料补全
+─────────────────    ─────────────────────    ──────────────────────
+品牌Logo+欢迎文案     4张大卡片+图标            按角色路由：
+邮箱/密码注册         ─ 普通用户(铲屎官)         ├ user → /pets 宠物档案
+(预留手机号入口)      ─ 宠托师(兼职)             ├ sitter → /driver/apply
+                     ─ 护理师(专业资质)         ├ groomer → /driver/apply?type=pro
+                     ─ 商家(实体店)             └ merchant → /merchant/apply
+```
 
-## 修改方案（仅 1 个文件）
+- 欢迎文案使用用户提供的 Homey 品牌话术。
+- 注册成功后强制进入 Step2，写入选定角色到 `user_roles`（新增枚举值 `sitter` / `groomer`，已有 `merchant` 复用）。
+- 护理师与宠托师走同一申请页，通过 query 区分是否需要"专业技能标签"区块。
 
-**文件**：`src/pages/ShopPage.tsx` —— 购物车抽屉部分（约 389-459 行）
+## 二、角色系统与权限视图
 
-把居中 Dialog 改成**底部弹起的 Sheet（bottom sheet）**，更符合移动端"购物车"交互习惯，并用 flex 列布局让中间商品区自适应填充剩余空间，保证标题和"去结算"按钮永远固定可见可点。
+### 1. 数据库
+- 扩展 `app_role` 枚举：增加 `sitter`、`groomer`（已有 `admin`、`merchant`、`user`）。
+- 新增 hook `useUserRoles()`：聚合 `user_roles` 表查询当前用户全部角色，缓存于 React Query。
+- 已存在的 `driver_applications` / `merchant_applications` 表沿用，新增 `role_requested` 字段记录是 sitter 还是 groomer。
 
-具体改动：
+### 2. 主题色 & 底栏切换
+- 在 `BottomNav.tsx` 内根据 `useUserRoles()` 主角色渲染不同 Tab：
+  - **user**：首页 / 商城 / 社区 / 客服 / 我的（现状）
+  - **sitter / groomer**：工作台 / 订单 / 接单地图 / 培训 / 我的
+  - **merchant**：经营看板 / 管理 / 订单 / 客服 / 我的
+- 在 `index.css` 增加三套 CSS 变量主题：
+  - `data-role="user"` → 暖橙（现状 primary）
+  - `data-role="worker"` → 森林绿
+  - `data-role="merchant"` → 商务蓝
+- 在 `App.tsx` 顶层 `<div data-role={activeRole}>` 包裹，方便整站换肤。
 
-1. 引入 `@/components/ui/sheet`（项目已存在）。
-2. 将购物车抽屉从 `<Dialog>/<DialogContent>` 替换为 `<Sheet>/<SheetContent side="bottom">`。
-3. `SheetContent` 使用 `h-[85vh] flex flex-col p-0`，结构为：
-   - `SheetHeader`（固定高度，`shrink-0`，含标题和数量）
-   - 商品列表容器：`flex-1 overflow-y-auto px-5 py-3 space-y-3`（自适应剩余高度，唯一滚动区）
-   - 底部结算栏：`shrink-0 px-5 py-4 border-t bg-card`，含合计 + 清空 + 去结算按钮，并加 `pb-[env(safe-area-inset-bottom)]` 适配 iPhone 小白条
-4. 移除内层 `max-h-[50vh]` 限制，改由 flex 布局接管。
-5. 商品列表条目本身样式保持不变（图标 / 数量 +/- / 删除按钮）。
+### 3. 新增页面（最小可用）
+- `/worker` 工作台：今日待办 + 待接订单地图占位 + 今日预计收入卡片。
+- `/merchant` 已存在 → 增加营业额/转化率看板卡片。
+- `/admin/review` 审核中台：列出 `driver_applications` 和 `merchant_applications` 中 `status='pending'` 的记录，一键调用现有 `approve_*` / `reject_*` RPC。仅 `admin` 角色可见。
 
-## 验证方式
+## 三、ProfilePage 宫格化
 
-改完后：
-- 桌面端 904×681：购物车从底部弹起，占 85% 视口高，"去结算"按钮始终可见。
-- 加 6+ 件商品：中间列表内部滚动，标题和底部按钮固定。
-- 点"去结算"跳转 `/payment` 流程不变。
+将"我的"页面顶部改为 3×N 宫格（已有钱包/订单等），未入驻用户固定一格"入驻赚钱"→ 跳回 `/auth?step=role`。
 
-## 不影响范围
+## 四、关键流程预留
 
-- 商品详情 Dialog、商家详情 Dialog、PaymentPage 优惠券 Dialog 都不动。
-- `useCart` hook、结算跳转参数、订单写入逻辑全部保持原样。
+- `BookingPage` → 服务人员"开始服务"按钮发送 `notifications` insert（沿用现有触发器）。
+- 地理围栏：在 `TripTrackingPage` 的"确认到达"按钮上加 200m 距离校验（用 Amap 计算）。
+- 核心操作按钮统一 `backdrop-blur` + `z-50`（沿用 `SafeAreaBottomLayout`）。
 
+## 技术细节
+
+| 模块 | 文件 |
+|------|------|
+| 三步注册向导 | 改写 `src/pages/AuthPage.tsx` |
+| 角色 hook | 新建 `src/hooks/useUserRoles.ts` |
+| 主题切换 | `src/index.css` + `src/App.tsx` 包装 |
+| 动态底栏 | 改写 `src/components/BottomNav.tsx`，抽出 `src/config/navTabs.ts` |
+| 工作台 | 新建 `src/pages/WorkerDashboardPage.tsx` + 路由 |
+| 审核中台 | 新建 `src/pages/AdminReviewPage.tsx` + 路由（admin 守卫） |
+| 数据库 | migration 扩展 `app_role` 枚举 + 申请表加 `role_requested` |
+| 个人中心宫格 | 调整 `src/pages/ProfilePage.tsx` 顶部块 |
+
+完成后用户可在一处注册时选择身份，登录后看到完全不同的导航/配色/工作台，平台方通过 `/admin/review` 一键完成所有人工审核。
