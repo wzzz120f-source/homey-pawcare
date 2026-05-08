@@ -7,12 +7,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, User, HardHat, Store, ShieldCheck, Check } from "lucide-react";
+import { ChevronDown, User, Heart, Scissors, Car, Store, ShieldCheck, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ROLE_META: Record<ActiveRole, { label: string; icon: typeof User; tone: string; home: string }> = {
   user: { label: "铲屎官", icon: User, tone: "暖橙", home: "/" },
-  worker: { label: "守护者", icon: HardHat, tone: "森林绿", home: "/worker" },
+  sitter: { label: "宠托师", icon: Heart, tone: "森林绿", home: "/worker" },
+  groomer: { label: "护理师", icon: Scissors, tone: "薄荷青", home: "/worker" },
+  driver: { label: "司机", icon: Car, tone: "活力黄", home: "/worker" },
   merchant: { label: "商家", icon: Store, tone: "深紫", home: "/merchant" },
   admin: { label: "审核员", icon: ShieldCheck, tone: "深蓝", home: "/admin/review" },
 };

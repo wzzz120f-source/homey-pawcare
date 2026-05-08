@@ -1,4 +1,21 @@
-import { Home, ShoppingBag, MessageSquare, User, Headphones, ClipboardList, GraduationCap, BarChart3, Package, Store, ShieldCheck } from "lucide-react";
+import {
+  Home,
+  ShoppingBag,
+  MessageSquare,
+  User,
+  Headphones,
+  ClipboardList,
+  GraduationCap,
+  BarChart3,
+  Package,
+  Store,
+  ShieldCheck,
+  Scissors,
+  Heart,
+  Car,
+  Map,
+  CalendarClock,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ActiveRole } from "@/hooks/useUserRoles";
 
@@ -16,10 +33,24 @@ export const NAV_TABS: Record<ActiveRole, NavTabItem[]> = {
     { path: "/customer-service", icon: Headphones, label: "客服" },
     { path: "/profile", icon: User, label: "我的" },
   ],
-  worker: [
-    { path: "/worker", icon: ClipboardList, label: "工作台" },
+  sitter: [
+    { path: "/worker", icon: Heart, label: "寄养" },
     { path: "/orders", icon: Package, label: "订单" },
-    { path: "/shop", icon: ShoppingBag, label: "商城" },
+    { path: "/worker?tab=schedule", icon: CalendarClock, label: "排班" },
+    { path: "/worker?tab=training", icon: GraduationCap, label: "培训" },
+    { path: "/profile", icon: User, label: "我的" },
+  ],
+  groomer: [
+    { path: "/worker", icon: Scissors, label: "美容" },
+    { path: "/orders", icon: Package, label: "订单" },
+    { path: "/worker?tab=services", icon: ClipboardList, label: "服务" },
+    { path: "/worker?tab=training", icon: GraduationCap, label: "培训" },
+    { path: "/profile", icon: User, label: "我的" },
+  ],
+  driver: [
+    { path: "/worker", icon: Car, label: "任务" },
+    { path: "/worker?tab=route", icon: Map, label: "路线" },
+    { path: "/orders", icon: Package, label: "订单" },
     { path: "/worker?tab=training", icon: GraduationCap, label: "培训" },
     { path: "/profile", icon: User, label: "我的" },
   ],

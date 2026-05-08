@@ -2,16 +2,23 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer";
-export type ActiveRole = "user" | "worker" | "merchant" | "admin";
+export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver";
+export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin";
 
 const STORAGE_KEY = "active_role_override";
 const EVT = "active-role-change";
 
+const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin"];
+
 const readOverride = (): ActiveRole | null => {
   if (typeof window === "undefined") return null;
-  const v = localStorage.getItem(STORAGE_KEY);
-  return v === "user" || v === "worker" || v === "merchant" || v === "admin" ? v : null;
+  const v = localStorage.getItem(STORAGE_KEY) as ActiveRole | null;
+  // Migrate legacy "worker" override
+  if ((v as string) === "worker") {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+  return v && ALL_ROLES.includes(v) ? v : null;
 };
 
 const writeOverride = (role: ActiveRole | null) => {
@@ -26,8 +33,12 @@ const computeDefault = (roles: AppRole[]): ActiveRole =>
     ? "admin"
     : roles.includes("merchant")
     ? "merchant"
-    : roles.includes("sitter") || roles.includes("groomer")
-    ? "worker"
+    : roles.includes("sitter")
+    ? "sitter"
+    : roles.includes("groomer")
+    ? "groomer"
+    : roles.includes("driver")
+    ? "driver"
     : "user";
 
 export const useUserRoles = () => {
@@ -73,7 +84,9 @@ export const useUserRoles = () => {
 
   // Available roles user is allowed to switch into
   const availableRoles: ActiveRole[] = ["user"];
-  if (roles.includes("sitter") || roles.includes("groomer")) availableRoles.push("worker");
+  if (roles.includes("sitter")) availableRoles.push("sitter");
+  if (roles.includes("groomer")) availableRoles.push("groomer");
+  if (roles.includes("driver")) availableRoles.push("driver");
   if (roles.includes("merchant")) availableRoles.push("merchant");
   if (roles.includes("admin")) availableRoles.push("admin");
 
