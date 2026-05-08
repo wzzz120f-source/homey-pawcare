@@ -97,6 +97,7 @@ const OrderDetailPage = () => {
   const [media, setMedia] = useState<PreparedMedia[]>([]);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [savedReport, setSavedReport] = useState<SavedReport | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
