@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, AlertTriangle, XCircle } from "lucide-react";
 import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
-import CompanionReportGenerator from "@/components/CompanionReportGenerator";
+import CompanionReportGenerator, { type SavedReport } from "@/components/CompanionReportGenerator";
 import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
