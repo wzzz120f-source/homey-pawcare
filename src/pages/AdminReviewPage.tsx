@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 interface PendingDriver {
   id: string;
+  user_id: string;
   full_name: string;
   phone: string;
   vehicle_type: string;
