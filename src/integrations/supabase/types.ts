@@ -235,6 +235,53 @@ export type Database = {
           },
         ]
       }
+      companion_reports: {
+        Row: {
+          actions: string[]
+          created_at: string
+          diary: string | null
+          extra: string | null
+          id: string
+          order_id: string
+          photo_url: string | null
+          poster_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions?: string[]
+          created_at?: string
+          diary?: string | null
+          extra?: string | null
+          id?: string
+          order_id: string
+          photo_url?: string | null
+          poster_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions?: string[]
+          created_at?: string
+          diary?: string | null
+          extra?: string | null
+          id?: string
+          order_id?: string
+          photo_url?: string | null
+          poster_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companion_reports_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_violations: {
         Row: {
           content_snippet: string | null

@@ -227,6 +227,11 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
+  /* 显式覆盖按钮 / 输入框 / 表格，避免某些浏览器 UA 样式重置 */
+  button, input, select, textarea, table, th, td {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
 }
 
 @keyframes pulse-ring {
