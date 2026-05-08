@@ -222,6 +222,11 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
+  /* 全站价格批量套 tabular-nums：所有以 ¥/￥/+¥/-¥ 开头或包含的数字行 */
+  body {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
 }
 
 @keyframes pulse-ring {
