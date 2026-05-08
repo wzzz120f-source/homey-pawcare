@@ -94,38 +94,18 @@ const AdminReviewPage = () => {
       </header>
 
       <main className="px-4 py-4 max-w-lg mx-auto space-y-6">
-        <section>
-          <h2 className="font-bold mb-2 text-sm">宠托师/护理师 ({drivers.length})</h2>
-          <div className="space-y-2">
-            {drivers.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">暂无待审申请</p>}
-            {drivers.map((d) => (
-              <div key={d.id} className="bg-card rounded-xl p-3 card-shadow">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-sm">{d.full_name}</span>
-                  <Badge variant="secondary" className="text-[10px]">{d.role_requested === "groomer" ? "护理师" : "宠托师"}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{d.phone} · {d.vehicle_type}</p>
-                <div className="flex gap-2 mt-2">
-                  <Button size="sm" variant="hero" disabled={busy === d.id} onClick={() => reviewDriver(d.id, true)}>
-                    <Check className="w-4 h-4 mr-1" />通过
-                  </Button>
-                  <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => reviewDriver(d.id, false)}>
-                    <X className="w-4 h-4 mr-1" />拒绝
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <DriverReviewTabs drivers={drivers} busy={busy} onReview={reviewDriver} />
 
         <section>
-          <h2 className="font-bold mb-2 text-sm">商家入驻 ({merchants.length})</h2>
+          <h2 className="font-bold mb-2 text-sm flex items-center gap-1.5">
+            <Store className="w-4 h-4 text-primary" />商家入驻 ({merchants.length})
+          </h2>
           <div className="space-y-2">
             {merchants.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">暂无待审申请</p>}
             {merchants.map((m) => (
               <div key={m.id} className="bg-card rounded-xl p-3 card-shadow">
                 <p className="font-bold text-sm">{m.store_name}</p>
-                <p className="text-xs text-muted-foreground">{m.contact_phone} · {m.license_number}</p>
+                <p className="text-xs text-muted-foreground">{m.contact_phone} · 营业执照 {m.license_number}</p>
                 <div className="flex gap-2 mt-2">
                   <Button size="sm" variant="hero" disabled={busy === m.id} onClick={() => reviewMerchant(m.id, true)}>
                     <Check className="w-4 h-4 mr-1" />通过
@@ -144,5 +124,87 @@ const AdminReviewPage = () => {
     </div>
   );
 };
+
+const ROLE_TABS = [
+  { key: "sitter", label: "宠托师", icon: HardHat, fields: ["实名认证", "爱心测试", "无犯罪证明"] },
+  { key: "groomer", label: "护理师", icon: Scissors, fields: ["实名认证", "兽医/美容证", "服务案例"] },
+  { key: "driver", label: "宠物司机", icon: Car, fields: ["驾驶证", "行驶证", "车辆环境照"] },
+] as const;
+
+function DriverReviewTabs({
+  drivers,
+  busy,
+  onReview,
+}: {
+  drivers: PendingDriver[];
+  busy: string | null;
+  onReview: (id: string, approve: boolean) => void;
+}) {
+  const grouped = useMemo(() => {
+    const g: Record<string, PendingDriver[]> = { sitter: [], groomer: [], driver: [] };
+    drivers.forEach((d) => {
+      const r = (d.role_requested || "sitter") as keyof typeof g;
+      (g[r] || g.sitter).push(d);
+    });
+    return g;
+  }, [drivers]);
+
+  return (
+    <section>
+      <h2 className="font-bold mb-2 text-sm">守护者认证审核 ({drivers.length})</h2>
+      <Tabs defaultValue="sitter">
+        <TabsList className="grid grid-cols-3 w-full">
+          {ROLE_TABS.map((t) => {
+            const Icon = t.icon;
+            return (
+              <TabsTrigger key={t.key} value={t.key} className="text-xs">
+                <Icon className="w-3.5 h-3.5 mr-1" />
+                {t.label} ({grouped[t.key]?.length || 0})
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+
+        {ROLE_TABS.map((t) => (
+          <TabsContent key={t.key} value={t.key} className="space-y-2 mt-3">
+            <div className="bg-secondary/40 rounded-lg px-3 py-2 text-[11px] text-muted-foreground">
+              审核要点：{t.fields.join(" · ")}
+            </div>
+            {(grouped[t.key] || []).length === 0 && (
+              <p className="text-xs text-muted-foreground py-4 text-center">暂无待审申请</p>
+            )}
+            {(grouped[t.key] || []).map((d) => (
+              <div key={d.id} className="bg-card rounded-xl p-3 card-shadow">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-sm">{d.full_name}</span>
+                  <Badge variant="secondary" className="text-[10px]">{t.label}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  📱 {d.phone}
+                  {t.key === "driver" && d.vehicle_type && ` · 🚗 ${d.vehicle_type}`}
+                </p>
+                <div className="grid grid-cols-3 gap-1 mt-2">
+                  {t.fields.map((f) => (
+                    <span key={f} className="text-[10px] bg-secondary/60 rounded px-1.5 py-0.5 text-center text-muted-foreground">
+                      ✓ {f}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="hero" disabled={busy === d.id} onClick={() => onReview(d.id, true)}>
+                    <Check className="w-4 h-4 mr-1" />通过
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => onReview(d.id, false)}>
+                    <X className="w-4 h-4 mr-1" />拒绝
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+        ))}
+      </Tabs>
+    </section>
+  );
+}
 
 export default AdminReviewPage;
