@@ -380,6 +380,7 @@ const OrderDetailPage = () => {
               勾选今日服务事项 + 上传照片，AI 将为您生成温馨的陪伴日记长图，可下载分享给家人朋友。
             </p>
             <CompanionReportGenerator
+              orderId={order.id}
               petName={order.pet_type || "毛孩子"}
               sitterName={order.store_name || undefined}
             />
