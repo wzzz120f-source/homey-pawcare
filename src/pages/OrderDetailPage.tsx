@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, AlertTriangle, XCircle } from "lucide-react";
 import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
+import CompanionReportGenerator from "@/components/CompanionReportGenerator";
 import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
@@ -368,6 +369,22 @@ const OrderDetailPage = () => {
             <p className="text-sm text-muted-foreground">订单完成后可评价</p>
           )}
         </section>
+
+        {/* AI 陪伴报告（服务完成后展示） */}
+        {order.order_status === "completed" && (
+          <section className="bg-card rounded-2xl p-5 card-shadow">
+            <h2 className="font-bold text-foreground text-base flex items-center gap-2 mb-3">
+              ✨ 今日陪伴报告
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              勾选今日服务事项 + 上传照片，AI 将为您生成温馨的陪伴日记长图，可下载分享给家人朋友。
+            </p>
+            <CompanionReportGenerator
+              petName={order.pet_type || "毛孩子"}
+              sitterName={order.store_name || undefined}
+            />
+          </section>
+        )}
 
         {/* Cancel Confirmation */}
         {showCancelConfirm && (
