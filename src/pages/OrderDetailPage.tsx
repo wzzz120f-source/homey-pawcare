@@ -377,13 +377,46 @@ const OrderDetailPage = () => {
             <h2 className="font-bold text-foreground text-base flex items-center gap-2 mb-3">
               ✨ 今日陪伴报告
             </h2>
+
+            {/* 历史记录摘要 */}
+            {savedReport && (
+              <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">📚 已保存的历史报告</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    更新于 {format(new Date(savedReport.updated_at), "yyyy-MM-dd HH:mm")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>勾选 {savedReport.actions?.length || 0} 项</span>
+                  <span>·</span>
+                  <span>{savedReport.photo_url ? "📷 含照片" : "无照片"}</span>
+                  <span>·</span>
+                  <span>{savedReport.diary ? "📔 已生成日记" : "未生成日记"}</span>
+                  <span>·</span>
+                  <span>{savedReport.poster_url ? "🖼️ 已存海报" : "无海报"}</span>
+                </div>
+                {savedReport.poster_url && (
+                  <a
+                    href={savedReport.poster_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block text-[11px] text-primary underline"
+                  >
+                    查看历史海报 →
+                  </a>
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground mb-3">
-              勾选今日服务事项 + 上传照片，AI 将为您生成温馨的陪伴日记长图，可下载分享给家人朋友。
+              勾选今日服务事项 + 上传照片，AI 将为您生成温馨的陪伴日记长图。所有内容会实时保存到本订单，可随时清空或重新生成。
             </p>
             <CompanionReportGenerator
               orderId={order.id}
               petName={order.pet_type || "毛孩子"}
               sitterName={order.store_name || undefined}
+              onSavedChange={setSavedReport}
             />
           </section>
         )}
