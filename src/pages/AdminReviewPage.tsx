@@ -141,18 +141,82 @@ function DriverReviewTabs({
   busy: string | null;
   onReview: (id: string, approve: boolean) => void;
 }) {
+  const [keyword, setKeyword] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const filtered = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+    const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo).getTime() + 86400000 : null;
+    return drivers.filter((d) => {
+      if (kw) {
+        const hay = `${d.full_name || ""} ${d.phone || ""}`.toLowerCase();
+        if (!hay.includes(kw)) return false;
+      }
+      if (fromTs || toTs) {
+        const ts = new Date(d.created_at).getTime();
+        if (fromTs && ts < fromTs) return false;
+        if (toTs && ts >= toTs) return false;
+      }
+      return true;
+    });
+  }, [drivers, keyword, dateFrom, dateTo]);
+
   const grouped = useMemo(() => {
     const g: Record<string, PendingDriver[]> = { sitter: [], groomer: [], driver: [] };
-    drivers.forEach((d) => {
+    filtered.forEach((d) => {
       const r = (d.role_requested || "sitter") as keyof typeof g;
       (g[r] || g.sitter).push(d);
     });
     return g;
-  }, [drivers]);
+  }, [filtered]);
+
+  const resetFilter = () => {
+    setKeyword("");
+    setDateFrom("");
+    setDateTo("");
+  };
+  const hasFilter = keyword || dateFrom || dateTo;
 
   return (
     <section>
-      <h2 className="font-bold mb-2 text-sm">守护者认证审核 ({drivers.length})</h2>
+      <h2 className="font-bold mb-2 text-sm">守护者认证审核 ({filtered.length}/{drivers.length})</h2>
+
+      {/* 搜索与筛选 */}
+      <div className="bg-card card-shadow rounded-xl p-3 space-y-2 mb-3">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="按姓名 / 手机号搜索"
+            className="pl-8 h-9 text-xs"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="h-9 text-xs"
+            aria-label="申请起始日期"
+          />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="h-9 text-xs"
+            aria-label="申请结束日期"
+          />
+        </div>
+        {hasFilter && (
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={resetFilter}>
+            清除筛选
+          </Button>
+        )}
+      </div>
+
       <Tabs defaultValue="sitter">
         <TabsList className="grid grid-cols-3 w-full">
           {ROLE_TABS.map((t) => {
@@ -172,7 +236,9 @@ function DriverReviewTabs({
               审核要点：{t.fields.join(" · ")}
             </div>
             {(grouped[t.key] || []).length === 0 && (
-              <p className="text-xs text-muted-foreground py-4 text-center">暂无待审申请</p>
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                {hasFilter ? "未匹配到符合条件的申请" : "暂无待审申请"}
+              </p>
             )}
             {(grouped[t.key] || []).map((d) => (
               <div key={d.id} className="bg-card rounded-xl p-3 card-shadow">
@@ -183,6 +249,9 @@ function DriverReviewTabs({
                 <p className="text-xs text-muted-foreground">
                   📱 {d.phone}
                   {t.key === "driver" && d.vehicle_type && ` · 🚗 ${d.vehicle_type}`}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                  申请时间：{new Date(d.created_at).toLocaleString("zh-CN")}
                 </p>
                 <div className="grid grid-cols-3 gap-1 mt-2">
                   {t.fields.map((f) => (
