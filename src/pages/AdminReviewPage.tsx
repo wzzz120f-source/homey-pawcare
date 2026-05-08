@@ -269,6 +269,7 @@ function DriverReviewTabs({
                   <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => onReview(d.id, false)}>
                     <X className="w-4 h-4 mr-1" />拒绝
                   </Button>
+                  <CompanionReportsButton driverUserId={d.user_id} driverName={d.full_name} />
                 </div>
               </div>
             ))}
