@@ -280,4 +280,148 @@ function DriverReviewTabs({
   );
 }
 
+interface CompanionReportRow {
+  id: string;
+  order_id: string;
+  actions: string[];
+  extra: string | null;
+  photo_url: string | null;
+  diary: string | null;
+  poster_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function CompanionReportsButton({
+  driverUserId,
+  driverName,
+}: {
+  driverUserId?: string;
+  driverName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [reports, setReports] = useState<CompanionReportRow[]>([]);
+
+  const load = async () => {
+    if (!driverUserId) return;
+    setLoading(true);
+    try {
+      // 找到该司机/守护者负责的所有订单 → 再找对应的陪伴报告
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("driver_id", driverUserId)
+        .limit(200);
+      const orderIds = (orders || []).map((o: any) => o.id);
+      if (orderIds.length === 0) {
+        setReports([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("companion_reports" as any)
+        .select("*")
+        .in("order_id", orderIds)
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setReports((data as any) || []);
+    } catch (e: any) {
+      toast.error("加载失败：" + (e?.message || ""));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (v) load();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="ml-auto">
+          <FileText className="w-4 h-4 mr-1" />陪伴报告
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-base">{driverName} 的陪伴报告</DialogTitle>
+        </DialogHeader>
+        {loading ? (
+          <p className="text-xs text-muted-foreground py-6 text-center">加载中…</p>
+        ) : reports.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-6 text-center">该守护者暂无陪伴报告</p>
+        ) : (
+          <div className="space-y-3">
+            {reports.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {new Date(r.updated_at).toLocaleString("zh-CN")}
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {r.actions?.length || 0} 项
+                  </Badge>
+                </div>
+                {r.actions?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {r.actions.slice(0, 6).map((a, i) => (
+                      <span key={i} className="text-[10px] bg-secondary/60 rounded px-1.5 py-0.5">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {r.diary && (
+                  <p className="text-xs text-foreground bg-primary/5 rounded p-2 leading-relaxed line-clamp-4">
+                    📔 {r.diary}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  {r.photo_url && (
+                    <a
+                      href={r.photo_url}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] rounded-lg border border-border py-2 hover:bg-secondary"
+                    >
+                      <ImageIcon className="w-3 h-3" />照片
+                      <Download className="w-3 h-3" />
+                    </a>
+                  )}
+                  {r.poster_url && (
+                    <a
+                      href={r.poster_url}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] rounded-lg bg-primary text-primary-foreground py-2 hover:opacity-90"
+                    >
+                      🖼️ 海报<Download className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                {(r.photo_url || r.poster_url) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {r.photo_url && (
+                      <img src={r.photo_url} alt="照片" className="w-full h-24 object-cover rounded-lg" />
+                    )}
+                    {r.poster_url && (
+                      <img src={r.poster_url} alt="海报" className="w-full h-24 object-cover rounded-lg" />
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default AdminReviewPage;
