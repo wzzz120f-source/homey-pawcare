@@ -92,11 +92,23 @@
     --accent: 20 70% 50%;
     --ring: 25 85% 57%;
   }
-  /* worker (sitter/groomer): 明黄 → 偏向森林绿主色（按设计活力+专业平衡） */
-  html[data-role="worker"] {
+  /* sitter 宠托师: 森林绿（陪伴/可信赖） */
+  html[data-role="sitter"] {
     --primary: 145 55% 42%;
     --accent: 50 95% 55%;
     --ring: 145 55% 42%;
+  }
+  /* groomer 护理师: 薄荷青（清洁/温柔） */
+  html[data-role="groomer"] {
+    --primary: 172 60% 42%;
+    --accent: 192 70% 55%;
+    --ring: 172 60% 42%;
+  }
+  /* driver 司机: 活力黄（出行/醒目） */
+  html[data-role="driver"] {
+    --primary: 42 95% 50%;
+    --accent: 25 90% 55%;
+    --ring: 42 95% 50%;
   }
   /* merchant: 商务蓝 → 深紫（赋能/经营感） */
   html[data-role="merchant"] {

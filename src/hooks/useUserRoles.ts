@@ -84,7 +84,9 @@ export const useUserRoles = () => {
 
   // Available roles user is allowed to switch into
   const availableRoles: ActiveRole[] = ["user"];
-  if (roles.includes("sitter") || roles.includes("groomer")) availableRoles.push("worker");
+  if (roles.includes("sitter")) availableRoles.push("sitter");
+  if (roles.includes("groomer")) availableRoles.push("groomer");
+  if (roles.includes("driver")) availableRoles.push("driver");
   if (roles.includes("merchant")) availableRoles.push("merchant");
   if (roles.includes("admin")) availableRoles.push("admin");
 
