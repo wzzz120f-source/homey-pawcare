@@ -86,35 +86,36 @@
   }
 
   /* ── Role-based theme overrides (一人多角主色调切换) ── */
-  /* user: 暖橙（默认） */
+  /* user 普通用户: 暖橙 #FF8C00（温馨感） */
   html[data-role="user"] {
-    --primary: 25 85% 57%;
-    --accent: 20 70% 50%;
-    --ring: 25 85% 57%;
+    --primary: 33 100% 50%;
+    --accent: 25 95% 55%;
+    --ring: 33 100% 50%;
   }
-  /* sitter 宠托师: 森林绿（陪伴/可信赖） */
+  /* sitter 宠托师: 明黄 #FFD700（活力感） */
   html[data-role="sitter"] {
-    --primary: 145 55% 42%;
-    --accent: 50 95% 55%;
-    --ring: 145 55% 42%;
+    --primary: 51 100% 50%;
+    --primary-foreground: 30 40% 15%;
+    --accent: 33 100% 50%;
+    --ring: 51 100% 50%;
   }
-  /* groomer 护理师: 薄荷青（清洁/温柔） */
+  /* groomer 护理师: 医用绿 #2E8B57（专业感） */
   html[data-role="groomer"] {
-    --primary: 172 60% 42%;
-    --accent: 192 70% 55%;
-    --ring: 172 60% 42%;
+    --primary: 146 50% 36%;
+    --accent: 172 60% 42%;
+    --ring: 146 50% 36%;
   }
-  /* driver 司机: 活力黄（出行/醒目） */
+  /* driver 司机: 天空蓝 #1E90FF（出行/导航） */
   html[data-role="driver"] {
-    --primary: 42 95% 50%;
-    --accent: 25 90% 55%;
-    --ring: 42 95% 50%;
+    --primary: 210 100% 56%;
+    --accent: 200 90% 50%;
+    --ring: 210 100% 56%;
   }
-  /* merchant: 商务蓝 → 深紫（赋能/经营感） */
+  /* merchant 商家员工: 深靛青 #000080（管理感） */
   html[data-role="merchant"] {
-    --primary: 268 60% 52%;
-    --accent: 215 80% 55%;
-    --ring: 268 60% 52%;
+    --primary: 240 100% 25%;
+    --accent: 220 80% 45%;
+    --ring: 240 100% 25%;
   }
   /* admin: 深蓝 */
   html[data-role="admin"] {
