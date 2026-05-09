@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { lazyTracked } from "@/lib/chunkRecovery";
 import AIChatWidget from "@/components/AIChatWidget";
+import RoleGuard from "@/components/RoleGuard";
 
 // Community-adjacent routes are marked critical: a chunk-load failure on these
 // triggers the global capped reload flow so future community additions inherit
@@ -77,15 +78,15 @@ const App = () => (
             <Route path="/charity-footprint" element={<CharityFootprintPage />} />
             <Route path="/merchant" element={<MerchantCenterPage />} />
             <Route path="/merchant/apply" element={<MerchantApplyPage />} />
-            <Route path="/merchant/admin" element={<MerchantAdminPage />} />
+            <Route path="/merchant/admin" element={<RoleGuard allow={["admin"]}><MerchantAdminPage /></RoleGuard>} />
             <Route path="/driver/apply" element={<DriverApplyPage />} />
             <Route path="/pets" element={<PetProfilesPage />} />
             <Route path="/rate/:id" element={<TripRatingPage />} />
             <Route path="/track/:id" element={<TripTrackingPage />} />
             <Route path="/orders" element={<OrderHistoryPage />} />
             <Route path="/group-booking" element={<GroupBookingPage />} />
-            <Route path="/worker" element={<WorkerDashboardPage />} />
-            <Route path="/admin/review" element={<AdminReviewPage />} />
+            <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
+            <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

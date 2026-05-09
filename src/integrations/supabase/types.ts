@@ -1197,6 +1197,8 @@ export type Database = {
           booking_date: string | null
           booking_time: string | null
           created_at: string
+          driver_distance_km: number | null
+          driver_fare: number | null
           driver_id: string | null
           dropoff_address: string | null
           id: string
@@ -1220,6 +1222,8 @@ export type Database = {
           booking_date?: string | null
           booking_time?: string | null
           created_at?: string
+          driver_distance_km?: number | null
+          driver_fare?: number | null
           driver_id?: string | null
           dropoff_address?: string | null
           id?: string
@@ -1243,6 +1247,8 @@ export type Database = {
           booking_date?: string | null
           booking_time?: string | null
           created_at?: string
+          driver_distance_km?: number | null
+          driver_fare?: number | null
           driver_id?: string | null
           dropoff_address?: string | null
           id?: string

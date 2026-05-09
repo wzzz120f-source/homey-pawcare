@@ -174,17 +174,36 @@ const TripTrackingPage = () => {
     const idx = STAGES.findIndex((s) => s.key === base.stage);
     if (idx < 0 || idx >= STAGES.length - 1) return;
     const next = STAGES[idx + 1].key;
+    const nextDistance = Math.max(0, Number(base.distance_km || 5) - 1.5);
     const { error } = await supabase.from("trip_tracking").insert({
       order_id: orderId,
       stage: next,
       driver_lat: (base.driver_lat ?? 31.23) + 0.005,
       driver_lng: (base.driver_lng ?? 121.47) + 0.008,
-      distance_km: Math.max(0, Number(base.distance_km || 5) - 1.5),
+      distance_km: nextDistance,
       eta_minutes: Math.max(0, (base.eta_minutes || 15) - 5),
       cabin_temperature: base.cabin_temperature ?? 24,
       message: STAGES[idx + 1].label,
     });
-    if (error) toast({ title: "推进失败", description: error.message, variant: "destructive" });
+    if (error) {
+      toast({ title: "推进失败", description: error.message, variant: "destructive" });
+      return;
+    }
+    // 送达：把里程结算落库到订单
+    if (next === "delivered" && orderId) {
+      const totalDistance = Math.max(distanceKm, nextDistance);
+      const fare = 10 + Math.max(0, totalDistance - 3) * 2.5;
+      const { error: upErr } = await supabase
+        .from("orders")
+        .update({
+          driver_distance_km: Number(totalDistance.toFixed(2)),
+          driver_fare: Number(fare.toFixed(2)),
+          order_status: "completed",
+        })
+        .eq("id", orderId);
+      if (upErr) toast({ title: "结算写入失败", description: upErr.message, variant: "destructive" });
+      else toast({ title: "已送达并完成结算", description: `本次结算 ¥${fare.toFixed(2)}` });
+    }
   };
 
   // 回放最近 10 分钟
