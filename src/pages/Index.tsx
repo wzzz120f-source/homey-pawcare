@@ -149,6 +149,13 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <RoleSwitcher />
+            <Link
+              to="/roles"
+              aria-label="身份切换"
+              className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              <UserCog className="w-4 h-4" />
+            </Link>
             <NotificationBell />
             <span className="text-xs text-muted-foreground hidden sm:inline" aria-label="当前定位">📍 浦东</span>
           </div>
