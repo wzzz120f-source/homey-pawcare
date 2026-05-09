@@ -323,6 +323,8 @@ const TripTrackingPage = () => {
   const stageIdx = tracking ? STAGES.findIndex((s) => s.key === tracking.stage) : 0;
   const pet = order?.pet_snapshot;
   const isReplaying = replayIdx !== null;
+  const isDriverOfOrder = !!user && !!order?.driver_id && order.driver_id === user.id;
+  const isCancelled = order?.order_status === "cancelled";
 
   // 里程结算：起步价 ¥10（含 3km），超出每公里 ¥2.5
   const distanceKm = Number(tracking?.distance_km ?? 0);
