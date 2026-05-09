@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { PawPrint, ChevronRight, Sparkles, Package, ShoppingBag } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { PawPrint, ChevronRight, Sparkles, Package, ShoppingBag, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
