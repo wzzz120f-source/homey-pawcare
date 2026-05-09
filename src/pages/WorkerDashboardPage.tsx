@@ -65,6 +65,16 @@ const WorkerDashboardPage = () => {
           <CompanionReportGenerator petName="毛球" sitterName="守护者" />
         </section>
 
+        {isGroomer && (
+          <section className="rounded-2xl p-4 card-shadow bg-card">
+            <div className="flex items-center gap-2 mb-3">
+              <Stethoscope className="w-5 h-5 text-primary" />
+              <h2 className="font-bold">健康评估 & AI 建议</h2>
+            </div>
+            <HealthAssessmentForm level={groomerLevel} petName="毛球" />
+          </section>
+        )}
+
         <section className="rounded-2xl p-4 card-shadow bg-card">
           <div className="flex items-center gap-2 mb-2">
             <GraduationCap className="w-5 h-5 text-primary" />
