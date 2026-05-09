@@ -239,6 +239,12 @@ const TripTrackingPage = () => {
   const pet = order?.pet_snapshot;
   const isReplaying = replayIdx !== null;
 
+  // 里程结算：起步价 ¥10（含 3km），超出每公里 ¥2.5
+  const distanceKm = Number(tracking?.distance_km ?? 0);
+  const baseFee = 10;
+  const extraKm = Math.max(0, distanceKm - 3);
+  const fareEstimate = baseFee + extraKm * 2.5;
+
   return (
     <div className="min-h-screen bg-background pb-nav">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
@@ -295,20 +301,55 @@ const TripTrackingPage = () => {
           </section>
         ) : (
         <>
+        {/* 行程状态条 */}
+        <section className="rounded-2xl border bg-card p-3 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary text-primary-foreground border-transparent">
+              {STAGES[stageIdx]?.emoji} {STAGES[stageIdx]?.label || "未知"}
+            </Badge>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {tracking?.updated_at && new Date(tracking.updated_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+          <span className="text-[11px] text-primary font-medium">实时同步中</span>
+        </section>
+
+        {/* 接送点高亮 */}
+        {(order?.pickup_address || order?.dropoff_address) && (
+          <section className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-2.5">
+              <p className="text-[11px] text-primary font-bold mb-0.5">📍 接宠点</p>
+              <p className="text-xs text-foreground line-clamp-2">{order?.pickup_address || "—"}</p>
+            </div>
+            <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-2.5">
+              <p className="text-[11px] text-destructive font-bold mb-0.5">🏁 送达点</p>
+              <p className="text-xs text-foreground line-clamp-2">{order?.dropoff_address || "—"}</p>
+            </div>
+          </section>
+        )}
+
         {/* SVG 地图 */}
         <section className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-          <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900">
+          <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-primary/5 to-primary/10">
             {/* 道路 */}
             <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--muted-foreground))" strokeWidth="3" fill="none" strokeDasharray="6 4" opacity="0.4" />
             <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--primary))" strokeWidth="3" fill="none"
               strokeDasharray="600"
               strokeDashoffset={600 - (progress / 100) * 600} />
-            {/* 起点 */}
+            {/* 起点 - 接宠点高亮 */}
+            <circle cx="30" cy="170" r="12" fill="hsl(var(--primary))" opacity="0.25">
+              <animate attributeName="r" from="12" to="18" dur="1.8s" repeatCount="indefinite" />
+              <animate attributeName="opacity" from="0.4" to="0" dur="1.8s" repeatCount="indefinite" />
+            </circle>
             <circle cx="30" cy="170" r="8" fill="hsl(var(--primary))" />
-            <text x="42" y="174" fontSize="10" fill="hsl(var(--foreground))">起</text>
-            {/* 终点 */}
+            <text x="42" y="174" fontSize="10" fill="hsl(var(--foreground))" fontWeight="600">接</text>
+            {/* 终点 - 送达点高亮 */}
+            <circle cx="330" cy="30" r="12" fill="hsl(var(--destructive))" opacity="0.25">
+              <animate attributeName="r" from="12" to="18" dur="1.8s" repeatCount="indefinite" />
+              <animate attributeName="opacity" from="0.4" to="0" dur="1.8s" repeatCount="indefinite" />
+            </circle>
             <circle cx="330" cy="30" r="8" fill="hsl(var(--destructive))" />
-            <text x="305" y="22" fontSize="10" fill="hsl(var(--foreground))">终</text>
+            <text x="305" y="22" fontSize="10" fill="hsl(var(--foreground))" fontWeight="600">送</text>
             {/* 司机车辆位置 */}
             {(() => {
               const t = progress / 100;
@@ -338,6 +379,19 @@ const TripTrackingPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 里程与结算提示条 */}
+        <section className="rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 p-3 flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-[11px] text-muted-foreground">本次里程</p>
+            <p className="text-lg font-extrabold text-primary tabular-nums">{distanceKm.toFixed(1)} km</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] text-muted-foreground">预估结算</p>
+            <p className="text-lg font-extrabold text-primary tabular-nums">¥{fareEstimate.toFixed(2)}</p>
+            <p className="text-[10px] text-muted-foreground tabular-nums">起步 ¥10 / 3km · 后续 ¥2.5/km</p>
           </div>
         </section>
 

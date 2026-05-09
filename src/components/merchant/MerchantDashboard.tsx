@@ -1,6 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, TrendingUp, ShoppingBag, Trophy } from "lucide-react";
+import { Loader2, TrendingUp, ShoppingBag, Trophy, RotateCcw } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+} from "recharts";
 
 interface Props {
   merchantId: string;
@@ -14,69 +25,43 @@ interface TopItem {
   revenue: number;
 }
 
+type RangeKey = "day" | "week";
+
 const MerchantDashboard = ({ merchantId }: Props) => {
   const [loading, setLoading] = useState(true);
-  const [todayCount, setTodayCount] = useState(0);
-  const [monthRevenue, setMonthRevenue] = useState(0);
-  const [topItems, setTopItems] = useState<TopItem[]>([]);
+  const [range, setRange] = useState<RangeKey>("day");
+  const [items, setItems] = useState<any[]>([]);
+  const [refundedOrderIds, setRefundedOrderIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-      const { data, error } = await supabase
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data } = await supabase
         .from("order_items")
         .select("product_id, product_name, cover_image, unit_price, quantity, created_at, order_id")
-        .eq("merchant_id", merchantId);
-
+        .eq("merchant_id", merchantId)
+        .gte("created_at", since.toISOString());
       if (cancelled) return;
-      if (error) {
-        setLoading(false);
-        return;
-      }
+      const list = data || [];
+      setItems(list);
 
-      const items = data || [];
-
-      // 今日订单数（去重 order_id）
-      const todayOrders = new Set<string>();
-      let monthRev = 0;
-      const productMap = new Map<string, TopItem>();
-
-      for (const it of items) {
-        const created = it.created_at as string;
-        if (created >= todayStart) todayOrders.add(it.order_id as string);
-        if (created >= monthStart) monthRev += Number(it.unit_price) * Number(it.quantity);
-
-        const key = (it.product_id as string) || (it.product_name as string);
-        const existing = productMap.get(key);
-        const qty = Number(it.quantity);
-        const rev = Number(it.unit_price) * qty;
-        if (existing) {
-          existing.qty += qty;
-          existing.revenue += rev;
-        } else {
-          productMap.set(key, {
-            product_id: it.product_id as string | null,
-            product_name: it.product_name as string,
-            cover_image: it.cover_image as string | null,
-            qty,
-            revenue: rev,
-          });
+      const ids = Array.from(new Set(list.map((i) => i.order_id as string)));
+      if (ids.length) {
+        const { data: ords } = await supabase
+          .from("orders")
+          .select("id,status")
+          .in("id", ids);
+        if (!cancelled) {
+          setRefundedOrderIds(
+            new Set((ords || []).filter((o: any) => ["refunded", "refund"].includes(o.status)).map((o: any) => o.id)),
+          );
         }
+      } else {
+        setRefundedOrderIds(new Set());
       }
-
-      const top = Array.from(productMap.values())
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 5);
-
-      setTodayCount(todayOrders.size);
-      setMonthRevenue(monthRev);
-      setTopItems(top);
       setLoading(false);
     };
     if (merchantId) load();
@@ -84,6 +69,72 @@ const MerchantDashboard = ({ merchantId }: Props) => {
       cancelled = true;
     };
   }, [merchantId]);
+
+  const { metrics, chartData, top } = useMemo(() => {
+    const now = new Date();
+    const periodMs = range === "day" ? 24 * 3600 * 1000 : 7 * 24 * 3600 * 1000;
+    const buckets = range === "day" ? 7 : 4; // last 7 days OR last 4 weeks
+    const start = new Date(now.getTime() - buckets * periodMs);
+
+    const inRange = items.filter((it) => new Date(it.created_at) >= start);
+
+    const orderSet = new Set<string>();
+    let revenue = 0;
+    let refundCount = 0;
+    const productMap = new Map<string, TopItem>();
+    const series: { label: string; revenue: number; orders: number }[] = [];
+
+    for (let i = 0; i < buckets; i++) {
+      const bStart = new Date(now.getTime() - (buckets - i) * periodMs);
+      const bEnd = new Date(now.getTime() - (buckets - 1 - i) * periodMs);
+      const label =
+        range === "day"
+          ? `${bStart.getMonth() + 1}/${bStart.getDate()}`
+          : `W${Math.ceil(bStart.getDate() / 7)}`;
+      const bOrders = new Set<string>();
+      let bRev = 0;
+      inRange.forEach((it) => {
+        const t = new Date(it.created_at);
+        if (t >= bStart && t < bEnd) {
+          bOrders.add(it.order_id);
+          bRev += Number(it.unit_price) * Number(it.quantity);
+        }
+      });
+      series.push({ label, revenue: Math.round(bRev), orders: bOrders.size });
+    }
+
+    inRange.forEach((it) => {
+      orderSet.add(it.order_id);
+      revenue += Number(it.unit_price) * Number(it.quantity);
+      const key = (it.product_id as string) || (it.product_name as string);
+      const ex = productMap.get(key);
+      const qty = Number(it.quantity);
+      const rev = Number(it.unit_price) * qty;
+      if (ex) {
+        ex.qty += qty;
+        ex.revenue += rev;
+      } else {
+        productMap.set(key, {
+          product_id: it.product_id,
+          product_name: it.product_name,
+          cover_image: it.cover_image,
+          qty,
+          revenue: rev,
+        });
+      }
+    });
+    orderSet.forEach((id) => {
+      if (refundedOrderIds.has(id)) refundCount++;
+    });
+
+    const refundRate = orderSet.size ? (refundCount / orderSet.size) * 100 : 0;
+
+    return {
+      metrics: { orders: orderSet.size, revenue, refundRate },
+      chartData: series,
+      top: Array.from(productMap.values()).sort((a, b) => b.qty - a.qty).slice(0, 5),
+    };
+  }, [items, range, refundedOrderIds]);
 
   if (loading) {
     return (
@@ -95,22 +146,61 @@ const MerchantDashboard = ({ merchantId }: Props) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-gradient-to-br from-primary/15 to-primary/5 rounded-2xl p-4 card-shadow">
-          <div className="flex items-center gap-2 text-primary">
-            <ShoppingBag className="w-4 h-4" />
-            <span className="text-xs font-medium">今日订单</span>
-          </div>
-          <p className="text-3xl font-extrabold mt-2 text-foreground">{todayCount}</p>
-          <p className="text-xs text-muted-foreground mt-1">单</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-foreground">营业看板</p>
+        <ToggleGroup
+          type="single"
+          size="sm"
+          value={range}
+          onValueChange={(v) => v && setRange(v as RangeKey)}
+        >
+          <ToggleGroupItem value="day" className="text-xs px-3">按日</ToggleGroupItem>
+          <ToggleGroupItem value="week" className="text-xs px-3">按周</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl p-3 card-shadow bg-gradient-to-br from-primary/15 to-primary/5">
+          <ShoppingBag className="w-4 h-4 text-primary" />
+          <p className="text-[11px] text-muted-foreground mt-1">订单数</p>
+          <p className="text-xl font-extrabold text-foreground tabular-nums">{metrics.orders}</p>
         </div>
-        <div className="bg-gradient-to-br from-secondary/40 to-secondary/10 rounded-2xl p-4 card-shadow">
-          <div className="flex items-center gap-2 text-foreground/70">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-xs font-medium">本月销售额</span>
-          </div>
-          <p className="text-3xl font-extrabold mt-2 text-foreground">¥{monthRevenue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-1">含已支付订单</p>
+        <div className="rounded-2xl p-3 card-shadow bg-gradient-to-br from-primary/15 to-primary/5">
+          <TrendingUp className="w-4 h-4 text-primary" />
+          <p className="text-[11px] text-muted-foreground mt-1">成交额</p>
+          <p className="text-xl font-extrabold text-foreground tabular-nums">¥{metrics.revenue.toFixed(0)}</p>
+        </div>
+        <div className="rounded-2xl p-3 card-shadow bg-gradient-to-br from-destructive/15 to-destructive/5">
+          <RotateCcw className="w-4 h-4 text-destructive" />
+          <p className="text-[11px] text-muted-foreground mt-1">退款率</p>
+          <p className="text-xl font-extrabold text-foreground tabular-nums">{metrics.refundRate.toFixed(1)}%</p>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-2xl p-4 card-shadow">
+        <p className="text-sm font-bold mb-2">{range === "day" ? "近 7 天成交额" : "近 4 周成交额"}</p>
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v: any) => [`¥${v}`, "成交额"]}
+              />
+              <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill="hsl(var(--primary))" />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -119,18 +209,23 @@ const MerchantDashboard = ({ merchantId }: Props) => {
           <Trophy className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-sm">最热销 Top 5</h3>
         </div>
-        {topItems.length === 0 ? (
+        {top.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">暂无销售数据</p>
         ) : (
           <div className="space-y-2">
-            {topItems.map((it, idx) => (
+            {top.map((it, idx) => (
               <div key={it.product_id || it.product_name} className="flex items-center gap-3 py-1.5">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                  idx === 0 ? "bg-amber-400 text-amber-950" :
-                  idx === 1 ? "bg-zinc-300 text-zinc-800" :
-                  idx === 2 ? "bg-orange-300 text-orange-900" :
-                  "bg-muted text-muted-foreground"
-                }`}>
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    idx === 0
+                      ? "bg-primary text-primary-foreground"
+                      : idx === 1
+                        ? "bg-primary/70 text-primary-foreground"
+                        : idx === 2
+                          ? "bg-primary/40 text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                  }`}
+                >
                   {idx + 1}
                 </div>
                 {it.cover_image ? (
@@ -140,9 +235,9 @@ const MerchantDashboard = ({ merchantId }: Props) => {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{it.product_name}</p>
-                  <p className="text-xs text-muted-foreground">售出 {it.qty} 件</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">售出 {it.qty} 件</p>
                 </div>
-                <span className="text-sm font-bold text-primary">¥{it.revenue.toFixed(0)}</span>
+                <span className="text-sm font-bold text-primary tabular-nums">¥{it.revenue.toFixed(0)}</span>
               </div>
             ))}
           </div>

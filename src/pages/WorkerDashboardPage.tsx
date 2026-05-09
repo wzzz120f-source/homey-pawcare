@@ -1,12 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft, Sparkles } from "lucide-react";
+import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft, Sparkles, Stethoscope } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import CompanionReportGenerator from "@/components/CompanionReportGenerator";
+import HealthAssessmentForm, { GroomerLevel } from "@/components/HealthAssessmentForm";
 import RoleSwitcher from "@/components/RoleSwitcher";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const WorkerDashboardPage = () => {
   const navigate = useNavigate();
+  const { activeRole } = useUserRoles();
+  const isGroomer = activeRole === "groomer";
+  // 暂以中级为默认，未来可根据 user_roles.level 字段读取
+  const groomerLevel: GroomerLevel = "intermediate";
   return (
     <div className="min-h-screen bg-background pb-32">
       <header className="sticky top-0 z-40 bg-card border-b border-border px-4 h-14 flex items-center gap-3">
@@ -58,6 +64,16 @@ const WorkerDashboardPage = () => {
           </div>
           <CompanionReportGenerator petName="毛球" sitterName="守护者" />
         </section>
+
+        {isGroomer && (
+          <section className="rounded-2xl p-4 card-shadow bg-card">
+            <div className="flex items-center gap-2 mb-3">
+              <Stethoscope className="w-5 h-5 text-primary" />
+              <h2 className="font-bold">健康评估 & AI 建议</h2>
+            </div>
+            <HealthAssessmentForm level={groomerLevel} petName="毛球" />
+          </section>
+        )}
 
         <section className="rounded-2xl p-4 card-shadow bg-card">
           <div className="flex items-center gap-2 mb-2">
