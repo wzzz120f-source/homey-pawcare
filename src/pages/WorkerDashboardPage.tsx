@@ -217,10 +217,31 @@ const WorkerDashboardPage = () => {
         )}
 
         {tab === "services" && isGroomer && (
-          <section className="rounded-2xl p-4 card-shadow bg-card">
-            <div className="flex items-center gap-2 mb-3">
-              <Stethoscope className="w-5 h-5 text-primary" />
-              <h2 className="font-bold">健康评估 & AI 建议</h2>
+          <section className="rounded-2xl p-4 card-shadow bg-card space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Stethoscope className="w-5 h-5 text-primary" />
+                <h2 className="font-bold">健康评估 & AI 建议</h2>
+              </div>
+              <Badge variant="secondary" className="text-[11px]">当前等级 · {LEVEL_OPTIONS.find(o => o.value === groomerLevel)?.label}</Badge>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {LEVEL_OPTIONS.map((o) => (
+                <Button
+                  key={o.value}
+                  size="sm"
+                  variant={groomerLevel === o.value ? "default" : "outline"}
+                  className="h-7 px-2.5 text-xs"
+                  disabled={levelLoading}
+                  onClick={async () => {
+                    const { error } = await setGroomerLevel(o.value);
+                    if (error) toast({ title: "等级保存失败", description: error, variant: "destructive" });
+                    else toast({ title: "等级已更新", description: `已切换为${o.label}护理师` });
+                  }}
+                >
+                  {o.label}
+                </Button>
+              ))}
             </div>
             <HealthAssessmentForm level={groomerLevel} petName="毛球" />
           </section>
