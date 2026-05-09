@@ -1,69 +1,105 @@
-# 统一注册入口 & 多角色系统
+# 项目逻辑问题排查与完善计划
 
-将现有「用户/服务商」二选一改造为四角色统一注册流程，并基于角色自动切换导航与主题色，新增轻量审核中台。
+## 一、当前发现的核心逻辑问题
 
-## 一、注册流程改造（AuthPage）
+### 1. WorkerDashboardPage 全是硬编码占位
+- "今日预计收入 ¥0.00"、待接单/进行中/已完成均写死为 0
+- "今日待办"、"附近订单" 没有任何数据接入
+- `groomerLevel` 写死为 `intermediate`，没有从 `user_roles` 读取
+- 没有响应 `?tab=schedule|training|services|route` 等参数（导航栏点不同 Tab 跳转后页面无差异）
 
-将 `AuthPage.tsx` 改成三步式向导：
+### 2. 角色导航与页面不一致
+- `navTabs.ts` 为 sitter / groomer / driver 各自配置了 `/worker?tab=xxx`
+- 但 `WorkerDashboardPage` 没用 `useSearchParams` 切视图，所有 Tab 落到同一个静态页面
+- driver 角色没有自动跳转到 `TripTrackingPage` 当前任务的入口
+
+### 3. 司机端任务流不闭环
+- 司机角色没有"我的当前行程列表"页，只能从订单详情进入 `/track/:id`
+- TripTracking 的里程结算只在前端估算，未写回 `orders.driver_settlement` 之类字段
+- "车载环境拍照上传" 在 navTabs 中没有入口
+
+### 4. 商家看板权限/边界
+- `MerchantDashboard` 接收 `merchantId` props，但 `MerchantCenterPage` 是否在 merchant 角色用户没有店铺时给出"去申请"的引导需要核对
+- 退款率计算依赖 `order_items` 与 `orders.status`，未确认是否过滤当前 merchant 的订单
+
+### 5. 护理师端 AI 建议只在 dashboard
+- HealthAssessmentForm 的评估结果没有保存到任何表，无法在订单详情或陪伴报告里复用
+- 等级徽章 `groomerLevel` 没有持久化来源
+
+### 6. 路由保护缺失
+- `/admin/review`、`/merchant/admin`、`/worker` 没有在路由层校验角色，未登录或越权用户进入会看到空白或报错
+- 仅在组件内部用 `useUserRoles` 判断，体验不够友好（应有重定向 + Toast）
+
+### 7. 独立运行能力欠缺
+- README/SETUP 没有"一键启动"脚本说明
+- `.env.example` 缺少 AMap key 等必填项的注释
+- 没有种子数据脚本（新部署看不到任何商品/技师演示数据）
+- 没有健康检查页（部署后无法快速判断后端是否就绪）
+
+---
+
+## 二、本次计划完成的改造（分 4 步）
+
+### Step 1：让 WorkerDashboard 真正驱动数据
+- 用 `useSearchParams` 读 `tab` 参数，渲染 4 个子视图：
+  - `overview`（默认）：今日收入 + 待办
+  - `schedule`：排班日历（sitter）
+  - `services` / `route` / `training`：对应内容卡片
+- 接入数据：
+  - 收入：`orders.total_amount` where `worker_id = uid && completed && date = today`
+  - 待办：`orders` where `worker_id = uid && status in (confirmed,in_progress)`
+- groomerLevel 从 `user_roles` 表新增 `metadata.level` 字段读取（若无则 intermediate）
+
+### Step 2：补全角色路由保护与跳转
+- 新建 `src/components/RoleGuard.tsx`：传入 `allow: AppRole[]`，未授权时 toast + 重定向
+- 包裹 `/admin/review`（admin）、`/merchant/admin`（admin）、`/worker`（sitter/groomer/driver）
+- driver 进入 `/worker` 时若有进行中行程，给出"继续行程"快捷卡
+
+### Step 3：司机里程结算落库
+- 在 `orders` 表加 `driver_distance_km`、`driver_fare` 字段（migration）
+- TripTracking 在 stage→`delivered` 时写回该订单
+- MerchantDashboard / 个人收入卡读取此字段
+
+### Step 4：可独立运行能力
+- `.env.example` 完善注释（VITE_SUPABASE_URL / KEY / AMAP_JS_KEY）
+- 新增 `docs/RUN_LOCAL.md`：本地启动 + Cloud 部署 + 必要 secrets 列表
+- 新增 `supabase/seed.sql`：插入演示用 categories / products / technicians / banner，方便首次部署即可看到内容
+- 在 `/` 顶部加上"演示数据"标识（仅当数据来自 seed 时）
+
+---
+
+## 三、技术细节（供参考）
 
 ```text
-Step1 基础验证        Step2 角色选择            Step3 资料补全
-─────────────────    ─────────────────────    ──────────────────────
-品牌Logo+欢迎文案     4张大卡片+图标            按角色路由：
-邮箱/密码注册         ─ 普通用户(铲屎官)         ├ user → /pets 宠物档案
-(预留手机号入口)      ─ 宠托师(兼职)             ├ sitter → /driver/apply
-                     ─ 护理师(专业资质)         ├ groomer → /driver/apply?type=pro
-                     ─ 商家(实体店)             └ merchant → /merchant/apply
+路由保护结构
+<Route path="/worker" element={
+  <RoleGuard allow={['sitter','groomer','driver']}>
+    <WorkerDashboardPage />
+  </RoleGuard>
+} />
 ```
 
-- 欢迎文案使用用户提供的 Homey 品牌话术。
-- 注册成功后强制进入 Step2，写入选定角色到 `user_roles`（新增枚举值 `sitter` / `groomer`，已有 `merchant` 复用）。
-- 护理师与宠托师走同一申请页，通过 query 区分是否需要"专业技能标签"区块。
+```text
+WorkerDashboardPage tab 切换
+const [sp] = useSearchParams();
+const tab = sp.get('tab') ?? 'overview';
+{tab === 'overview' && <OverviewSection />}
+{tab === 'schedule' && <ScheduleSection />}
+...
+```
 
-## 二、角色系统与权限视图
+```sql
+-- Step 3 migration（示意）
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS driver_distance_km numeric,
+  ADD COLUMN IF NOT EXISTS driver_fare numeric;
+```
 
-### 1. 数据库
-- 扩展 `app_role` 枚举：增加 `sitter`、`groomer`（已有 `admin`、`merchant`、`user`）。
-- 新增 hook `useUserRoles()`：聚合 `user_roles` 表查询当前用户全部角色，缓存于 React Query。
-- 已存在的 `driver_applications` / `merchant_applications` 表沿用，新增 `role_requested` 字段记录是 sitter 还是 groomer。
+---
 
-### 2. 主题色 & 底栏切换
-- 在 `BottomNav.tsx` 内根据 `useUserRoles()` 主角色渲染不同 Tab：
-  - **user**：首页 / 商城 / 社区 / 客服 / 我的（现状）
-  - **sitter / groomer**：工作台 / 订单 / 接单地图 / 培训 / 我的
-  - **merchant**：经营看板 / 管理 / 订单 / 客服 / 我的
-- 在 `index.css` 增加三套 CSS 变量主题：
-  - `data-role="user"` → 暖橙（现状 primary）
-  - `data-role="worker"` → 森林绿
-  - `data-role="merchant"` → 商务蓝
-- 在 `App.tsx` 顶层 `<div data-role={activeRole}>` 包裹，方便整站换肤。
+## 四、不在本次范围
+- UI 主题/色彩调整（已在前几轮完成）
+- 金额 tabular-nums 校验（已在前几轮完成）
+- 陪伴报告 RLS（已在前几轮完成）
 
-### 3. 新增页面（最小可用）
-- `/worker` 工作台：今日待办 + 待接订单地图占位 + 今日预计收入卡片。
-- `/merchant` 已存在 → 增加营业额/转化率看板卡片。
-- `/admin/review` 审核中台：列出 `driver_applications` 和 `merchant_applications` 中 `status='pending'` 的记录，一键调用现有 `approve_*` / `reject_*` RPC。仅 `admin` 角色可见。
-
-## 三、ProfilePage 宫格化
-
-将"我的"页面顶部改为 3×N 宫格（已有钱包/订单等），未入驻用户固定一格"入驻赚钱"→ 跳回 `/auth?step=role`。
-
-## 四、关键流程预留
-
-- `BookingPage` → 服务人员"开始服务"按钮发送 `notifications` insert（沿用现有触发器）。
-- 地理围栏：在 `TripTrackingPage` 的"确认到达"按钮上加 200m 距离校验（用 Amap 计算）。
-- 核心操作按钮统一 `backdrop-blur` + `z-50`（沿用 `SafeAreaBottomLayout`）。
-
-## 技术细节
-
-| 模块 | 文件 |
-|------|------|
-| 三步注册向导 | 改写 `src/pages/AuthPage.tsx` |
-| 角色 hook | 新建 `src/hooks/useUserRoles.ts` |
-| 主题切换 | `src/index.css` + `src/App.tsx` 包装 |
-| 动态底栏 | 改写 `src/components/BottomNav.tsx`，抽出 `src/config/navTabs.ts` |
-| 工作台 | 新建 `src/pages/WorkerDashboardPage.tsx` + 路由 |
-| 审核中台 | 新建 `src/pages/AdminReviewPage.tsx` + 路由（admin 守卫） |
-| 数据库 | migration 扩展 `app_role` 枚举 + 申请表加 `role_requested` |
-| 个人中心宫格 | 调整 `src/pages/ProfilePage.tsx` 顶部块 |
-
-完成后用户可在一处注册时选择身份，登录后看到完全不同的导航/配色/工作台，平台方通过 `/admin/review` 一键完成所有人工审核。
+实施时如某一步发现额外阻塞（如缺字段、缺 RLS），会在该步内顺手补上并在回复中说明。
