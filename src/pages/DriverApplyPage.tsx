@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -69,6 +69,7 @@ const STEPS: { key: StepKey; title: string; short: string }[] = [
   { key: "docs", title: "上传证件", short: "证件" },
   { key: "exam", title: "在线认证", short: "认证" },
 ];
+// 注：原 "role" 步骤已移除，本页固定为「司机」入驻流程；宠托师 / 护理师请使用 /sitter/apply、/groomer/apply。
 
 const FLOW_STEPS = [
   { step: 1, title: "在线注册", desc: "填写资料、上传证件" },
@@ -150,9 +151,13 @@ const driverProfileSchema = profileSchemaBase.extend({
 // ─── Component ─────────────────────────────────────────────────────────────
 const DriverApplyPage = () => {
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const returnUrl = sp.get("return");
   const { user } = useAuth();
   const [step, setStep] = useState<StepKey>("intro");
-  const [applyRole, setApplyRole] = useState<ApplyRole>("sitter");
+  // 本页固定为司机申请，移除多角色选择
+  const applyRole: ApplyRole = "driver";
+  const setApplyRole = (_: ApplyRole) => {};
   const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
   const [examPassed, setExamPassed] = useState(false);
   const meta = ROLE_META[applyRole];
