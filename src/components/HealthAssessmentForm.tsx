@@ -93,12 +93,17 @@ const HealthAssessmentForm = ({ level = "intermediate", petName = "宠物" }: Pr
       const summary = TEMPLATE.flatMap((s) =>
         s.fields.map((f) => `${f.label}：${values[f.key] || "未填"}${f.unit ? f.unit : ""}`),
       ).join("；");
-      const prompt = `请为${petName}基于以下结构化体检数据，输出 3-5 条专业但通俗的护理与就医建议。${summary}。备注：${notes || "无"}`;
-      const { data, error } = await supabase.functions.invoke("ai-summary", {
-        body: { prompt, system: "你是一位资深宠物护理师，擅长输出可执行的健康建议。" },
+      const prompt = `请基于以下${petName}的结构化体检数据，输出 3-5 条专业但通俗的护理与就医建议（每条以 • 开头，控制在 200 字内）。${summary}。备注：${notes || "无"}`;
+      const { data, error } = await supabase.functions.invoke("chat-ai", {
+        body: { messages: [{ role: "user", content: prompt }] },
       });
       if (error) throw error;
-      setAdvice((data as any)?.text || (data as any)?.summary || "暂无建议");
+      const text =
+        (data as any)?.choices?.[0]?.message?.content ||
+        (data as any)?.text ||
+        (data as any)?.message ||
+        "";
+      setAdvice(text || "暂无建议");
     } catch (e: any) {
       toast.error("生成失败", { description: e?.message || "AI 服务繁忙，请稍后再试" });
       setAdvice(
