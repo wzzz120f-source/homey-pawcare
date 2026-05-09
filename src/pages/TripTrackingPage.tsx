@@ -556,10 +556,38 @@ const TripTrackingPage = () => {
           <Button variant="outline" size="sm" onClick={startReplay} disabled={isReplaying}>
             <Rewind className="w-4 h-4 mr-1" /> 回放最近10分钟
           </Button>
-          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying}>
-            ▶ 推进阶段（演示）
+          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying || isCancelled}>
+            ▶ 推进阶段{isDriverOfOrder ? "" : "（演示）"}
           </Button>
         </div>
+
+        {/* 司机专属：回退 / 取消 */}
+        {isDriverOfOrder && !isCancelled && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={rollbackStage}
+              disabled={isReplaying || !tracking || tracking.stage === "departed"}
+            >
+              <Undo2 className="w-4 h-4 mr-1" /> 回退一步
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={cancelTrip}
+              disabled={isReplaying || tracking?.stage === "delivered"}
+            >
+              <Ban className="w-4 h-4 mr-1" /> 取消行程
+            </Button>
+          </div>
+        )}
+
+        {isCancelled && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-center text-destructive">
+            行程已取消
+          </div>
+        )}
 
         {tracking?.stage === "delivered" && orderId && !isReplaying && (
           <Button className="w-full" onClick={() => navigate(`/rate/${orderId}`)}>
