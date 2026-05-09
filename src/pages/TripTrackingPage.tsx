@@ -239,6 +239,12 @@ const TripTrackingPage = () => {
   const pet = order?.pet_snapshot;
   const isReplaying = replayIdx !== null;
 
+  // 里程结算：起步价 ¥10（含 3km），超出每公里 ¥2.5
+  const distanceKm = Number(tracking?.distance_km ?? 0);
+  const baseFee = 10;
+  const extraKm = Math.max(0, distanceKm - 3);
+  const fareEstimate = baseFee + extraKm * 2.5;
+
   return (
     <div className="min-h-screen bg-background pb-nav">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
