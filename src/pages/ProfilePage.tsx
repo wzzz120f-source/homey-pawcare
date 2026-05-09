@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store, FileText, ShieldCheck, Car } from "lucide-react";
+import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store, FileText, ShieldCheck, Car, UserCog } from "lucide-react";
 import { useMerchantOwnership } from "@/hooks/useMerchantOwnership";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -373,6 +373,13 @@ const ProfilePage = () => {
           <span className="font-extrabold text-lg text-foreground">个人主页</span>
           <div className="flex items-center gap-2">
             <RoleSwitcher />
+            <Link
+              to="/roles"
+              aria-label="身份切换"
+              className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              <UserCog className="w-4 h-4" />
+            </Link>
             <Button size="sm" variant="ghost" className="text-muted-foreground gap-1" onClick={handleSignOut}>
               <LogOut className="w-4 h-4" /> 退出
             </Button>
