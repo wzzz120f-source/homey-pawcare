@@ -213,6 +213,7 @@ const DriverApplyPage = () => {
         .from("driver_applications")
         .select("id,status,review_note,created_at,reviewed_at,id_card_front_url,id_card_back_url,driver_license_url,vehicle_license_url,handheld_id_url")
         .eq("user_id", user.id)
+        .eq("role_requested", "driver")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -372,7 +373,7 @@ const DriverApplyPage = () => {
       const { error } = await supabase.from("driver_applications").insert(payload as any);
       if (error) throw error;
       toast.success(`${meta.label}申请已提交，1–3 个工作日内审核`);
-      navigate("/profile");
+      navigate(returnUrl || "/profile");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "提交失败");
     } finally {
@@ -480,7 +481,7 @@ const DriverApplyPage = () => {
               </div>
             );
           })()}
-          <TabsList className="grid w-full grid-cols-6 mb-4 h-auto">
+          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
             {STEPS.map((s) => (
               <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
                 {s.short}
