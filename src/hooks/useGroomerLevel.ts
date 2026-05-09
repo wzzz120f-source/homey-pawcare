@@ -49,7 +49,8 @@ export const useGroomerLevel = () => {
         .eq("user_id", user.id)
         .eq("role", "groomer")
         .maybeSingle();
-      const merged = { ...(row?.metadata ?? {}), level: next };
+      const existing = (row?.metadata ?? {}) as Record<string, unknown>;
+      const merged = { ...existing, level: next };
       const { error } = await supabase
         .from("user_roles")
         .update({ metadata: merged })
