@@ -55,7 +55,7 @@ describe("RoleSwitchPage", () => {
 
   it("unauthorized role click navigates to applyPath with return param", async () => {
     renderAt("?highlight=sitter&from=/protected");
-    fireEvent.click(screen.getByText("去申请"));
+    fireEvent.click(screen.getByRole("button", { name: /宠托师/ }));
     await waitFor(() => {
       const loc = screen.getByTestId("loc").textContent ?? "";
       expect(loc).toContain("/sitter/apply");
@@ -66,7 +66,7 @@ describe("RoleSwitchPage", () => {
   it("authorized role switch navigates back to from", async () => {
     rolesState.availableRoles = ["user", "sitter"];
     renderAt("?highlight=sitter&from=/protected");
-    fireEvent.click(screen.getByText("宠托师"));
+    fireEvent.click(screen.getByRole("button", { name: /宠托师/ }));
     await waitFor(() => {
       expect(rolesState.setActiveRole).toHaveBeenCalledWith("sitter");
       expect(screen.getByTestId("loc").textContent).toContain("/protected");
