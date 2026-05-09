@@ -11,11 +11,11 @@ import { ChevronDown, User, Heart, Scissors, Car, Store, ShieldCheck, Check } fr
 import { useNavigate } from "react-router-dom";
 
 const ROLE_META: Record<ActiveRole, { label: string; icon: typeof User; tone: string; home: string }> = {
-  user: { label: "铲屎官", icon: User, tone: "暖橙", home: "/" },
-  sitter: { label: "宠托师", icon: Heart, tone: "森林绿", home: "/worker" },
-  groomer: { label: "护理师", icon: Scissors, tone: "薄荷青", home: "/worker" },
-  driver: { label: "司机", icon: Car, tone: "活力黄", home: "/worker" },
-  merchant: { label: "商家", icon: Store, tone: "深紫", home: "/merchant" },
+  user: { label: "铲屎官", icon: User, tone: "暖橙 #FF8C00", home: "/" },
+  sitter: { label: "宠托师", icon: Heart, tone: "明黄 #FFD700", home: "/worker" },
+  groomer: { label: "护理师", icon: Scissors, tone: "医用绿 #2E8B57", home: "/worker" },
+  driver: { label: "司机", icon: Car, tone: "天空蓝 #1E90FF", home: "/worker" },
+  merchant: { label: "商家", icon: Store, tone: "深靛青 #000080", home: "/merchant" },
   admin: { label: "审核员", icon: ShieldCheck, tone: "深蓝", home: "/admin/review" },
 };
 
