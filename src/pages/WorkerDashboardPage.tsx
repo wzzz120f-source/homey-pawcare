@@ -1,12 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft, Sparkles } from "lucide-react";
+import { ClipboardList, MapPin, Wallet, GraduationCap, ArrowLeft, Sparkles, Stethoscope } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import CompanionReportGenerator from "@/components/CompanionReportGenerator";
+import HealthAssessmentForm, { GroomerLevel } from "@/components/HealthAssessmentForm";
 import RoleSwitcher from "@/components/RoleSwitcher";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const WorkerDashboardPage = () => {
   const navigate = useNavigate();
+  const { activeRole } = useUserRoles();
+  const isGroomer = activeRole === "groomer";
+  // 暂以中级为默认，未来可根据 user_roles.level 字段读取
+  const groomerLevel: GroomerLevel = "intermediate";
   return (
     <div className="min-h-screen bg-background pb-32">
       <header className="sticky top-0 z-40 bg-card border-b border-border px-4 h-14 flex items-center gap-3">
