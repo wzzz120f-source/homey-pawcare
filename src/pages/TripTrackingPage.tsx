@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square, RefreshCw, Inbox } from "lucide-react";
+import { ArrowLeft, Phone, MessageCircle, AlertOctagon, Camera, Share2, Thermometer, Clock, Navigation, Rewind, Square, RefreshCw, Inbox, Undo2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ const TripTrackingPage = () => {
     const loadOrder = async () => {
       const { data: ord } = await supabase
         .from("orders")
-        .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type")
+        .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type, driver_id, order_status")
         .eq("id", orderId)
         .maybeSingle();
       if (!active) return;
@@ -167,6 +167,14 @@ const TripTrackingPage = () => {
     return () => window.clearInterval(id);
   }, [tracking?.stage]);
 
+  // 阶段 → 订单状态映射
+  const stageToOrderStatus = (s: string) => {
+    if (s === "departed") return "confirmed";
+    if (s === "picking_up" || s === "picked_up") return "in_progress";
+    if (s === "delivered") return "completed";
+    return "in_progress";
+  };
+
   // 推进阶段：插入新记录（保留历史轨迹用于回放）
   const advanceStage = async () => {
     const base = liveTracking || tracking;
@@ -177,6 +185,7 @@ const TripTrackingPage = () => {
     const nextDistance = Math.max(0, Number(base.distance_km || 5) - 1.5);
     const { error } = await supabase.from("trip_tracking").insert({
       order_id: orderId,
+      driver_id: user?.id,
       stage: next,
       driver_lat: (base.driver_lat ?? 31.23) + 0.005,
       driver_lng: (base.driver_lng ?? 121.47) + 0.008,
@@ -189,21 +198,78 @@ const TripTrackingPage = () => {
       toast({ title: "推进失败", description: error.message, variant: "destructive" });
       return;
     }
-    // 送达：把里程结算落库到订单
-    if (next === "delivered" && orderId) {
-      const totalDistance = Math.max(distanceKm, nextDistance);
-      const fare = 10 + Math.max(0, totalDistance - 3) * 2.5;
-      const { error: upErr } = await supabase
-        .from("orders")
-        .update({
-          driver_distance_km: Number(totalDistance.toFixed(2)),
-          driver_fare: Number(fare.toFixed(2)),
-          order_status: "completed",
-        })
-        .eq("id", orderId);
-      if (upErr) toast({ title: "结算写入失败", description: upErr.message, variant: "destructive" });
-      else toast({ title: "已送达并完成结算", description: `本次结算 ¥${fare.toFixed(2)}` });
+    // 同步订单状态 + 送达时落库结算
+    if (orderId) {
+      const update: Record<string, any> = { order_status: stageToOrderStatus(next) };
+      if (next === "delivered") {
+        const totalDistance = Math.max(distanceKm, nextDistance);
+        const fare = 10 + Math.max(0, totalDistance - 3) * 2.5;
+        update.driver_distance_km = Number(totalDistance.toFixed(2));
+        update.driver_fare = Number(fare.toFixed(2));
+      }
+      const { error: upErr } = await supabase.from("orders").update(update).eq("id", orderId);
+      if (upErr) toast({ title: "订单状态写入失败", description: upErr.message, variant: "destructive" });
+      else if (next === "delivered") toast({ title: "已送达并完成结算", description: `本次结算 ¥${update.driver_fare}` });
+      else toast({ title: `已推进至「${STAGES[idx + 1].label}」` });
     }
+  };
+
+  // 回退一步（仅司机本人）
+  const rollbackStage = async () => {
+    const base = liveTracking || tracking;
+    if (!base || !orderId) return;
+    const idx = STAGES.findIndex((s) => s.key === base.stage);
+    if (idx <= 0) {
+      toast({ title: "已是初始阶段", description: "无法继续回退" });
+      return;
+    }
+    const prev = STAGES[idx - 1].key;
+    const { error } = await supabase.from("trip_tracking").insert({
+      order_id: orderId,
+      driver_id: user?.id,
+      stage: prev,
+      driver_lat: base.driver_lat,
+      driver_lng: base.driver_lng,
+      distance_km: base.distance_km,
+      eta_minutes: (base.eta_minutes || 0) + 5,
+      cabin_temperature: base.cabin_temperature,
+      message: `回退到：${STAGES[idx - 1].label}`,
+    });
+    if (error) {
+      toast({ title: "回退失败", description: error.message, variant: "destructive" });
+      return;
+    }
+    const upd: Record<string, any> = { order_status: stageToOrderStatus(prev) };
+    if (base.stage === "delivered") {
+      // 撤销结算
+      upd.driver_distance_km = null;
+      upd.driver_fare = null;
+    }
+    const { error: upErr } = await supabase.from("orders").update(upd).eq("id", orderId);
+    if (upErr) toast({ title: "订单回退失败", description: upErr.message, variant: "destructive" });
+    else toast({ title: `已回退至「${STAGES[idx - 1].label}」` });
+  };
+
+  // 取消行程
+  const cancelTrip = async () => {
+    if (!orderId) return;
+    if (!window.confirm("确定要取消本次行程吗？此操作将作废结算。")) return;
+    const { error: trErr } = await supabase.from("trip_tracking").insert({
+      order_id: orderId,
+      driver_id: user?.id,
+      stage: (liveTracking || tracking)?.stage || "departed",
+      message: "司机已取消行程",
+    });
+    if (trErr) {
+      toast({ title: "取消失败", description: trErr.message, variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase
+      .from("orders")
+      .update({ order_status: "cancelled", driver_distance_km: null, driver_fare: null })
+      .eq("id", orderId);
+    if (error) toast({ title: "订单取消失败", description: error.message, variant: "destructive" });
+    else toast({ title: "行程已取消", description: "已通知用户与平台" });
   };
 
   // 回放最近 10 分钟
@@ -257,6 +323,8 @@ const TripTrackingPage = () => {
   const stageIdx = tracking ? STAGES.findIndex((s) => s.key === tracking.stage) : 0;
   const pet = order?.pet_snapshot;
   const isReplaying = replayIdx !== null;
+  const isDriverOfOrder = !!user && !!order?.driver_id && order.driver_id === user.id;
+  const isCancelled = order?.order_status === "cancelled";
 
   // 里程结算：起步价 ¥10（含 3km），超出每公里 ¥2.5
   const distanceKm = Number(tracking?.distance_km ?? 0);
@@ -488,10 +556,38 @@ const TripTrackingPage = () => {
           <Button variant="outline" size="sm" onClick={startReplay} disabled={isReplaying}>
             <Rewind className="w-4 h-4 mr-1" /> 回放最近10分钟
           </Button>
-          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying}>
-            ▶ 推进阶段（演示）
+          <Button variant="ghost" size="sm" onClick={advanceStage} disabled={isReplaying || isCancelled}>
+            ▶ 推进阶段{isDriverOfOrder ? "" : "（演示）"}
           </Button>
         </div>
+
+        {/* 司机专属：回退 / 取消 */}
+        {isDriverOfOrder && !isCancelled && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={rollbackStage}
+              disabled={isReplaying || !tracking || tracking.stage === "departed"}
+            >
+              <Undo2 className="w-4 h-4 mr-1" /> 回退一步
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={cancelTrip}
+              disabled={isReplaying || tracking?.stage === "delivered"}
+            >
+              <Ban className="w-4 h-4 mr-1" /> 取消行程
+            </Button>
+          </div>
+        )}
+
+        {isCancelled && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-center text-destructive">
+            行程已取消
+          </div>
+        )}
 
         {tracking?.stage === "delivered" && orderId && !isReplaying && (
           <Button className="w-full" onClick={() => navigate(`/rate/${orderId}`)}>
