@@ -88,7 +88,6 @@ const App = () => (
             <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
             <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
