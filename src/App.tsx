@@ -42,6 +42,7 @@ const OrderHistoryPage = lazyTracked("路由 OrderHistoryPage", () => import("./
 const GroupBookingPage = lazyTracked("路由 GroupBookingPage", () => import("./pages/GroupBookingPage"));
 const WorkerDashboardPage = lazyTracked("路由 WorkerDashboardPage", () => import("./pages/WorkerDashboardPage"));
 const AdminReviewPage = lazyTracked("路由 AdminReviewPage", () => import("./pages/AdminReviewPage"));
+const RoleSwitchPage = lazyTracked("路由 RoleSwitchPage", () => import("./pages/RoleSwitchPage"));
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const App = () => (
             <Route path="/group-booking" element={<GroupBookingPage />} />
             <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
             <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
+            <Route path="/roles" element={<RoleSwitchPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
