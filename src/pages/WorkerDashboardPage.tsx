@@ -45,7 +45,7 @@ const LEVEL_OPTIONS: { value: GroomerLevel; label: string }[] = [
 
 const WorkerDashboardPage = () => {
   const navigate = useNavigate();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") ?? "overview";
   const { user } = useAuth();
   const { activeRole } = useUserRoles();
