@@ -64,7 +64,7 @@ const TripTrackingPage = () => {
     const loadOrder = async () => {
       const { data: ord } = await supabase
         .from("orders")
-        .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type")
+        .select("id, order_no, pickup_address, dropoff_address, pet_snapshot, service_type, driver_id, order_status")
         .eq("id", orderId)
         .maybeSingle();
       if (!active) return;
