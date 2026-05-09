@@ -549,7 +549,7 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("role")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
               立即申请 →
             </Button>
           </TabsContent>
@@ -677,7 +677,7 @@ const DriverApplyPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="lg" onClick={() => setStep("role")}>
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
                 上一步
               </Button>
               <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
