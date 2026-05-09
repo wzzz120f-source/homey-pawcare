@@ -78,9 +78,15 @@ const App = () => (
             <Route path="/charity-footprint" element={<CharityFootprintPage />} />
             <Route path="/merchant" element={<MerchantCenterPage />} />
             <Route path="/merchant/apply" element={<MerchantApplyPage />} />
-            <Route path="/merchant/admin" element={<MerchantAdminPage />} />
+            <Route path="/merchant/admin" element={<RoleGuard allow={["admin"]}><MerchantAdminPage /></RoleGuard>} />
             <Route path="/driver/apply" element={<DriverApplyPage />} />
             <Route path="/pets" element={<PetProfilesPage />} />
+            <Route path="/rate/:id" element={<TripRatingPage />} />
+            <Route path="/track/:id" element={<TripTrackingPage />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
+            <Route path="/group-booking" element={<GroupBookingPage />} />
+            <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
+            <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
             <Route path="/rate/:id" element={<TripRatingPage />} />
             <Route path="/track/:id" element={<TripTrackingPage />} />
             <Route path="/orders" element={<OrderHistoryPage />} />
