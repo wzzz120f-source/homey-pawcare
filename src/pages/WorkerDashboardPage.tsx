@@ -45,7 +45,7 @@ const LEVEL_OPTIONS: { value: GroomerLevel; label: string }[] = [
 
 const WorkerDashboardPage = () => {
   const navigate = useNavigate();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") ?? "overview";
   const { user } = useAuth();
   const { activeRole } = useUserRoles();
@@ -54,6 +54,27 @@ const WorkerDashboardPage = () => {
   const isDriver = activeRole === "driver";
   const isSitter = activeRole === "sitter";
   const { level: groomerLevel, setLevel: setGroomerLevel, loading: levelLoading } = useGroomerLevel();
+
+  // 切换角色后纠正 tab；其它筛选参数（如 date）保持不变
+  useEffect(() => {
+    const VALID: Record<string, string[]> = {
+      sitter: ["overview", "schedule", "training"],
+      groomer: ["overview", "services", "training"],
+      driver: ["overview", "route", "training"],
+    };
+    const DEFAULT: Record<string, string> = { sitter: "schedule", groomer: "services", driver: "route" };
+    const valid = VALID[activeRole];
+    if (!valid) return;
+    if (!valid.includes(tab)) {
+      setSp(
+        (prev) => {
+          prev.set("tab", DEFAULT[activeRole] ?? "overview");
+          return prev;
+        },
+        { replace: true },
+      );
+    }
+  }, [activeRole, tab, setSp]);
 
   const [orders, setOrders] = useState<WorkerOrder[]>([]);
   const [loading, setLoading] = useState(true);

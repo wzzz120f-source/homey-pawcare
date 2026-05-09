@@ -35,6 +35,8 @@ const MerchantCenterPage = lazyTracked("路由 MerchantCenterPage", () => import
 const MerchantApplyPage = lazyTracked("路由 MerchantApplyPage", () => import("./pages/MerchantApplyPage"));
 const MerchantAdminPage = lazyTracked("路由 MerchantAdminPage", () => import("./pages/MerchantAdminPage"));
 const DriverApplyPage = lazyTracked("路由 DriverApplyPage", () => import("./pages/DriverApplyPage"));
+const SitterApplyPage = lazyTracked("路由 SitterApplyPage", () => import("./pages/SitterApplyPage"));
+const GroomerApplyPage = lazyTracked("路由 GroomerApplyPage", () => import("./pages/GroomerApplyPage"));
 const PetProfilesPage = lazyTracked("路由 PetProfilesPage", () => import("./pages/PetProfilesPage"));
 const TripRatingPage = lazyTracked("路由 TripRatingPage", () => import("./pages/TripRatingPage"));
 const TripTrackingPage = lazyTracked("路由 TripTrackingPage", () => import("./pages/TripTrackingPage"));
@@ -81,6 +83,8 @@ const App = () => (
             <Route path="/merchant/apply" element={<MerchantApplyPage />} />
             <Route path="/merchant/admin" element={<RoleGuard allow={["admin"]}><MerchantAdminPage /></RoleGuard>} />
             <Route path="/driver/apply" element={<DriverApplyPage />} />
+            <Route path="/sitter/apply" element={<SitterApplyPage />} />
+            <Route path="/groomer/apply" element={<GroomerApplyPage />} />
             <Route path="/pets" element={<PetProfilesPage />} />
             <Route path="/rate/:id" element={<TripRatingPage />} />
             <Route path="/track/:id" element={<TripTrackingPage />} />

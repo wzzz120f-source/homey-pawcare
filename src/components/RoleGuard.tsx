@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
@@ -9,27 +9,42 @@ interface Props {
   children: React.ReactNode;
   /** 未登录时跳转，默认 /auth */
   loginPath?: string;
-  /** 越权时跳转，默认 / */
-  fallbackPath?: string;
 }
 
+const ROLE_CN: Record<AppRole, string> = {
+  admin: "审核员",
+  merchant: "商家",
+  user: "铲屎官",
+  sitter: "宠托师",
+  groomer: "护理师",
+  driver: "司机",
+};
+
 /**
- * 路由级角色守卫：未登录跳 /auth，越权跳首页并 toast。
- * 角色判定基于 user_roles 表，避免任何客户端硬编码。
+ * 路由级角色守卫：未登录跳 /auth，越权跳 /roles 并高亮所需角色。
  */
-const RoleGuard = ({ allow, children, loginPath = "/auth", fallbackPath = "/" }: Props) => {
+const RoleGuard = ({ allow, children, loginPath = "/auth" }: Props) => {
   const { user, loading: authLoading } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const ready = !authLoading && !rolesLoading;
   const allowed = ready && !!user && roles.some((r) => allow.includes(r));
 
   useEffect(() => {
     if (ready && user && !allowed) {
-      toast.error("没有访问权限", { description: "请切换到对应角色后再试" });
+      const need = allow[0];
+      const from = location.pathname + location.search;
+      toast.error(`需要「${ROLE_CN[need]}」身份`, {
+        description: "已为你打开身份切换页",
+      });
+      navigate(
+        `/roles?highlight=${need}&from=${encodeURIComponent(from)}`,
+        { replace: true },
+      );
     }
-  }, [ready, user, allowed]);
+  }, [ready, user, allowed, allow, location.pathname, location.search, navigate]);
 
   if (!ready) {
     return (
@@ -38,8 +53,15 @@ const RoleGuard = ({ allow, children, loginPath = "/auth", fallbackPath = "/" }:
       </div>
     );
   }
-  if (!user) return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
-  if (!allowed) return <Navigate to={fallbackPath} replace />;
+  if (!user) return <Navigate to={loginPath} state={{ from: location.pathname + location.search }} replace />;
+  if (!allowed) {
+    // 占位，effect 会立即跳转
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
   return <>{children}</>;
 };
 

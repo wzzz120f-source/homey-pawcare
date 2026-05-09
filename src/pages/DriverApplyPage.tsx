@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -69,6 +69,7 @@ const STEPS: { key: StepKey; title: string; short: string }[] = [
   { key: "docs", title: "上传证件", short: "证件" },
   { key: "exam", title: "在线认证", short: "认证" },
 ];
+// 注：原 "role" 步骤已移除，本页固定为「司机」入驻流程；宠托师 / 护理师请使用 /sitter/apply、/groomer/apply。
 
 const FLOW_STEPS = [
   { step: 1, title: "在线注册", desc: "填写资料、上传证件" },
@@ -150,9 +151,13 @@ const driverProfileSchema = profileSchemaBase.extend({
 // ─── Component ─────────────────────────────────────────────────────────────
 const DriverApplyPage = () => {
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  const returnUrl = sp.get("return");
   const { user } = useAuth();
   const [step, setStep] = useState<StepKey>("intro");
-  const [applyRole, setApplyRole] = useState<ApplyRole>("sitter");
+  // 本页固定为司机申请，移除多角色选择
+  const applyRole: ApplyRole = "driver";
+  const setApplyRole = (_: ApplyRole) => {};
   const [applicantKind, setApplicantKind] = useState<ApplicantKind>("individual");
   const [examPassed, setExamPassed] = useState(false);
   const meta = ROLE_META[applyRole];
@@ -208,6 +213,7 @@ const DriverApplyPage = () => {
         .from("driver_applications")
         .select("id,status,review_note,created_at,reviewed_at,id_card_front_url,id_card_back_url,driver_license_url,vehicle_license_url,handheld_id_url")
         .eq("user_id", user.id)
+        .eq("role_requested", "driver")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -367,7 +373,7 @@ const DriverApplyPage = () => {
       const { error } = await supabase.from("driver_applications").insert(payload as any);
       if (error) throw error;
       toast.success(`${meta.label}申请已提交，1–3 个工作日内审核`);
-      navigate("/profile");
+      navigate(returnUrl || "/profile");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "提交失败");
     } finally {
@@ -475,7 +481,7 @@ const DriverApplyPage = () => {
               </div>
             );
           })()}
-          <TabsList className="grid w-full grid-cols-6 mb-4 h-auto">
+          <TabsList className="grid w-full grid-cols-5 mb-4 h-auto">
             {STEPS.map((s) => (
               <TabsTrigger key={s.key} value={s.key} className="text-[11px] px-1 py-1.5">
                 {s.short}
@@ -543,7 +549,7 @@ const DriverApplyPage = () => {
               </ul>
             </section>
 
-            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("role")}>
+            <Button variant="hero" size="xl" className="w-full" onClick={() => setStep("identity")}>
               立即申请 →
             </Button>
           </TabsContent>
@@ -671,7 +677,7 @@ const DriverApplyPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="lg" onClick={() => setStep("role")}>
+              <Button variant="outline" size="lg" onClick={() => setStep("intro")}>
                 上一步
               </Button>
               <Button variant="hero" size="lg" onClick={() => setStep("profile")}>
