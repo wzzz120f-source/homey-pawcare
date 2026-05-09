@@ -87,12 +87,7 @@ const App = () => (
             <Route path="/group-booking" element={<GroupBookingPage />} />
             <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
             <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
-            <Route path="/rate/:id" element={<TripRatingPage />} />
-            <Route path="/track/:id" element={<TripTrackingPage />} />
-            <Route path="/orders" element={<OrderHistoryPage />} />
-            <Route path="/group-booking" element={<GroupBookingPage />} />
-            <Route path="/worker" element={<WorkerDashboardPage />} />
-            <Route path="/admin/review" element={<AdminReviewPage />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
