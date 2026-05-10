@@ -45,6 +45,12 @@ const GroupBookingPage = lazyTracked("路由 GroupBookingPage", () => import("./
 const WorkerDashboardPage = lazyTracked("路由 WorkerDashboardPage", () => import("./pages/WorkerDashboardPage"));
 const AdminReviewPage = lazyTracked("路由 AdminReviewPage", () => import("./pages/AdminReviewPage"));
 const RoleSwitchPage = lazyTracked("路由 RoleSwitchPage", () => import("./pages/RoleSwitchPage"));
+const AdminDashboardPage = lazyTracked("路由 AdminDashboardPage", () => import("./pages/admin/AdminDashboardPage"));
+const AdminApplicationsPage = lazyTracked("路由 AdminApplicationsPage", () => import("./pages/admin/AdminApplicationsPage"));
+const AdminCommissionPage = lazyTracked("路由 AdminCommissionPage", () => import("./pages/admin/AdminCommissionPage"));
+const AdminRevenuePage = lazyTracked("路由 AdminRevenuePage", () => import("./pages/admin/AdminRevenuePage"));
+const AdminWithdrawalsPage = lazyTracked("路由 AdminWithdrawalsPage", () => import("./pages/admin/AdminWithdrawalsPage"));
+const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/WithdrawPage"));
 
 const queryClient = new QueryClient();
 
