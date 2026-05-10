@@ -70,9 +70,10 @@ const AdminApplicationsPage = () => {
   return (
     <AdminLayout title="注册审核">
       <Tabs value={tab} onValueChange={(v) => setTab(v as Kind)}>
-        <TabsList className="grid grid-cols-2 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="driver">司机/宠托/护理</TabsTrigger>
           <TabsTrigger value="merchant">商家</TabsTrigger>
+          <TabsTrigger value="rescue">救助审核</TabsTrigger>
         </TabsList>
         <TabsContent value={tab} className="space-y-3 mt-3">
           {error && (
