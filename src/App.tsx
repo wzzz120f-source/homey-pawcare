@@ -87,6 +87,8 @@ const App = () => (
             <Route path="/customer-service" element={<CustomerServicePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/payment/result/:id" element={<PaymentResultPage />} />
+            <Route path="/admin/refunds" element={<RoleGuard allow={["admin"]}><AdminRefundsPage /></RoleGuard>} />
             <Route path="/order/:id" element={<OrderDetailPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
