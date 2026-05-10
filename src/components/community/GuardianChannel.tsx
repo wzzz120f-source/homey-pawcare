@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Heart, Plus, ImageIcon, X, MapPin, Users, Calendar, Sparkles, ShieldAlert, Share2 } from "lucide-react";
 import ShareCardDialog from "@/components/ShareCardDialog";
+import RescueFeedDialog from "@/components/community/RescueFeedDialog";
 import { toast } from "sonner";
 import { checkTextSafety } from "@/lib/contentSafety";
 import { tryAutoAwardBadges } from "@/hooks/useUserBadges";
@@ -45,6 +46,7 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
   const [showRescueForm, setShowRescueForm] = useState(false);
   const [showTnrForm, setShowTnrForm] = useState(false);
   const [shareStory, setShareStory] = useState<any | null>(null);
+  const [feedTarget, setFeedTarget] = useState<any | null>(null);
 
   // 救助日记表单
   const [petName, setPetName] = useState("");
@@ -146,28 +148,21 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
     finally { setSubmitting(false); }
   };
 
-  const cloudFeed = async (storyId: string) => {
+  const openFeedDialog = (story: any) => {
     if (!user) { navigate("/auth"); return; }
-    try {
-      await supabase.from("cloud_feeding" as any).insert({
-        rescue_story_id: storyId, user_id: user.id, points: 1, message: "投喂爱心粮 🍖",
-      });
-      // 累计
-      const story = stories.find((s) => s.id === storyId);
-      if (story) {
-        await supabase.from("rescue_stories" as any).update({
-          cloud_feed_count: (story.cloud_feed_count || 0) + 1,
-          cloud_feed_points: (story.cloud_feed_points || 0) + 1,
-        }).eq("id", storyId);
-      }
-      await (supabase as any).rpc("award_love_points", {
-        _action: "cloud_feed", _points: 5,
-        _related_type: "rescue_story", _related_id: storyId,
-        _description: "云投喂爱心粮",
-      });
-      toast.success("投喂成功 +5 爱心积分 ❤️");
-      load();
-    } catch (e: any) { toast.error(e.message || "投喂失败"); }
+    if (story.user_id === user.id) { toast.error("不能给自己投喂哦"); return; }
+    setFeedTarget(story);
+  };
+
+  const handleFeedSuccess = (storyId: string, amount: number) => {
+    setStories((prev) => prev.map((s) => s.id === storyId
+      ? {
+          ...s,
+          cloud_feed_count: (s.cloud_feed_count || 0) + 1,
+          total_feed_amount: Number(s.total_feed_amount || 0) + amount,
+        }
+      : s,
+    ));
   };
 
   const joinTnr = async (tnr: any) => {
@@ -266,8 +261,13 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                   <p className="text-xs text-foreground leading-relaxed line-clamp-3 mb-2">{s.story}</p>
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-status-rescue" /> 已收到 {s.cloud_feed_count || 0} 份爱心粮
+                    <div className="text-[11px] flex flex-col gap-0.5">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-status-rescue" /> 已收到 {s.cloud_feed_count || 0} 次爱心
+                      </span>
+                      <span className="text-status-success font-bold">
+                        ✅ 已直达 ¥{Number(s.total_feed_amount || 0).toFixed(2)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -279,7 +279,7 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                       >
                         <Share2 className="w-3.5 h-3.5" /> 分享
                       </Button>
-                      <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => cloudFeed(s.id)}>
+                      <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => openFeedDialog(s)}>
                         🍖 投喂
                       </Button>
                     </div>
@@ -439,6 +439,18 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
           coverImage={shareStory.after_image || shareStory.before_image}
           contentSnippet={`${shareStory.pet_type === "cat" ? "🐱" : "🐶"} ${shareStory.pet_name}${shareStory.location ? ` · ${shareStory.location}` : ""}：${shareStory.story}`}
           badgeText={STATUS_LABELS[shareStory.status]?.text || shareStory.status}
+        />
+      )}
+
+      {/* 救助投喂弹窗 */}
+      {feedTarget && (
+        <RescueFeedDialog
+          open={!!feedTarget}
+          onClose={() => setFeedTarget(null)}
+          storyId={feedTarget.id}
+          petName={feedTarget.pet_name}
+          recipientUserId={feedTarget.user_id}
+          onSuccess={(amt) => handleFeedSuccess(feedTarget.id, amt)}
         />
       )}
     </div>

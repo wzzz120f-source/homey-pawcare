@@ -235,27 +235,42 @@ export type Database = {
       }
       cloud_feeding: {
         Row: {
+          amount: number
+          channel: string
           created_at: string
           id: string
           message: string | null
+          paid_at: string | null
           points: number
+          recipient_user_id: string | null
           rescue_story_id: string
+          status: string
           user_id: string
         }
         Insert: {
+          amount?: number
+          channel?: string
           created_at?: string
           id?: string
           message?: string | null
+          paid_at?: string | null
           points?: number
+          recipient_user_id?: string | null
           rescue_story_id: string
+          status?: string
           user_id: string
         }
         Update: {
+          amount?: number
+          channel?: string
           created_at?: string
           id?: string
           message?: string | null
+          paid_at?: string | null
           points?: number
+          recipient_user_id?: string | null
           rescue_story_id?: string
+          status?: string
           user_id?: string
         }
         Relationships: [
@@ -2213,6 +2228,7 @@ export type Database = {
           pet_type: string
           status: string
           story: string
+          total_feed_amount: number
           updated_at: string
           user_id: string
         }
@@ -2230,6 +2246,7 @@ export type Database = {
           pet_type?: string
           status?: string
           story: string
+          total_feed_amount?: number
           updated_at?: string
           user_id: string
         }
@@ -2247,6 +2264,7 @@ export type Database = {
           pet_type?: string
           status?: string
           story?: string
+          total_feed_amount?: number
           updated_at?: string
           user_id?: string
         }
@@ -2999,6 +3017,10 @@ export type Database = {
         Returns: Json
       }
       driver_grab_order: { Args: { _order_id: string }; Returns: Json }
+      feed_rescue_with_balance: {
+        Args: { _amount: number; _message?: string; _story_id: string }
+        Returns: Json
+      }
       get_feed_posts:
         | {
             Args: {
@@ -3066,6 +3088,17 @@ export type Database = {
           good_review_count: number
           product_id: string
           review_count: number
+        }[]
+      }
+      get_rescue_feed_top: {
+        Args: { _limit?: number; _story_id: string }
+        Returns: {
+          avatar_url: string
+          feed_count: number
+          last_paid_at: string
+          total_amount: number
+          user_id: string
+          username: string
         }[]
       }
       has_role: {
