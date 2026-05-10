@@ -27,15 +27,7 @@ interface AMapRealProps {
   onDropoffCoordChange?: (coord: LngLat | null) => void;
 }
 
-declare global {
-  interface Window {
-    AMap: any;
-    _AMapSecurityConfig: any;
-  }
-}
-
-const AMAP_KEY = "f1be18c642140d1114b326946ab357cc";
-const AMAP_SECURITY_KEY = "99a72147fee06b466b18e76ded5cc55c";
+import { loadAMap } from "@/lib/amapLoader";
 
 const AMapReal = ({
   pickupAddress,
@@ -61,24 +53,12 @@ const AMapReal = ({
       setLoaded(true);
       return;
     }
-
-    window._AMapSecurityConfig = { securityJsCode: AMAP_SECURITY_KEY };
-
     let cancelled = false;
-    import("@amap/amap-jsapi-loader").then(({ default: AMapLoader }) => {
-      AMapLoader.load({
-        key: AMAP_KEY,
-        version: "2.0",
-        plugins: ["AMap.Geolocation", "AMap.Geocoder", "AMap.AutoComplete", "AMap.Driving", "AMap.PlaceSearch"],
+    loadAMap()
+      .then(() => {
+        if (!cancelled) setLoaded(true);
       })
-        .then((AMap) => {
-          if (cancelled) return;
-          window.AMap = AMap;
-          setLoaded(true);
-        })
-        .catch((e) => console.error("[AMapReal] loader error:", e));
-    });
-
+      .catch((e) => console.error("[AMapReal] loader error:", e));
     return () => {
       cancelled = true;
     };
