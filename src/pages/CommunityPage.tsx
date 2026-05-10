@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { lazyTracked } from "@/lib/chunkRecovery";
-import ChunkStatusWidget from "@/components/community/ChunkStatusWidget";
+
 import CommunitySearchBar from "@/components/community/CommunitySearchBar";
 
 const GuardianChannel = lazyTracked(
@@ -395,8 +395,9 @@ const CommunityPage = () => {
             </TabsList>
           </Tabs>
         </div>
-        <CommunitySearchBar activeTab={activeTab} value={searchTerm} onChange={setSearchTerm} />
-        {import.meta.env.DEV && <ChunkStatusWidget />}
+        <div className="max-w-lg mx-auto">
+          <CommunitySearchBar activeTab={activeTab} value={searchTerm} onChange={setSearchTerm} />
+        </div>
       </header>
 
       <main className="max-w-lg mx-auto">
@@ -523,7 +524,7 @@ const CommunityPage = () => {
             )}
 
             {/* 瀑布流 (2 列) */}
-            <div className="px-3 pt-2 pb-4">
+            <div className="px-4 pt-2 pb-4">
               {loading ? (
                 <div className="flex justify-center py-20">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
