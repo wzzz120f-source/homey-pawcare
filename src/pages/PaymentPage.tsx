@@ -197,9 +197,15 @@ const PaymentPage = () => {
       return;
     }
 
+    if (selectedMethod === "wallet" && walletBalance < finalAmount) {
+      toast({ title: "钱包余额不足", description: `当前余额 ¥${walletBalance.toFixed(2)}，请充值或换支付方式`, variant: "destructive" });
+      return;
+    }
+
     setIsPaying(true);
 
     try {
+      const isPhysical = isShop;
       const addrSnap = isShop && selectedAddrId ? addresses.find((a) => a.id === selectedAddrId) : null;
       const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
@@ -216,20 +222,19 @@ const PaymentPage = () => {
         notes: orderData.notes ?? null,
         total_amount: finalAmount,
         payment_method: selectedMethod,
-        payment_status: "paid",
-        order_status: "confirmed",
+        payment_status: "pending",
+        order_status: "created",
+        is_physical: isPhysical,
         shipping_address_snapshot: addrSnap ?? null,
-      }).select("id, order_no").single();
+      } as any).select("id, order_no").single();
 
       if (error) throw error;
 
-      // 写入订单明细，便于商家在「商家中心 → 订单」查看
+      // 写入订单明细
       if (orderRow && orderData.cart_items && orderData.cart_items.length > 0) {
         const productIds = orderData.cart_items.map((c) => c.id);
         const { data: prodRows } = await supabase
-          .from("products")
-          .select("id, merchant_id, cover_image")
-          .in("id", productIds);
+          .from("products").select("id, merchant_id, cover_image").in("id", productIds);
         const prodMap = new Map((prodRows || []).map((p: any) => [p.id, p]));
         const items = orderData.cart_items.map((c) => {
           const p = prodMap.get(c.id);
@@ -247,61 +252,43 @@ const PaymentPage = () => {
         if (itemsErr) console.error("insert order_items failed", itemsErr);
       }
 
-      // 扣减爱心积分并写入流水
+      // 扣减爱心积分（订单创建成功即扣，与支付状态独立）
       if (effectivePoints > 0 && orderRow) {
-        const { data: spendRes, error: spendErr } = await (supabase as any).rpc("spend_love_points", {
+        const { data: spendRes } = await (supabase as any).rpc("spend_love_points", {
           _points: effectivePoints,
           _purpose: "exchange",
           _related_type: "order",
           _related_id: orderRow.id,
           _description: `订单 ${orderRow.order_no} 积分抵现 ¥${pointsDiscount.toFixed(2)}`,
         });
-        if (spendErr || !spendRes?.success) {
-          // 积分扣减失败不阻塞订单，但提示用户
-          toast({ title: "积分抵扣失败", description: "订单已创建，积分未扣除", variant: "destructive" });
-        } else {
-          await refreshPoints();
-        }
+        if (spendRes?.success) await refreshPoints();
       }
 
-      // Clear cart if shop order
       if (orderData.order_type === "shop") {
         localStorage.removeItem("pawcare_cart");
       }
 
-      await new Promise((r) => setTimeout(r, 1500));
-      setPaySuccess(true);
-    } catch (err) {
+      // 调用 create-payment 创建支付单
+      const { data: payRes, error: payErr } = await supabase.functions.invoke("create-payment", {
+        body: { order_id: orderRow!.id, channel: selectedMethod },
+      });
+      if (payErr) throw payErr;
+      const r = payRes as any;
+      if (r?.error) throw new Error(r.error);
+
+      // Stripe → 跳转 Checkout 新窗口
+      if (r.checkout_url) {
+        window.open(r.checkout_url, "_blank");
+      }
+      // 统一进入支付结果页（轮询 + Realtime）
+      navigate(`/payment/result/${orderRow!.id}?pid=${r.payment_id}`, { replace: true });
+    } catch (err: any) {
       console.error(err);
-      toast({ title: "订单创建失败", description: "请稍后重试", variant: "destructive" });
+      toast({ title: "支付发起失败", description: err?.message ?? "请稍后重试", variant: "destructive" });
     } finally {
       setIsPaying(false);
     }
   };
-
-  if (paySuccess) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4 animate-fade-in-up">
-          <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-            <CheckCircle2 className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-foreground">支付成功</h1>
-          <p className="text-muted-foreground text-sm text-center">
-            您的订单已确认，我们会尽快为您安排服务
-          </p>
-          <div className="flex gap-3 mt-6 w-full">
-            <Button variant="outline" className="flex-1" onClick={() => navigate("/profile")}>
-              查看订单
-            </Button>
-            <Button variant="hero" className="flex-1" onClick={() => navigate("/")}>
-              返回首页
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background pb-8">
