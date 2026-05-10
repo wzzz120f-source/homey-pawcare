@@ -26,6 +26,12 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   adopted: { text: "已领养", color: "bg-status-success text-status-success-foreground" },
 };
 
+const VERIFY_LABELS: Record<string, { text: string; color: string }> = {
+  pending: { text: "审核中", color: "bg-muted text-muted-foreground" },
+  rejected: { text: "审核未通过", color: "bg-destructive/15 text-destructive" },
+  verified: { text: "已认证", color: "bg-status-success/15 text-status-success" },
+};
+
 const TNR_STATUS_LABELS: Record<string, { text: string; color: string }> = {
   recruiting: { text: "招募中", color: "bg-status-rescue text-status-rescue-foreground" },
   in_progress: { text: "进行中", color: "bg-status-recover text-status-recover-foreground" },
