@@ -22,7 +22,7 @@ interface DbMessage {
   created_at: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`;
+const CHAT_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/chat-ai`;
 
 const QUICK_QUESTIONS = [
   "退款政策是什么？",
@@ -148,19 +148,29 @@ const CustomerServicePage = () => {
     };
 
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess?.session?.access_token;
+      if (!accessToken) {
+        toast.error("请先登录后再使用 AI 客服");
+        setIsStreaming(false);
+        return;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
         },
         body: JSON.stringify({ messages: newMessages }),
       });
 
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
-        if (resp.status === 429) toast.error("请求过于频繁，请稍后再试");
-        else if (resp.status === 402) toast.error("AI服务额度不足");
+        if (resp.status === 401) toast.error("登录已失效，请重新登录");
+        else if (resp.status === 429) toast.error(errData.message || "请求过于频繁，请稍后再试");
+        else if (resp.status === 402) toast.error(errData.message || "AI服务额度不足");
         else toast.error(errData.error || "AI服务暂时不可用");
         setIsStreaming(false);
         return;
