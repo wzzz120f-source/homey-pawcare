@@ -69,7 +69,7 @@ const AuthPage = () => {
         setStep("role");
       }
     } catch (err: any) {
-      toast.error(err.message || "操作失败");
+      toast.error(friendlySupabaseError(err, "操作失败"));
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const AuthPage = () => {
       }
       navigate(role.next);
     } catch (err: any) {
-      toast.error(err.message || "保存失败");
+      toast.error(friendlySupabaseError(err, "保存失败"));
     } finally {
       setLoading(false);
     }
