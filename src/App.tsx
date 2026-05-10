@@ -52,6 +52,9 @@ const AdminRevenuePage = lazyTracked("路由 AdminRevenuePage", () => import("./
 const AdminWithdrawalsPage = lazyTracked("路由 AdminWithdrawalsPage", () => import("./pages/admin/AdminWithdrawalsPage"));
 const AdminAuditLogPage = lazyTracked("路由 AdminAuditLogPage", () => import("./pages/admin/AdminAuditLogPage"));
 const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/WithdrawPage"));
+const AddressBookPage = lazyTracked("路由 AddressBookPage", () => import("./pages/AddressBookPage"));
+const WalletPage = lazyTracked("路由 WalletPage", () => import("./pages/WalletPage"));
+const ProviderEarningsPage = lazyTracked("路由 ProviderEarningsPage", () => import("./pages/ProviderEarningsPage"));
 
 const queryClient = new QueryClient();
 
