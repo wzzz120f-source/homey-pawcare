@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PawPrint, Mail, Lock, User, ArrowLeft, PawPrint as PawIcon, Briefcase, Stethoscope, Store } from "lucide-react";
 import { toast } from "sonner";
+import { friendlySupabaseError } from "@/lib/supabaseError";
 import { cn } from "@/lib/utils";
 
 type RoleKey = "user" | "sitter" | "groomer" | "merchant";
