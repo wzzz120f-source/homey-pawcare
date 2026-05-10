@@ -426,45 +426,21 @@ const TripTrackingPage = () => {
           </section>
         )}
 
-        {/* SVG 地图 */}
+        {/* 实时地图：高德路线 + 司机真实 GPS */}
         <section className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-          <svg viewBox="0 0 360 200" className="w-full h-48 bg-gradient-to-br from-primary/5 to-primary/10">
-            {/* 道路 */}
-            <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--muted-foreground))" strokeWidth="3" fill="none" strokeDasharray="6 4" opacity="0.4" />
-            <path d="M 30 170 Q 120 150 180 100 T 330 30" stroke="hsl(var(--primary))" strokeWidth="3" fill="none"
-              strokeDasharray="600"
-              strokeDashoffset={600 - (progress / 100) * 600} />
-            {/* 起点 - 接宠点高亮 */}
-            <circle cx="30" cy="170" r="12" fill="hsl(var(--primary))" opacity="0.25">
-              <animate attributeName="r" from="12" to="18" dur="1.8s" repeatCount="indefinite" />
-              <animate attributeName="opacity" from="0.4" to="0" dur="1.8s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="30" cy="170" r="8" fill="hsl(var(--primary))" />
-            <text x="42" y="174" fontSize="10" fill="hsl(var(--foreground))" fontWeight="600">接</text>
-            {/* 终点 - 送达点高亮 */}
-            <circle cx="330" cy="30" r="12" fill="hsl(var(--destructive))" opacity="0.25">
-              <animate attributeName="r" from="12" to="18" dur="1.8s" repeatCount="indefinite" />
-              <animate attributeName="opacity" from="0.4" to="0" dur="1.8s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="330" cy="30" r="8" fill="hsl(var(--destructive))" />
-            <text x="305" y="22" fontSize="10" fill="hsl(var(--foreground))" fontWeight="600">送</text>
-            {/* 司机车辆位置 */}
-            {(() => {
-              const t = progress / 100;
-              const x = 30 + (330 - 30) * t;
-              const y = 170 - Math.sin(t * Math.PI) * 100;
-              return (
-                <g>
-                  <circle cx={x} cy={y} r="14" fill="hsl(var(--primary))" opacity="0.2">
-                    <animate attributeName="r" from="14" to="22" dur="1.5s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.4" to="0" dur="1.5s" repeatCount="indefinite" />
-                  </circle>
-                  <circle cx={x} cy={y} r="10" fill="hsl(var(--primary))" />
-                  <text x={x} y={y + 4} fontSize="12" textAnchor="middle">🚗</text>
-                </g>
-              );
+          <LiveTripMap
+            pickupAddress={order?.pickup_address || null}
+            dropoffAddress={order?.dropoff_address || null}
+            driverLat={liveTracking?.driver_lat ?? tracking?.driver_lat ?? null}
+            driverLng={liveTracking?.driver_lng ?? tracking?.driver_lng ?? null}
+            offlineHint={(() => {
+              const t = liveTracking || tracking;
+              if (!t?.driver_lat || !t?.driver_lng) return "司机尚未上报位置，等待 GPS 信号…";
+              const ageSec = (Date.now() - new Date(t.updated_at).getTime()) / 1000;
+              return ageSec > 90 ? `司机定位已离线 ${Math.round(ageSec)} 秒，正在等待重新连接…` : null;
             })()}
-          </svg>
+            height={220}
+          />
 
           {/* 四步进度 */}
           <div className="p-4 space-y-3">
