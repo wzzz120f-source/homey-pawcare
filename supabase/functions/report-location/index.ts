@@ -1,5 +1,5 @@
 // 司机端实时定位上报。校验 JWT，且只允许写入自己作为 driver 的订单。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

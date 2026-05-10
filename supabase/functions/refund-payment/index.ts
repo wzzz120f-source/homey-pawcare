@@ -1,7 +1,7 @@
 // refund-payment: User/provider/admin triggers refund.
 // Calls process_refund RPC. For non-wallet/mock channels (stripe/wechat/alipay),
 // then calls the channel's refund API. WeChat/Alipay are stubbed until creds present.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
