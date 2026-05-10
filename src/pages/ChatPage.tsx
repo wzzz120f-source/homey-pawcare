@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Send, Image as ImageIcon, MapPin, Phone, PhoneCall, Loader2, Mic, Square, AlertTriangle, Play, Pause } from "lucide-react";
+import { ArrowLeft, Send, Image as ImageIcon, MapPin, Phone, PhoneCall, Loader2, Mic, Square, AlertTriangle, Play, Pause, RotateCcw, Undo2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,9 @@ interface Conv {
   peer_id: string | null;
 }
 
+const MAX_REC_SEC = 60;
+const RECALL_WINDOW_MS = 30_000;
+
 function VoicePlayer({ url, duration }: { url: string; duration: number | null }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -78,13 +81,28 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [recOpen, setRecOpen] = useState(false);
+  const [recPhase, setRecPhase] = useState<"recording" | "review">("recording");
   const [recSec, setRecSec] = useState(0);
+  const [reviewUrl, setReviewUrl] = useState<string | null>(null);
+  const [reviewSec, setReviewSec] = useState(0);
+  const [uploading, setUploading] = useState(false);
   const recRef = useRef<MediaRecorder | null>(null);
+  const recStreamRef = useRef<MediaStream | null>(null);
   const recChunksRef = useRef<Blob[]>([]);
+  const reviewBlobRef = useRef<Blob | null>(null);
   const recTimerRef = useRef<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [blockedHint, setBlockedHint] = useState<string | null>(null);
+  const [lastVoice, setLastVoice] = useState<{ id: string; sentAt: number } | null>(null);
+  const [, force] = useState(0);
+
+  // Tick to refresh recall visibility
+  useEffect(() => {
+    if (!lastVoice) return;
+    const t = window.setInterval(() => force((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [lastVoice]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -101,7 +119,6 @@ export default function ChatPage() {
       if (peerId) {
         const { data: p } = await supabase.from("profiles").select("username").eq("user_id", peerId).maybeSingle();
         if (p) setPeerName((p as any).username ?? "聊天");
-        // 平台虚拟号（MVP 占位，避免直接暴露真实手机号）
         setPeerPhone("400-820-8888");
       }
       const { data: m } = await supabase
@@ -120,6 +137,9 @@ export default function ChatPage() {
         setMsgs((prev) => [...prev, payload.new as Msg]);
         (supabase as any).rpc("mark_conversation_read", { _conv_id: id });
       })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${id}` }, (payload) => {
+        setMsgs((prev) => prev.filter((m) => m.id !== (payload.old as Msg).id));
+      })
       .subscribe();
     return () => {
       cancelled = true;
@@ -131,23 +151,31 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs.length]);
 
-  const send = async (payload: Partial<Msg>) => {
-    if (!id || !user) return;
+  const send = async (payload: Partial<Msg>): Promise<string | null> => {
+    if (!id || !user) return null;
     setSending(true);
-    const { error } = await supabase.from("chat_messages").insert({
-      conversation_id: id,
-      sender_id: user.id,
-      sender_type: "user",
-      content: payload.content ?? "",
-      message_type: payload.message_type ?? "text",
-      media_url: payload.media_url ?? null,
-      duration_sec: payload.duration_sec ?? null,
-      lat: payload.lat ?? null,
-      lng: payload.lng ?? null,
-      location_address: payload.location_address ?? null,
-    });
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .insert({
+        conversation_id: id,
+        sender_id: user.id,
+        sender_type: "user",
+        content: payload.content ?? "",
+        message_type: payload.message_type ?? "text",
+        media_url: payload.media_url ?? null,
+        duration_sec: payload.duration_sec ?? null,
+        lat: payload.lat ?? null,
+        lng: payload.lng ?? null,
+        location_address: payload.location_address ?? null,
+      })
+      .select("id")
+      .single();
     setSending(false);
-    if (error) toast({ title: "发送失败", description: error.message, variant: "destructive" });
+    if (error) {
+      toast({ title: "发送失败", description: error.message, variant: "destructive" });
+      return null;
+    }
+    return (data as { id: string }).id;
   };
 
   const sendText = async () => {
@@ -186,46 +214,124 @@ export default function ChatPage() {
     );
   };
 
+  const cleanupRecorder = () => {
+    if (recTimerRef.current) {
+      window.clearInterval(recTimerRef.current);
+      recTimerRef.current = null;
+    }
+    if (recStreamRef.current) {
+      recStreamRef.current.getTracks().forEach((t) => t.stop());
+      recStreamRef.current = null;
+    }
+    recRef.current = null;
+  };
+
   const startRecord = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recStreamRef.current = stream;
       const mr = new MediaRecorder(stream);
       recChunksRef.current = [];
+      reviewBlobRef.current = null;
+      if (reviewUrl) {
+        URL.revokeObjectURL(reviewUrl);
+        setReviewUrl(null);
+      }
       mr.ondataavailable = (e) => recChunksRef.current.push(e.data);
-      mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (recTimerRef.current) window.clearInterval(recTimerRef.current);
-        const seconds = recSec;
+      mr.onstop = () => {
+        const seconds = recSecRef.current;
         const blob = new Blob(recChunksRef.current, { type: "audio/webm" });
-        if (!user || blob.size < 1000) {
+        cleanupRecorder();
+        if (blob.size < 800) {
           setRecOpen(false);
           setRecSec(0);
+          recSecRef.current = 0;
+          toast({ title: "录音过短", description: "请说话至少 1 秒" });
           return;
         }
-        const path = `${user.id}/voice-${Date.now()}.webm`;
-        const up = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
-        setRecOpen(false);
-        setRecSec(0);
-        if (up.error) {
-          toast({ title: "上传失败", description: up.error.message, variant: "destructive" });
-          return;
-        }
-        const { data } = supabase.storage.from("chat-media").getPublicUrl(path);
-        await send({ message_type: "voice", content: "[语音]", media_url: data.publicUrl, duration_sec: seconds });
+        reviewBlobRef.current = blob;
+        setReviewSec(seconds);
+        setReviewUrl(URL.createObjectURL(blob));
+        setRecPhase("review");
       };
       mr.start();
       recRef.current = mr;
+      setRecPhase("recording");
       setRecOpen(true);
       setRecSec(0);
-      recTimerRef.current = window.setInterval(() => setRecSec((s) => s + 1), 1000);
+      recSecRef.current = 0;
+      recTimerRef.current = window.setInterval(() => {
+        recSecRef.current += 1;
+        setRecSec(recSecRef.current);
+        if (recSecRef.current >= MAX_REC_SEC) {
+          if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+        }
+      }, 1000);
     } catch {
       toast({ title: "无法访问麦克风", description: "请在浏览器允许录音权限", variant: "destructive" });
     }
   };
+  const recSecRef = useRef(0);
 
   const stopRecord = () => {
     if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
   };
+
+  const cancelRec = () => {
+    cleanupRecorder();
+    reviewBlobRef.current = null;
+    if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+    setReviewUrl(null);
+    setRecOpen(false);
+    setRecSec(0);
+    recSecRef.current = 0;
+  };
+
+  const reRecord = () => {
+    if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+    setReviewUrl(null);
+    reviewBlobRef.current = null;
+    setReviewSec(0);
+    startRecord();
+  };
+
+  const sendRecorded = async () => {
+    if (!user || !reviewBlobRef.current) return;
+    setUploading(true);
+    const blob = reviewBlobRef.current;
+    const path = `${user.id}/voice-${Date.now()}.webm`;
+    const up = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
+    if (up.error) {
+      setUploading(false);
+      toast({ title: "上传失败", description: up.error.message, variant: "destructive" });
+      return;
+    }
+    const { data } = supabase.storage.from("chat-media").getPublicUrl(path);
+    const newId = await send({ message_type: "voice", content: "[语音]", media_url: data.publicUrl, duration_sec: reviewSec });
+    setUploading(false);
+    if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+    setReviewUrl(null);
+    reviewBlobRef.current = null;
+    setRecOpen(false);
+    setRecSec(0);
+    recSecRef.current = 0;
+    if (newId) setLastVoice({ id: newId, sentAt: Date.now() });
+  };
+
+  const recallLastVoice = async () => {
+    if (!lastVoice) return;
+    const { error } = await supabase.from("chat_messages").delete().eq("id", lastVoice.id);
+    if (error) {
+      toast({ title: "撤回失败", description: error.message, variant: "destructive" });
+      return;
+    }
+    setMsgs((prev) => prev.filter((m) => m.id !== lastVoice.id));
+    setLastVoice(null);
+    toast({ title: "已撤回最近一条语音" });
+  };
+
+  const canRecall = lastVoice && Date.now() - lastVoice.sentAt < RECALL_WINDOW_MS;
+  const recallSecLeft = canRecall ? Math.max(0, Math.ceil((RECALL_WINDOW_MS - (Date.now() - lastVoice.sentAt)) / 1000)) : 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -288,6 +394,20 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </main>
 
+      {canRecall && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 px-3 py-1.5 flex items-center justify-between text-xs">
+          <span className="text-amber-700 dark:text-amber-300">
+            刚发送了一条语音，可在 {recallSecLeft}s 内撤回
+          </span>
+          <button
+            onClick={recallLastVoice}
+            className="flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300 hover:underline"
+          >
+            <Undo2 className="w-3.5 h-3.5" /> 撤回
+          </button>
+        </div>
+      )}
+
       <footer className="sticky bottom-0 bg-card border-t px-3 py-2 flex items-center gap-2 shrink-0">
         <input
           ref={fileRef}
@@ -327,22 +447,66 @@ export default function ChatPage() {
       </footer>
 
       {/* 语音录制弹窗 */}
-      <AlertDialog open={recOpen} onOpenChange={(o) => !o && stopRecord()}>
+      <AlertDialog open={recOpen} onOpenChange={(o) => !o && cancelRec()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Mic className="w-5 h-5 text-destructive animate-pulse" />
-              正在录音…
+              {recPhase === "recording" ? (
+                <>
+                  <Mic className="w-5 h-5 text-destructive animate-pulse" /> 正在录音…
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5 text-primary" /> 试听并选择
+                </>
+              )}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              已录制 <span className="font-bold tabular-nums">{recSec}″</span>，最长 60 秒。点击「发送」结束并发送，或取消放弃。
+            <AlertDialogDescription asChild>
+              {recPhase === "recording" ? (
+                <div className="space-y-2">
+                  <p>
+                    已录制 <span className="font-bold tabular-nums">{recSec}″</span> / {MAX_REC_SEC}″
+                    {recSec >= MAX_REC_SEC ? "（已到时长上限）" : ""}
+                  </p>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${Math.min(100, (recSec / MAX_REC_SEC) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p>
+                    录音长度 <span className="font-bold tabular-nums">{reviewSec}″</span>，可重录或直接发送。
+                  </p>
+                  {reviewUrl && (
+                    <audio src={reviewUrl} controls className="w-full" />
+                  )}
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={stopRecord}>
-              <Square className="w-4 h-4 mr-1" /> 发送
-            </AlertDialogAction>
+            {recPhase === "recording" ? (
+              <>
+                <AlertDialogCancel onClick={cancelRec}>取消</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); stopRecord(); }}>
+                  <Square className="w-4 h-4 mr-1" /> 停止
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel onClick={cancelRec} disabled={uploading}>取消</AlertDialogCancel>
+                <Button variant="outline" onClick={reRecord} disabled={uploading}>
+                  <RotateCcw className="w-4 h-4 mr-1" /> 重录
+                </Button>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); sendRecorded(); }} disabled={uploading}>
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                  发送
+                </AlertDialogAction>
+              </>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

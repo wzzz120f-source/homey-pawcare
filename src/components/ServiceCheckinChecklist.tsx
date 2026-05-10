@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export interface ChecklistItem {
   key: string;
@@ -169,6 +170,40 @@ export default function ServiceCheckinChecklist({
   const missing = actions.filter((a) => !completed.has(a.key));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+
+  const focusMissing = (key: string) => {
+    const el = document.getElementById(`checkin-row-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightKey(key);
+      window.setTimeout(() => setHighlightKey((h) => (h === key ? null : h)), 1800);
+    }
+    if (!completed.has(key)) trigger(key);
+  };
+
+  const tryOpenConfirm = async () => {
+    // 二次校验：拉最新打卡数据，避免本地状态滞后
+    await load();
+    const fresh = new Set((rows as CheckinRow[]).map((r) => r.action_key));
+    // 注意：load 后 rows 通过 setState 更新，可能未立即生效，因此直接查一次
+    const { data } = await supabase
+      .from("service_checkins")
+      .select("action_key")
+      .eq("order_id", orderId);
+    const set = new Set(((data as { action_key: string }[]) ?? []).map((r) => r.action_key));
+    const stillMissing = actions.filter((a) => !set.has(a.key) && !fresh.has(a.key));
+    if (stillMissing.length > 0) {
+      toast({
+        title: "还有未完成的打卡",
+        description: `缺少：${stillMissing.map((m) => m.label).join("、")}`,
+        variant: "destructive",
+      });
+      focusMissing(stillMissing[0].key);
+      return;
+    }
+    setConfirmOpen(true);
+  };
 
   const handleComplete = async () => {
     setSubmitting(true);
@@ -188,6 +223,9 @@ export default function ServiceCheckinChecklist({
             : error?.message ?? "请检查打卡是否齐全",
         variant: "destructive",
       });
+      if (data?.error === "checkin_incomplete" && data?.missing?.length) {
+        focusMissing(data.missing[0]);
+      }
       return;
     }
     toast({ title: "服务已完成" });
@@ -209,11 +247,23 @@ export default function ServiceCheckinChecklist({
       {!allDone && missing.length > 0 && (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-3 flex gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs">
+          <div className="text-xs flex-1">
             <p className="font-semibold text-amber-700 dark:text-amber-300">还差 {missing.length} 项才能结单</p>
-            <p className="text-amber-700/80 dark:text-amber-300/80 mt-0.5">
-              缺少：{missing.map((m) => m.label).join("、")}
+            <p className="text-amber-700/80 dark:text-amber-300/80 mt-0.5 mb-1.5">
+              点击下方项目可直接定位/拍照：
             </p>
+            <div className="flex flex-wrap gap-1.5">
+              {missing.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => focusMissing(m.key)}
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/50 border border-amber-300 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200 hover:bg-amber-200"
+                >
+                  <Camera className="w-3 h-3" /> {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -233,8 +283,16 @@ export default function ServiceCheckinChecklist({
           {actions.map((a) => {
             const row = rows.find((r) => r.action_key === a.key);
             const done = !!row;
+            const isHighlight = highlightKey === a.key;
             return (
-              <li key={a.key} className="flex items-center gap-3 rounded-xl border p-2.5 bg-background">
+              <li
+                key={a.key}
+                id={`checkin-row-${a.key}`}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border p-2.5 bg-background transition-all",
+                  isHighlight && "ring-2 ring-amber-400 border-amber-300",
+                )}
+              >
                 {done ? (
                   <img src={row!.photo_url} alt={a.label} className="w-12 h-12 rounded-lg object-cover" />
                 ) : (
@@ -275,7 +333,7 @@ export default function ServiceCheckinChecklist({
         className="w-full mt-4"
         variant="hero"
         disabled={!allDone}
-        onClick={() => setConfirmOpen(true)}
+        onClick={tryOpenConfirm}
       >
         {allDone ? "全部完成 · 提交结单" : `还差 ${missing.length} 项可结单`}
       </Button>
