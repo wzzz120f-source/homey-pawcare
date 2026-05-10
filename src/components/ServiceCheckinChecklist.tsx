@@ -246,11 +246,23 @@ export default function ServiceCheckinChecklist({
       {!allDone && missing.length > 0 && (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-3 flex gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs">
+          <div className="text-xs flex-1">
             <p className="font-semibold text-amber-700 dark:text-amber-300">还差 {missing.length} 项才能结单</p>
-            <p className="text-amber-700/80 dark:text-amber-300/80 mt-0.5">
-              缺少：{missing.map((m) => m.label).join("、")}
+            <p className="text-amber-700/80 dark:text-amber-300/80 mt-0.5 mb-1.5">
+              点击下方项目可直接定位/拍照：
             </p>
+            <div className="flex flex-wrap gap-1.5">
+              {missing.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => focusMissing(m.key)}
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/50 border border-amber-300 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200 hover:bg-amber-200"
+                >
+                  <Camera className="w-3 h-3" /> {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
