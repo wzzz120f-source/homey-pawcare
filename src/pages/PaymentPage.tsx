@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -101,7 +101,13 @@ const PaymentPage = () => {
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
 
+  // Shipping address (only for shop orders with physical items)
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
+
   const orderData = location.state as OrderData | null;
+  const isShop = orderData?.order_type === "shop" && (orderData?.cart_items?.length ?? 0) > 0;
+
 
   useEffect(() => {
     if (!orderData) {
