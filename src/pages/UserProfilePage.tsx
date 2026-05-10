@@ -96,7 +96,7 @@ const UserProfilePage = () => {
       const id = await openDmConversation(user.id, userId);
       navigate(`/chat/${id}`);
     } catch (e) {
-      toast.error(mapSupabaseError(e));
+      toast.error(friendlySupabaseError(e));
     }
   };
 
@@ -111,7 +111,7 @@ const UserProfilePage = () => {
       setFriendStatus("pending");
       toast.success("好友申请已发送");
     } catch (e) {
-      toast.error(mapSupabaseError(e));
+      toast.error(friendlySupabaseError(e));
     } finally {
       setRequesting(false);
     }
