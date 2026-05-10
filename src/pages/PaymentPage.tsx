@@ -96,9 +96,9 @@ const PaymentPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { balance: pointsBalance, refresh: refreshPoints } = useLovePoints();
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("wechat");
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("wallet");
   const [isPaying, setIsPaying] = useState(false);
-  const [paySuccess, setPaySuccess] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
 
   // Coupon state
   const [coupons, setCoupons] = useState<Coupon[]>([]);
