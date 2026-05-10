@@ -55,6 +55,11 @@ const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/Wi
 const AddressBookPage = lazyTracked("路由 AddressBookPage", () => import("./pages/AddressBookPage"));
 const WalletPage = lazyTracked("路由 WalletPage", () => import("./pages/WalletPage"));
 const ProviderEarningsPage = lazyTracked("路由 ProviderEarningsPage", () => import("./pages/ProviderEarningsPage"));
+const DriverHallPage = lazyTracked("路由 DriverHallPage", () => import("./pages/DriverHallPage"));
+const MessagesPage = lazyTracked("路由 MessagesPage", () => import("./pages/MessagesPage"));
+const ChatPage = lazyTracked("路由 ChatPage", () => import("./pages/ChatPage"));
+const GroomerRatingPage = lazyTracked("路由 GroomerRatingPage", () => import("./pages/GroomerRatingPage"));
+const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import("./pages/ServiceCheckinPage"));
 
 const queryClient = new QueryClient();
 
@@ -113,6 +118,11 @@ const App = () => (
             <Route path="/profile/addresses" element={<AddressBookPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/roles" element={<RoleSwitchPage />} />
+            <Route path="/worker/hall" element={<RoleGuard allow={["driver","sitter","groomer"]}><DriverHallPage /></RoleGuard>} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/chat/:id" element={<ChatPage />} />
+            <Route path="/groom-rate/:id" element={<GroomerRatingPage />} />
+            <Route path="/checkin/:id" element={<RoleGuard allow={["driver","sitter","groomer"]}><ServiceCheckinPage /></RoleGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -101,7 +101,13 @@ const PaymentPage = () => {
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
 
+  // Shipping address (only for shop orders with physical items)
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
+
   const orderData = location.state as OrderData | null;
+  const isShop = orderData?.order_type === "shop" && (orderData?.cart_items?.length ?? 0) > 0;
+
 
   useEffect(() => {
     if (!orderData) {
@@ -117,6 +123,21 @@ const PaymentPage = () => {
     };
     fetchCoupons();
   }, []);
+
+  // Fetch shipping addresses for shop orders
+  useEffect(() => {
+    if (!isShop || !user) return;
+    supabase
+      .from("shipping_addresses")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("is_default", { ascending: false })
+      .then(({ data }) => {
+        setAddresses(data ?? []);
+        const def = (data ?? []).find((a: any) => a.is_default) ?? (data ?? [])[0];
+        if (def) setSelectedAddrId(def.id);
+      });
+  }, [isShop, user]);
 
   const calcDiscount = (coupon: Coupon): number => {
     if (!orderData) return 0;
@@ -156,9 +177,15 @@ const PaymentPage = () => {
       return;
     }
 
+    if (isShop && !selectedAddrId) {
+      toast({ title: "请选择收货地址", variant: "destructive" });
+      return;
+    }
+
     setIsPaying(true);
 
     try {
+      const addrSnap = isShop && selectedAddrId ? addresses.find((a) => a.id === selectedAddrId) : null;
       const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
@@ -176,6 +203,7 @@ const PaymentPage = () => {
         payment_method: selectedMethod,
         payment_status: "paid",
         order_status: "confirmed",
+        shipping_address_snapshot: addrSnap ?? null,
       }).select("id, order_no").single();
 
       if (error) throw error;
@@ -363,6 +391,45 @@ const PaymentPage = () => {
             </div>
           </div>
         </section>
+
+        {/* Shipping Address (shop only) */}
+        {isShop && (
+          <section className="bg-card rounded-2xl p-5 card-shadow">
+            <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" /> 收货地址
+            </h2>
+            {addresses.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate("/profile/addresses?pick=1")}
+                className="w-full p-3 rounded-xl border border-dashed text-sm text-muted-foreground hover:bg-muted"
+              >
+                + 添加收货地址
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={selectedAddrId ?? ""}
+                  onChange={(e) => setSelectedAddrId(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-secondary text-sm"
+                >
+                  {addresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.recipient} {a.phone} · {a.province}{a.city}{a.district}{a.detail}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile/addresses")}
+                  className="text-xs text-primary"
+                >
+                  管理地址簿 →
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Coupon Section */}
         <section className="bg-card rounded-2xl p-5 card-shadow">

@@ -226,14 +226,15 @@ const WorkerDashboardPage = () => {
         )}
 
         {tab === "route" && isDriver && (
-          <section className="rounded-2xl p-4 card-shadow bg-card">
-            <div className="flex items-center gap-2 mb-3">
+          <section className="rounded-2xl p-4 card-shadow bg-card space-y-3">
+            <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
               <h2 className="font-bold">附近接送任务</h2>
             </div>
-            <div className="bg-muted/40 rounded-xl h-40 flex items-center justify-center text-sm text-muted-foreground">
-              地图加载中… 实时任务将在此显示
-            </div>
+            <p className="text-xs text-muted-foreground">前往接单大厅查看实时订单与预计收益</p>
+            <Button variant="hero" className="w-full" onClick={() => navigate("/worker/hall")}>
+              进入接单大厅
+            </Button>
           </section>
         )}
 
