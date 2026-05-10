@@ -98,6 +98,12 @@ const App = () => (
             <Route path="/group-booking" element={<GroupBookingPage />} />
             <Route path="/worker" element={<RoleGuard allow={["sitter","groomer","driver"]}><WorkerDashboardPage /></RoleGuard>} />
             <Route path="/admin/review" element={<RoleGuard allow={["admin"]}><AdminReviewPage /></RoleGuard>} />
+            <Route path="/admin" element={<RoleGuard allow={["admin"]}><AdminDashboardPage /></RoleGuard>} />
+            <Route path="/admin/applications" element={<RoleGuard allow={["admin"]}><AdminApplicationsPage /></RoleGuard>} />
+            <Route path="/admin/commission" element={<RoleGuard allow={["admin"]}><AdminCommissionPage /></RoleGuard>} />
+            <Route path="/admin/revenue" element={<RoleGuard allow={["admin"]}><AdminRevenuePage /></RoleGuard>} />
+            <Route path="/admin/withdrawals" element={<RoleGuard allow={["admin"]}><AdminWithdrawalsPage /></RoleGuard>} />
+            <Route path="/worker/withdraw" element={<RoleGuard allow={["sitter","groomer","driver"]}><WithdrawPage /></RoleGuard>} />
             <Route path="/roles" element={<RoleSwitchPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
