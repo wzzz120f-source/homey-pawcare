@@ -623,7 +623,12 @@ const CommunityPage = () => {
 
                           {/* 作者 + 互动 */}
                           <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/u/${post.user_id}`); }}
+                              className="flex items-center gap-1.5 min-w-0 hover:opacity-80"
+                              aria-label="查看用户主页"
+                            >
                               <Avatar className="w-5 h-5 flex-shrink-0">
                                 <AvatarImage src={post.profiles?.avatar_url} />
                                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
@@ -631,7 +636,7 @@ const CommunityPage = () => {
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-[10px] text-muted-foreground truncate">{post.profiles?.username || "宠物主人"}</span>
-                            </div>
+                            </button>
                             <button
                               onClick={() => toggleLike(post.id)}
                               className={cn(
