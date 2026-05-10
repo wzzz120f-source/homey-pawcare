@@ -195,46 +195,32 @@ const CommunityPage = () => {
   const badgeMap = useUserBadges(userIds);
 
   const fetchPosts = async () => {
-    let query: any = (supabase as any)
-      .from("posts")
-      .select("id, user_id, content, created_at, tags, category, is_featured")
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (filterCategory !== "all") query = query.eq("category", filterCategory);
-    if (filterTag) query = query.contains("tags", [filterTag]);
-    if (searchTerm.trim()) query = query.ilike("content", `%${searchTerm.trim()}%`);
-
-    const { data: postsData, error } = await query;
-    if (error || !postsData) {
+    const { data, error } = await (supabase as any).rpc("get_feed_posts", {
+      _viewer: user?.id ?? null,
+      _category: filterCategory === "all" ? null : filterCategory,
+      _tag: filterTag,
+      _search: searchTerm.trim() || null,
+      _limit: 50,
+      _offset: 0,
+    });
+    if (error || !data) {
       setLoading(false);
       return;
     }
-
-    const enriched: Post[] = await Promise.all(
-      (postsData as any[]).map(async (post) => {
-        const [profileRes, mediaRes, likesRes, commentsRes, myLikeRes] = await Promise.all([
-          supabase.from("profiles").select("username, avatar_url").eq("user_id", post.user_id).maybeSingle(),
-          supabase.from("post_media").select("id, media_url, media_type").eq("post_id", post.id),
-          supabase.from("likes").select("id", { count: "exact", head: true }).eq("post_id", post.id),
-          supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", post.id),
-          user ? supabase.from("likes").select("id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-        ]);
-        return {
-          ...post,
-          tags: post.tags || [],
-          category: post.category || "life",
-          is_featured: !!post.is_featured,
-          profiles: profileRes.data,
-          media: mediaRes.data || [],
-          likes_count: likesRes.count || 0,
-          comments_count: commentsRes.count || 0,
-          liked_by_me: !!(myLikeRes as any).data,
-        };
-      })
-    );
-
+    const enriched: Post[] = (data as any[]).map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      content: row.content,
+      created_at: row.created_at,
+      tags: row.tags || [],
+      category: row.category || "life",
+      is_featured: !!row.is_featured,
+      profiles: { username: row.username, avatar_url: row.avatar_url },
+      media: row.media || [],
+      likes_count: Number(row.likes_count) || 0,
+      comments_count: Number(row.comments_count) || 0,
+      liked_by_me: !!row.liked_by_me,
+    }));
     setPosts(enriched);
     setLoading(false);
   };
