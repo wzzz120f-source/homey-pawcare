@@ -60,6 +60,8 @@ const MessagesPage = lazyTracked("路由 MessagesPage", () => import("./pages/Me
 const ChatPage = lazyTracked("路由 ChatPage", () => import("./pages/ChatPage"));
 const GroomerRatingPage = lazyTracked("路由 GroomerRatingPage", () => import("./pages/GroomerRatingPage"));
 const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import("./pages/ServiceCheckinPage"));
+const PaymentResultPage = lazyTracked("路由 PaymentResultPage", () => import("./pages/PaymentResultPage"));
+const AdminRefundsPage = lazyTracked("路由 AdminRefundsPage", () => import("./pages/admin/AdminRefundsPage"));
 
 const queryClient = new QueryClient();
 
