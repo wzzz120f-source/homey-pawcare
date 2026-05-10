@@ -81,7 +81,15 @@ const AdminWithdrawalsPage = () => {
               <Button size="sm" variant="outline" onClick={exportCsv}>导出银行报表</Button>
             </div>
           )}
-          {rows.length === 0 ? <p className="text-center text-muted-foreground py-8">暂无</p>
+          {error && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+              <div className="flex-1"><p className="text-sm text-destructive">{error}</p></div>
+              <Button size="sm" variant="outline" onClick={load}>重试</Button>
+            </Card>
+          )}
+          {loading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+            : rows.length === 0 && !error ? <p className="text-center text-muted-foreground py-8">暂无</p>
             : rows.map((r) => (
               <Card key={r.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
