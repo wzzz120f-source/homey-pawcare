@@ -40,9 +40,19 @@ const AuthPage = () => {
     setLoading(true);
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: signIn, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("登录成功!");
+        // 开发者（admin）自动进入后台
+        const uid = signIn.user?.id;
+        if (uid) {
+          const { data: roleRows } = await supabase
+            .from("user_roles").select("role").eq("user_id", uid);
+          if ((roleRows || []).some((r: any) => r.role === "admin")) {
+            navigate("/admin", { replace: true });
+            return;
+          }
+        }
         navigate("/");
       } else {
         const { error } = await supabase.auth.signUp({
