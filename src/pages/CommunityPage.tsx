@@ -314,13 +314,20 @@ const CommunityPage = () => {
     if (!user) { navigate("/auth"); return; }
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
-    if (post.liked_by_me) {
-      await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
+    const willLike = !post.liked_by_me;
+    // Optimistic update — avoid full refetch
+    setPosts((prev) => prev.map((p) =>
+      p.id === postId
+        ? { ...p, liked_by_me: willLike, likes_count: Math.max(0, p.likes_count + (willLike ? 1 : -1)) }
+        : p
+    ));
+    if (willLike) {
+      const { error } = await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
+      if (error) setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, liked_by_me: false, likes_count: Math.max(0, p.likes_count - 1) } : p));
     } else {
-      // 触发器自动给作者发 +2 积分
-      await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
+      const { error } = await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
+      if (error) setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, liked_by_me: true, likes_count: p.likes_count + 1 } : p));
     }
-    fetchPosts();
   };
 
   const loadComments = async (postId: string) => {
