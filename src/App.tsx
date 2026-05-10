@@ -60,6 +60,8 @@ const MessagesPage = lazyTracked("路由 MessagesPage", () => import("./pages/Me
 const ChatPage = lazyTracked("路由 ChatPage", () => import("./pages/ChatPage"));
 const GroomerRatingPage = lazyTracked("路由 GroomerRatingPage", () => import("./pages/GroomerRatingPage"));
 const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import("./pages/ServiceCheckinPage"));
+const PaymentResultPage = lazyTracked("路由 PaymentResultPage", () => import("./pages/PaymentResultPage"));
+const AdminRefundsPage = lazyTracked("路由 AdminRefundsPage", () => import("./pages/admin/AdminRefundsPage"));
 
 const queryClient = new QueryClient();
 
@@ -85,6 +87,8 @@ const App = () => (
             <Route path="/customer-service" element={<CustomerServicePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/payment/result/:id" element={<PaymentResultPage />} />
+            <Route path="/admin/refunds" element={<RoleGuard allow={["admin"]}><AdminRefundsPage /></RoleGuard>} />
             <Route path="/order/:id" element={<OrderDetailPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
