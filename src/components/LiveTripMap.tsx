@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { loadAMap } from "@/lib/amapLoader";
 
 interface Props {
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
   pickupLat?: number | null;
   pickupLng?: number | null;
   dropoffLat?: number | null;
@@ -16,6 +18,7 @@ interface Props {
 }
 
 const LiveTripMap = ({
+  pickupAddress, dropoffAddress,
   pickupLat, pickupLng, dropoffLat, dropoffLng,
   driverLat, driverLng,
   offlineHint = null,
