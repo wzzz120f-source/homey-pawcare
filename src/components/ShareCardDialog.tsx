@@ -189,6 +189,8 @@ const ShareCardDialog = ({
                   alt=""
                   className="mt-3 w-full aspect-video object-cover rounded-xl"
                   crossOrigin="anonymous"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                 />
               )}
             </div>
@@ -235,6 +237,7 @@ const ShareCardDialog = ({
               <span className="text-base">🌐</span> 微博
             </button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
