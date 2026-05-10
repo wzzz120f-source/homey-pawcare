@@ -282,8 +282,16 @@ export default function ServiceCheckinChecklist({
           {actions.map((a) => {
             const row = rows.find((r) => r.action_key === a.key);
             const done = !!row;
+            const isHighlight = highlightKey === a.key;
             return (
-              <li key={a.key} className="flex items-center gap-3 rounded-xl border p-2.5 bg-background">
+              <li
+                key={a.key}
+                id={`checkin-row-${a.key}`}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl border p-2.5 bg-background transition-all",
+                  isHighlight && "ring-2 ring-amber-400 border-amber-300",
+                )}
+              >
                 {done ? (
                   <img src={row!.photo_url} alt={a.label} className="w-12 h-12 rounded-lg object-cover" />
                 ) : (
@@ -324,7 +332,7 @@ export default function ServiceCheckinChecklist({
         className="w-full mt-4"
         variant="hero"
         disabled={!allDone}
-        onClick={() => setConfirmOpen(true)}
+        onClick={tryOpenConfirm}
       >
         {allDone ? "全部完成 · 提交结单" : `还差 ${missing.length} 项可结单`}
       </Button>
