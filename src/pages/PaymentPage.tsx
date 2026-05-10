@@ -197,9 +197,21 @@ const PaymentPage = () => {
       return;
     }
 
-    if (selectedMethod === "wallet" && walletBalance < finalAmount) {
-      toast({ title: "钱包余额不足", description: `当前余额 ¥${walletBalance.toFixed(2)}，请充值或换支付方式`, variant: "destructive" });
-      return;
+    if (selectedMethod === "wallet") {
+      // 下单前实时复核余额，防止并发场景（多端同时支付）失败
+      const { data: fresh } = await supabase.from("user_wallets").select("balance").eq("user_id", user.id).maybeSingle();
+      const liveBal = Number(fresh?.balance ?? 0);
+      setWalletBalance(liveBal);
+      if (liveBal < finalAmount) {
+        const gap = (finalAmount - liveBal).toFixed(2);
+        toast({
+          title: "钱包余额不足",
+          description: `当前余额 ¥${liveBal.toFixed(2)}，差额 ¥${gap}。已为您切换到微信支付，或前往钱包充值后重试。`,
+          variant: "destructive",
+        });
+        setSelectedMethod("wechat");
+        return;
+      }
     }
 
     setIsPaying(true);
