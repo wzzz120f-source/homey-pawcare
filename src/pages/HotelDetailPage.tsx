@@ -1112,7 +1112,7 @@ const HotelDetailPage = () => {
 
             {/* Sticky footer: 合计 + 操作 (always visible, safe-area aware) */}
             <div
-              className="border-t border-border bg-background/95 backdrop-blur px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 rounded-b-none"
+              className="shrink-0 border-t border-border bg-background/95 backdrop-blur px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 rounded-b-none"
               data-testid="booking-modal-footer"
             >
               <div className="flex items-center justify-between text-base">
