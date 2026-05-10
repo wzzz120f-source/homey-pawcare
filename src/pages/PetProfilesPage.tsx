@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Syringe, AlertTriangle, Share2, Edit3, PawPrint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,18 +48,43 @@ const PetProfilesPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [sp] = useSearchParams();
+  const orderId = sp.get("orderId");
+  const readonly = sp.get("readonly") === "1";
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Pet | null>(null);
   const [open, setOpen] = useState(false);
+  const [customerName, setCustomerName] = useState<string>("");
 
   const fetchPets = async () => {
     if (!user) return;
     setLoading(true);
+    let targetUserId = user.id;
+    if (readonly && orderId) {
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("user_id, driver_id")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (ord && (ord as any).driver_id === user.id) {
+        targetUserId = (ord as any).user_id;
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+        if (prof) setCustomerName((prof as any).username || "乘客");
+      } else {
+        toast({ title: "无权限查看", description: "仅当前订单的司机可查看", variant: "destructive" });
+        navigate(-1);
+        return;
+      }
+    }
     const { data, error } = await supabase
       .from("pets")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) {
@@ -77,7 +102,8 @@ const PetProfilesPage = () => {
       return;
     }
     fetchPets();
-  }, [user, authLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading, orderId, readonly]);
 
   const openNew = () => {
     setEditing({
@@ -188,10 +214,12 @@ const PetProfilesPage = () => {
           <button onClick={() => navigate(-1)} aria-label="返回" className="p-2 -ml-2">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-semibold">宠物档案</h1>
-          <Button size="sm" onClick={openNew} className="ml-auto gap-1">
-            <Plus className="w-4 h-4" /> 新增
-          </Button>
+          <h1 className="text-lg font-semibold">{readonly ? `乘客宠物档案${customerName ? ` · ${customerName}` : ""}` : "宠物档案"}</h1>
+          {!readonly && (
+            <Button size="sm" onClick={openNew} className="ml-auto gap-1">
+              <Plus className="w-4 h-4" /> 新增
+            </Button>
+          )}
         </div>
       </header>
 
@@ -199,7 +227,9 @@ const PetProfilesPage = () => {
         <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-3 text-sm flex gap-2">
           <Share2 className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
           <p className="text-foreground/90">
-            开启「自动共享」后，下单时档案（疫苗/过敏/禁忌）将自动推送给司机，无需手填。
+            {readonly
+              ? "只读模式：你正在以司机身份查看本次订单乘客的宠物档案，请在出行前核对疫苗与禁忌。"
+              : "开启「自动共享」后，下单时档案（疫苗/过敏/禁忌）将自动推送给司机，无需手填。"}
           </p>
         </div>
 
@@ -208,8 +238,8 @@ const PetProfilesPage = () => {
         ) : pets.length === 0 ? (
           <div className="text-center py-16 space-y-3">
             <PawPrint className="w-12 h-12 text-muted-foreground mx-auto" />
-            <p className="text-muted-foreground">还没有宠物档案，建一个吧</p>
-            <Button onClick={openNew}>新增宠物</Button>
+            <p className="text-muted-foreground">{readonly ? "该乘客暂未建立宠物档案" : "还没有宠物档案，建一个吧"}</p>
+            {!readonly && <Button onClick={openNew}>新增宠物</Button>}
           </div>
         ) : (
           pets.map((pet) => {
@@ -234,14 +264,16 @@ const PetProfilesPage = () => {
                       {pet.breed || PET_EMOJIS[pet.pet_type]} · {pet.weight_kg ? `${pet.weight_kg}kg` : "未填重量"}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <button onClick={() => openEdit(pet)} className="p-2 hover:bg-muted rounded-lg" aria-label="编辑">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => remove(pet.id)} className="p-2 hover:bg-muted rounded-lg text-destructive" aria-label="删除">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {!readonly && (
+                    <div className="flex flex-col items-end gap-1">
+                      <button onClick={() => openEdit(pet)} className="p-2 hover:bg-muted rounded-lg" aria-label="编辑">
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => remove(pet.id)} className="p-2 hover:bg-muted rounded-lg text-destructive" aria-label="删除">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 text-xs">
@@ -275,13 +307,18 @@ const PetProfilesPage = () => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>下单时自动共享给司机</span>
+                {!readonly && (
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-2 text-xs">
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>下单时自动共享给司机</span>
+                    </div>
+                    <Switch checked={pet.auto_share} onCheckedChange={() => toggleAutoShare(pet)} />
                   </div>
-                  <Switch checked={pet.auto_share} onCheckedChange={() => toggleAutoShare(pet)} />
-                </div>
+                )}
+                {readonly && pet.notes && (
+                  <p className="text-xs text-muted-foreground pt-2 border-t">📝 {pet.notes}</p>
+                )}
               </article>
             );
           })

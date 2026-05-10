@@ -347,7 +347,7 @@ const TripTrackingPage = () => {
         {pet && (
           <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-3 text-sm flex items-start gap-2">
             <Share2 className="w-4 h-4 text-orange-500 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <p className="font-medium">已发送给司机：{pet.name}</p>
               <p className="text-xs text-muted-foreground">
                 {pet.allergies?.length > 0 && `过敏：${pet.allergies.join("、")} · `}
@@ -358,6 +358,17 @@ const TripTrackingPage = () => {
               )}
             </div>
           </div>
+        )}
+
+        {isDriverOfOrder && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2"
+            onClick={() => navigate(`/pets?orderId=${orderId}&readonly=1`)}
+          >
+            🐾 查看乘客宠物完整档案（疫苗 / 过敏 / 禁忌）
+          </Button>
         )}
 
         {!tracking ? (

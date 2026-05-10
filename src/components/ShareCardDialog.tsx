@@ -141,11 +141,12 @@ const ShareCardDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3">
+      <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
           <DialogTitle className="text-base">{meta.title}</DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto">
         {/* Shareable card preview */}
         <div className="px-4 pb-4">
           <div
@@ -188,6 +189,8 @@ const ShareCardDialog = ({
                   alt=""
                   className="mt-3 w-full aspect-video object-cover rounded-xl"
                   crossOrigin="anonymous"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                 />
               )}
             </div>
@@ -234,6 +237,7 @@ const ShareCardDialog = ({
               <span className="text-base">🌐</span> 微博
             </button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
