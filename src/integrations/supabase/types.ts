@@ -2221,16 +2221,23 @@ export type Database = {
           cloud_feed_points: number
           created_at: string
           id: string
+          id_card_last4: string | null
           is_active: boolean
           location: string | null
           medical_progress: string | null
           pet_name: string
           pet_type: string
+          proof_urls: string[] | null
+          real_name: string | null
           status: string
           story: string
           total_feed_amount: number
           updated_at: string
           user_id: string
+          verified_at: string | null
+          verified_by: string | null
+          verify_note: string | null
+          verify_status: string
         }
         Insert: {
           after_image?: string | null
@@ -2239,16 +2246,23 @@ export type Database = {
           cloud_feed_points?: number
           created_at?: string
           id?: string
+          id_card_last4?: string | null
           is_active?: boolean
           location?: string | null
           medical_progress?: string | null
           pet_name: string
           pet_type?: string
+          proof_urls?: string[] | null
+          real_name?: string | null
           status?: string
           story: string
           total_feed_amount?: number
           updated_at?: string
           user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          verify_status?: string
         }
         Update: {
           after_image?: string | null
@@ -2257,16 +2271,23 @@ export type Database = {
           cloud_feed_points?: number
           created_at?: string
           id?: string
+          id_card_last4?: string | null
           is_active?: boolean
           location?: string | null
           medical_progress?: string | null
           pet_name?: string
           pet_type?: string
+          proof_urls?: string[] | null
+          real_name?: string | null
           status?: string
           story?: string
           total_feed_amount?: number
           updated_at?: string
           user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          verify_status?: string
         }
         Relationships: []
       }
@@ -2970,6 +2991,10 @@ export type Database = {
       admin_force_pay_withdrawal: { Args: { _id: string }; Returns: Json }
       admin_reject_withdrawal: {
         Args: { _id: string; _reason: string }
+        Returns: Json
+      }
+      admin_review_rescue_story: {
+        Args: { _approve: boolean; _id: string; _note?: string }
         Returns: Json
       }
       admin_set_commission: {
