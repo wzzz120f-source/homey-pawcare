@@ -3090,6 +3090,18 @@ export type Database = {
           review_count: number
         }[]
       }
+      get_rescue_feed_list: {
+        Args: { _before?: string; _limit?: number; _story_id: string }
+        Returns: {
+          amount: number
+          avatar_url: string
+          id: string
+          message: string
+          paid_at: string
+          user_id: string
+          username: string
+        }[]
+      }
       get_rescue_feed_top: {
         Args: { _limit?: number; _story_id: string }
         Returns: {
