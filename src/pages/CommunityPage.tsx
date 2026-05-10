@@ -405,6 +405,32 @@ const CommunityPage = () => {
       <main className="max-w-lg mx-auto">
         {activeTab === "plaza" && (
           <>
+            {/* 推荐 / 关注 子 Tab */}
+            <div className="flex gap-1 px-4 pt-3 -mb-1">
+              {([
+                { v: "recommend", label: "推荐" },
+                { v: "following", label: "关注" },
+              ] as const).map((s) => (
+                <button
+                  key={s.v}
+                  onClick={() => {
+                    if (s.v === "following" && !user) {
+                      toast.error("请先登录后查看关注内容");
+                      return;
+                    }
+                    setFeedScope(s.v);
+                  }}
+                  className={cn(
+                    "px-3 py-1 text-sm font-extrabold transition-colors relative",
+                    feedScope === s.v
+                      ? "text-foreground after:absolute after:left-2 after:right-2 after:-bottom-1 after:h-0.5 after:bg-primary after:rounded-full"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
             {/* 分类 chips */}
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex gap-2 px-4 pt-3 pb-2">
