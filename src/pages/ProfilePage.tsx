@@ -505,39 +505,6 @@ const ProfilePage = () => {
             <span className="text-xs text-muted-foreground">→</span>
           </button>
         )}
-        {!isMerchant && (
-          <button
-            onClick={() => navigate("/merchant/apply")}
-            className="mt-3 w-full bg-card border border-border/60 rounded-2xl p-4 flex items-center justify-between card-shadow hover:bg-secondary/40 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-foreground">申请入驻萌宠到家</p>
-                <p className="text-xs text-muted-foreground">提交店铺与营业执照，审核后开通商家中心</p>
-              </div>
-            </div>
-            <span className="text-muted-foreground">→</span>
-          </button>
-        )}
-        {/* 宠托师入驻入口 - 所有用户可见 */}
-        <button
-          onClick={() => navigate("/driver/apply")}
-          className="mt-3 w-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-2xl p-4 flex items-center justify-between card-shadow hover:from-primary/15 hover:to-primary/10 transition"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center">
-              <Car className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">🚗 成为宠托师</p>
-              <p className="text-xs text-muted-foreground">时间自由 · 收入 ¥35–88/单 · 在线认证</p>
-            </div>
-          </div>
-          <span className="text-xs font-bold text-primary">入驻 →</span>
-        </button>
         {isAdmin && (
           <button
             onClick={() => navigate("/merchant/admin")}
