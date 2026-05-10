@@ -305,15 +305,18 @@ const CommunityPage = () => {
       }
       if (mediaInserts.length > 0) await supabase.from("post_media").insert(mediaInserts);
 
-      // 自动勋章 + 爱心积分
+      // 自动勋章 + 爱心积分（服务端校验防刷）
       tryAutoAwardBadges(user.id);
-      await (supabase as any).rpc("award_love_points", {
-        _action: "post_create", _points: 10,
-        _related_type: "post", _related_id: post.id,
-        _description: "发布动态",
+      const { data: ap } = await supabase.functions.invoke("award-love-points", {
+        body: {
+          action: "post_create",
+          related_type: "post",
+          related_id: post.id,
+          description: "发布动态",
+        },
       });
-
-      toast.success("发布成功！+10 爱心积分 ❤️");
+      const granted = (ap as any)?.granted ?? 0;
+      toast.success(granted > 0 ? `发布成功！+${granted} 爱心积分 ❤️` : "发布成功！");
       revokePreviews(mediaItems);
       setNewContent(""); setMediaItems([]); setTags([]);
       setShowCreate(false); fetchPosts();
