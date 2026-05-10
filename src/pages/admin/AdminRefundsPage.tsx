@@ -181,7 +181,7 @@ const AdminRefundsPage = () => {
                       <Button
                         variant="hero" size="sm" className="flex-1"
                         disabled={processing === r.id}
-                        onClick={() => handle(r, "approve")}
+                        onClick={() => requestHandle(r, "approve")}
                       >
                         {processing === r.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
                         {r.payments?.channel === "wallet" || r.payments?.channel === "mock" ? "批准并退款" : "批准并提交渠道"}
@@ -189,7 +189,7 @@ const AdminRefundsPage = () => {
                       <Button
                         variant="outline" size="sm" className="flex-1"
                         disabled={processing === r.id}
-                        onClick={() => handle(r, "reject")}
+                        onClick={() => requestHandle(r, "reject")}
                       >
                         <XCircle className="w-4 h-4 mr-1" />驳回
                       </Button>
@@ -311,10 +311,10 @@ const AdminRefundsPage = () => {
                 {/* Footer actions */}
                 {detail.status === "pending" && (
                   <div className="flex gap-2 pt-2 border-t border-border">
-                    <Button variant="hero" className="flex-1" disabled={processing === detail.id} onClick={() => handle(detail, "approve")}>
+                    <Button variant="hero" className="flex-1" disabled={processing === detail.id} onClick={() => requestHandle(detail, "approve")}>
                       <CheckCircle2 className="w-4 h-4 mr-1" /> 批准退款
                     </Button>
-                    <Button variant="outline" className="flex-1" disabled={processing === detail.id} onClick={() => handle(detail, "reject")}>
+                    <Button variant="outline" className="flex-1" disabled={processing === detail.id} onClick={() => requestHandle(detail, "reject")}>
                       <XCircle className="w-4 h-4 mr-1" /> 驳回
                     </Button>
                   </div>
