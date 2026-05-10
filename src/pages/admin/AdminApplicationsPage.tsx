@@ -10,7 +10,7 @@ import { AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type Kind = "driver" | "merchant";
+type Kind = "driver" | "merchant" | "rescue";
 const ROLE_LABEL: Record<string, string> = { sitter: "宠托师", groomer: "护理师", driver: "司机" };
 
 const AdminApplicationsPage = () => {
