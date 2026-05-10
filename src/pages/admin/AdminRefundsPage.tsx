@@ -324,6 +324,14 @@ const AdminRefundsPage = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      <AdminConfirmDialog
+        open={!!pendingConfirm}
+        onOpenChange={(o) => !o && setPendingConfirm(null)}
+        actionLabel={pendingConfirm ? `${pendingConfirm.action === "approve" ? "批准退款" : "驳回退款"} · ¥${Number(pendingConfirm.r.amount).toFixed(2)}` : ""}
+        description="该操作将真实触发退款或拒绝流程，请输入密码继续。"
+        onConfirmed={executeHandle}
+      />
     </div>
   );
 };
