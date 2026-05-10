@@ -1,5 +1,5 @@
 // 服务端发放爱心积分，校验每日封顶（100）+ 单动作限频（60s）。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

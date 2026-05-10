@@ -1,7 +1,7 @@
 // 高德地图 Key 安全分发：仅返回给已登录用户，避免在前端源码中明文硬编码。
 // Key 仍然会出现在浏览器内存中（高德 JS SDK 必须在前端使用），但通过限制只
 // 给已登录用户分发，可以拦住爬源码盗用、并通过审计/限流追踪滥用。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,9 +26,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const token = authHeader.replace("Bearer ", "");
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims?.sub) {
+    const { data: userData, error } = await supabase.auth.getUser();
+    if (error || !userData?.user?.id) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

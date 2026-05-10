@@ -1,6 +1,6 @@
 // 管理员密码二次确认：客户端先用 signInWithPassword 验证密码（不替换会话），
 // 验证通过后调用本函数，写入 5 分钟有效的 recent_admin_auth 记录。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

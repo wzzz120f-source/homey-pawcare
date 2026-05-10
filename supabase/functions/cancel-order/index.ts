@@ -1,5 +1,5 @@
 // 用户取消订单：校验归属与可取消状态，已支付订单自动触发退款。
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
