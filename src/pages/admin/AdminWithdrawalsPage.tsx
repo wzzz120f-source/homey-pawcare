@@ -16,17 +16,22 @@ const AdminWithdrawalsPage = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<"pending" | "flagged" | "history">("pending");
   const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
   const load = async () => {
+    setLoading(true); setError(null);
     let q = supabase.from("withdrawal_requests").select("*").order("requested_at", { ascending: false });
     if (tab === "pending") q = q.eq("status", "pending");
     else if (tab === "flagged") q = q.eq("status", "flagged");
     else q = q.in("status", ["paid", "rejected"]);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) setError(error.message);
     setRows((data as any[]) || []); setSelected(new Set());
+    setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab]);
 

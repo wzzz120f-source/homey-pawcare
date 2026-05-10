@@ -17,13 +17,15 @@ const AdminApplicationsPage = () => {
   const [tab, setTab] = useState<Kind>("driver");
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{ id: string; kind: Kind } | null>(null);
   const [reason, setReason] = useState("");
 
   const load = async () => {
-    setLoading(true);
+    setLoading(true); setError(null);
     const table = tab === "driver" ? "driver_applications" : "merchant_applications";
-    const { data } = await supabase.from(table as any).select("*").eq("status", "pending").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from(table as any).select("*").eq("status", "pending").order("created_at", { ascending: false });
+    if (error) setError(error.message);
     setList((data as any[]) || []);
     setLoading(false);
   };
