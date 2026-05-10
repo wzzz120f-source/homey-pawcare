@@ -55,6 +55,14 @@ interface Coupon {
 
 const PAYMENT_METHODS = [
   {
+    id: "wallet",
+    label: "钱包余额",
+    icon: Wallet,
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    borderColor: "ring-primary",
+  },
+  {
     id: "wechat",
     label: "微信支付",
     icon: Smartphone,
@@ -71,8 +79,8 @@ const PAYMENT_METHODS = [
     borderColor: "ring-blue-500",
   },
   {
-    id: "bankcard",
-    label: "银行卡支付",
+    id: "stripe",
+    label: "信用卡 / Stripe",
     icon: CreditCard,
     color: "text-amber-600",
     bgColor: "bg-amber-50 dark:bg-amber-950/30",
