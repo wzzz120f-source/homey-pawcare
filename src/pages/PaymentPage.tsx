@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart, MapPin } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone, Landmark, ShieldCheck, Loader2, Tag, ChevronRight, X, Heart, MapPin, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
