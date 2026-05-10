@@ -177,9 +177,15 @@ const PaymentPage = () => {
       return;
     }
 
+    if (isShop && !selectedAddrId) {
+      toast({ title: "请选择收货地址", variant: "destructive" });
+      return;
+    }
+
     setIsPaying(true);
 
     try {
+      const addrSnap = isShop && selectedAddrId ? addresses.find((a) => a.id === selectedAddrId) : null;
       const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
@@ -197,6 +203,7 @@ const PaymentPage = () => {
         payment_method: selectedMethod,
         payment_status: "paid",
         order_status: "confirmed",
+        shipping_address_snapshot: addrSnap ?? null,
       }).select("id, order_no").single();
 
       if (error) throw error;
