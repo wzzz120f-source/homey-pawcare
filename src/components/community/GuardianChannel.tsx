@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Heart, Plus, ImageIcon, X, MapPin, Users, Calendar, Sparkles, ShieldAlert, Share2 } from "lucide-react";
 import ShareCardDialog from "@/components/ShareCardDialog";
+import RescueFeedDialog from "@/components/community/RescueFeedDialog";
 import { toast } from "sonner";
 import { checkTextSafety } from "@/lib/contentSafety";
 import { tryAutoAwardBadges } from "@/hooks/useUserBadges";
