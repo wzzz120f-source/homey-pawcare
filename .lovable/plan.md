@@ -1,94 +1,98 @@
-## 一、UI 微调（立即可做）
+# 实施计划（已根据用户答复定稿）
 
-### 1. 搜索模块宽度对齐
-- 现状：`CommunitySearchBar` 使用 `px-4`，而下方爱心广场内容（瀑布流 `px-3`、分类 chips `px-4`）以及守护频道、寻宠雷达内部用了不同的左右内边距，导致视觉上"搜索框比下方内容窄/宽"。
-- 调整：把搜索框外层包装统一到与下方内容相同的容器（`max-w-lg mx-auto px-4`），并让三个 Tab 的内部首屏区域统一使用 `px-4`，使搜索框两端与正文卡片左右对齐。
+## PR-1 救助投喂明细列表（滚动加载）
 
-### 2. 去掉"模块状态加载中"
-- 现状：`<ChunkStatusWidget />`（DEV 环境）会在头部出现"模块状态 · 加载中 / 加载失败"小卡片，正式预览中也偶尔可见。
-- 调整：从 `CommunityPage.tsx` 第 399 行删除 `{import.meta.env.DEV && <ChunkStatusWidget />}` 渲染（保留组件文件以备调试），同时把 chunk-loading 失败时的提示改为静默重试 + Toast，不再有常驻状态条。
+- 新增 RPC `get_rescue_feed_list(_story_id uuid, _limit int default 20, _before timestamptz default null)`
+  - 返回：`id, user_id, username, avatar_url, amount, message, paid_at`
+  - `WHERE status='paid' AND (_before IS NULL OR paid_at < _before) ORDER BY paid_at DESC LIMIT _limit`
+- `RescueFeedDialog.tsx`
+  - 加 Tabs：「投喂榜 / 投喂明细」
+  - 明细区使用 `ScrollArea` + IntersectionObserver 哨兵加载下一页
+  - 状态：`items[]`、`cursor`（上一页最后一条 `paid_at`）、`hasMore`、`loading`
+  - 行：头像 + 用户名 + 时间 + 留言 + 金额
 
----
+## PR-2 救助者身份核查（强制）+ 提现 KYC（人工审核）
 
-## 二、爱心社区（深度融合）—— 内容带货 & 社交化
+### 2A 救助故事身份强制审核
+- `rescue_stories` 增加：
+  - `verify_status text default 'pending'`（`pending|verified|rejected`）
+  - `verify_note text`、`real_name text`、`id_card_last4 text`、`proof_urls text[]`
+  - `verified_by uuid`、`verified_at timestamptz`
+- 兼容旧数据：迁移时把现有 active 故事置为 `verified`
+- **强制规则**：仅 `verify_status='verified'` 的故事允许收款 —— `feed_rescue_with_balance` 增加校验 `verify_status='verified'`，否则返回 `story_not_verified`
+- `GuardianChannel`：仅展示已 verified 故事；自己提交的未通过故事显示「审核中/被驳回」状态
+- 发布救助流程：必填实名 + 证件号末 4 位 + 上传至少 1 张证据图（医院单/伤情照），创建后状态 `pending`
+- Admin 审核：
+  - 新增 RPC `admin_review_rescue_story(_id, _approve bool, _note text)`（admin 才能调）
+  - 在 `AdminApplicationsPage` 加「救助审核」标签
 
-> 这部分较大，建议分 3 个 PR 推进。下面给出**总体设计 + 改动清单**，等你确认后我再分批实现。
+### 2B 提现 KYC（人工审核 + 强制）
+- 新表 `rescue_kyc`
+  - `user_id pk, status text('pending'|'approved'|'rejected'|'none'), real_name, id_card_no_hash, id_card_front_url, id_card_back_url, hold_id_url, bank_account_name, bank_account_no, bank_name, submitted_at, reviewed_at, reviewed_by, review_note`
+  - RLS：本人可读写自己的；admin 可读写全部
+- 新页 `src/pages/RescueKycPage.tsx`（路由 `/rescue-kyc`）：实名 + 双面证件 + 手持证件 + 银行卡表单
+- RPC `submit_rescue_kyc(...)`：写入或更新为 `pending`
+- RPC `admin_review_rescue_kyc(_uid, _approve, _note)`：admin 通过/驳回
+- 提现校验：在 `request_withdrawal`（或 WithdrawPage 提交前）增加：
+  - 若用户钱包流水中存在 `feed_in`，强制要求 `rescue_kyc.status='approved'`
+  - 否则返回 `kyc_required`
+- 风控扩展（`admin_approve_withdrawal`）：
+  - `feed_funds_no_kyc`
+  - `payout_name_mismatch`（提现账户姓名 vs KYC 实名）
 
-### PR-A · 社交流（关注 / 私信 / 好友）
+### 2C `/wallet` 展示
+- `WalletPage` 新增「救助资质卡」：
+  - Badge：未提交 / 审核中 / 已通过 / 已驳回 + 驳回原因
+  - CTA：去认证 / 重新提交 → `/rescue-kyc`
+- 提现历史列表新增「审核状态/原因」一列（pending/flagged/rejected/paid + risk_flags 中文化）
 
-**新增数据表**
-- `user_follows(follower_id, following_id, created_at)` —— 关注关系，RLS：本人可读写自己的关注，他人可读"我是否被关注"。
-- `friend_requests(id, from_user, to_user, status[pending/accepted/rejected], created_at)` —— 好友申请。
-- 复用现有 `chat_conversations` + `chat_messages` 做"私信"，仅扩展一种 `conversation_type = 'dm'`。
+## PR-3 社区动态商品挂载卡 → 详情 → 下单/支付
 
-**前端改动**
-- 用户卡片（`UserBadgeChip` + 帖子作者头像）增加"关注 / 已关注"按钮。
-- 新增 `/u/:userId` 个人主页：头像、简介、关注/粉丝数、TA 的瀑布流帖子、"私信" / "申请好友" 按钮。
-- `ProfilePage` 增加"关注 / 粉丝 / 好友"三个 Tab。
-- 瀑布流默认排序保持"推荐"，新增"关注"Tab —— 只看已关注用户的帖子（瀑布流复用现有 `get_feed_posts` RPC，加 `only_following` 参数）。
-- 私信入口：用户主页 + 帖子作者菜单，进入复用 `ChatPage`。
+- 现有数据：之前 PR-B 设计的 `post_product_links(post_id, product_id)`
+  - 若未建表：新建 + RLS（任何人可读，作者可写自己的 post 关联）
+- 在发帖 `MediaPicker` 流程或 `PostDetailPage` 编辑面板中加「关联商城商品」选择器（搜索/最近浏览）
+- Feed 卡 / `PostDetailPage` 渲染商品挂载条（缩略图 + 名称 + 价格 + 「去购买」）
+- 点击 → `navigate('/product/:id')`
+- 在 `ProductDetailPage` 回归：
+  - 未登录 → `/auth`
+  - SKU + 数量 + 收货地址 → 创建订单 → `/payment/:orderId`
+  - `/payment/:orderId` 调 `create-payment`（wallet/wechat/alipay/stripe/mock）
+  - 成功 → `/payment/result/:orderId` → `OrderHistoryPage`
+- 点击商品卡时埋点 `trackBrowsing(productId)`，便于推荐
 
-### PR-B · 商品挂载（内容带货）
-
-**新增数据表**
-- `post_products(post_id, product_id, position, created_at)` —— 一个帖子可挂载 1~3 个商品。
-- RLS：作者可增删；公开可读。
-
-**发帖弹窗改动**
-- 在分类选择下方新增"挂载商品"按钮 → 弹出商品选择器（搜索商城商品 → 选中后展示缩略卡）。
-- 已挂载商品支持拖拽排序、删除。
-
-**展示改动**
-- 帖子详情 `PostDetailPage` 在正文下方展示"同款商品"卡片：缩略图 / 名称 / 价格 / "去购买" 按钮 → 跳转 `/product/:id`。
-- 瀑布流卡片右下角加一个"🛒"小角标，提示"含好物"。
-- 商品详情页可选反向展示"晒单动态"（取该商品被挂载的帖子，限 6 条）。
-
-### PR-C · 救助频道（投喂直达账户）
-
-**核心：投喂金额自动落到救助者钱包**
-
-**数据/逻辑改动**
-- `cloud_feeding` 现仅记录积分，扩展字段：`amount NUMERIC`、`recipient_user_id UUID`（rescue_story 作者）、`status`。
-- 新增 Edge Function `feed-rescue`：
-  1. 校验金额 ≥ 1 元；
-  2. 调用现有支付（微信 / 支付宝 / 余额）创建支付单 `payments`；
-  3. 支付成功 webhook 回调里：
-     - 在 `earning_transactions` 给救助者写入一条 `gross/net = amount`，`role = 'rescuer'`；
-     - 给救助者 `wallet_balance` 自动 + 金额（走现有 `update-balance` 流程）；
-     - 给投喂者写 `love_points` 增量；
-     - 写 `notifications`：救助者收到"@xxx 投喂了 ¥N，已到账"。
-- 救助详情页展示"已到账金额 / 投喂榜"，并显示"100% 直达救助者，平台不抽成"。
-- 平台层面增加"提现校验"：救助者提现时该笔款项必须有完整的 rescue_story 记录，避免洗钱。
-
----
-
-## 三、技术细节（开发参考）
+## 技术细节速览
 
 ```text
-src/pages/CommunityPage.tsx          —— 删 ChunkStatusWidget、统一容器宽度、加"关注"Tab
-src/components/community/
-  CommunitySearchBar.tsx             —— 容器调到 max-w-lg mx-auto，与正文对齐
-  GuardianChannel.tsx                —— 投喂入口接 feed-rescue
-  PostFeed.tsx (新)                  —— 抽出瀑布流 + 关注/推荐 Tab 切换
-  UserMiniCard.tsx (新)              —— 头像 + 关注按钮
-  ProductPickerDialog.tsx (新)       —— 发帖时挂载商品
-src/pages/UserProfilePage.tsx (新)
-supabase/functions/
-  feed-rescue/index.ts (新)
-  follow-user/index.ts (新, 反作弊)
-supabase/migrations/...              —— user_follows / friend_requests / post_products + cloud_feeding 扩列
+迁移
+├─ rescue_stories  + 7 个审核字段；旧 active → verified
+├─ rescue_kyc      新表 + RLS
+├─ post_product_links（若不存在）+ RLS
+└─ RPC
+   ├─ get_rescue_feed_list
+   ├─ submit_rescue_kyc
+   ├─ admin_review_rescue_kyc
+   ├─ admin_review_rescue_story
+   ├─ feed_rescue_with_balance      —— 加 verified 校验
+   └─ request_withdrawal            —— 加 KYC 校验
+
+前端新增
+├─ src/pages/RescueKycPage.tsx                    (路由 /rescue-kyc)
+├─ src/components/wallet/RescueKycStatusCard.tsx
+├─ src/components/community/PostProductCard.tsx  （动态商品挂载卡）
+└─ src/components/community/ProductPicker.tsx    （发帖时选商品）
+
+前端修改
+├─ RescueFeedDialog        Tabs（榜单 / 明细 + 滚动加载）
+├─ GuardianChannel         仅展示 verified；增加发布时实名/证据上传
+├─ WalletPage              KYC 卡 + 提现状态列
+├─ WithdrawPage            拦截无 KYC 提现 → 跳 /rescue-kyc
+├─ AdminApplicationsPage   增加「救助审核」「KYC 审核」两个标签
+├─ PostDetailPage / Feed   渲染 PostProductCard，点击跳 /product/:id
+└─ ProductDetailPage       登录态 + SKU/库存/地址校验回归
 ```
 
----
+## 执行顺序
 
-## 四、实施顺序建议
+PR-1（小，验证投喂明细 UI） → PR-2A（救助审核，影响收款） → PR-2B/2C（KYC + 钱包展示） → PR-3（商品挂载 + 下单链路）。
 
-1. **Step 1（本轮立即做）**：UI 微调（搜索宽度对齐 + 去掉模块状态卡）。
-2. **Step 2**：PR-A 社交流（关注 / 主页 / 私信复用）。
-3. **Step 3**：PR-B 商品挂载。
-4. **Step 4**：PR-C 救助投喂直达。
-
-请确认：
-- Step 1 是否先单独实施一次（最快）？
-- PR-A/B/C 的优先级是否按上述顺序？或者你希望先做 PR-C（救助直达）？
-- 商品挂载是否需要做"分佣"（创作者带货返佣）？还是仅做导流不分佣？
+每个 PR 落库后立即在预览验证，再进入下一个。
