@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-ai`;
+const CHAT_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/chat-ai`;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 const QUICK = [
@@ -75,16 +76,32 @@ const AIChatWidget = () => {
     };
 
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess?.session?.access_token;
+      if (!accessToken) {
+        toast.error("请先登录再使用 AI 客服");
+        showFallbackMessage("AI 客服需要登录后使用。");
+        setStreaming(false);
+        return;
+      }
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
+          apikey: PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ messages: next }),
       });
+      if (resp.status === 401) {
+        toast.error("登录已失效，请重新登录");
+        showFallbackMessage("登录已失效。");
+        setStreaming(false);
+        return;
+      }
       if (resp.status === 429) {
-        toast.error("请求过于频繁，已为你提供人工客服入口");
+        const e = await resp.json().catch(() => ({}));
+        toast.error(e.message || "请求过于频繁，已为你提供人工客服入口");
         showFallbackMessage("AI 当前请求过于频繁。");
         setStreaming(false);
         return;
