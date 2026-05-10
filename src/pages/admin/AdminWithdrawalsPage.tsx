@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import AdminConfirmDialog from "@/components/AdminConfirmDialog";
+import { friendlySupabaseError } from "@/lib/supabaseError";
 
 const STATUS_LABEL: Record<string, string> = { pending: "待审批", flagged: "已标红", paid: "已打款", rejected: "已驳回" };
 
