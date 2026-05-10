@@ -139,6 +139,14 @@ const PaymentPage = () => {
       .then(({ data }) => setWalletBalance(Number(data?.balance ?? 0)));
   }, [user]);
 
+  // 余额不足时自动切换到下一个可用方式
+  useEffect(() => {
+    if (selectedMethod === "wallet" && walletBalance < (orderData?.total_amount ?? 0)) {
+      setSelectedMethod("wechat");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletBalance, orderData?.total_amount]);
+
   // Fetch shipping addresses for shop orders
   useEffect(() => {
     if (!isShop || !user) return;
@@ -197,9 +205,21 @@ const PaymentPage = () => {
       return;
     }
 
-    if (selectedMethod === "wallet" && walletBalance < finalAmount) {
-      toast({ title: "钱包余额不足", description: `当前余额 ¥${walletBalance.toFixed(2)}，请充值或换支付方式`, variant: "destructive" });
-      return;
+    if (selectedMethod === "wallet") {
+      // 下单前实时复核余额，防止并发场景（多端同时支付）失败
+      const { data: fresh } = await supabase.from("user_wallets").select("balance").eq("user_id", user.id).maybeSingle();
+      const liveBal = Number(fresh?.balance ?? 0);
+      setWalletBalance(liveBal);
+      if (liveBal < finalAmount) {
+        const gap = (finalAmount - liveBal).toFixed(2);
+        toast({
+          title: "钱包余额不足",
+          description: `当前余额 ¥${liveBal.toFixed(2)}，差额 ¥${gap}。已为您切换到微信支付，或前往钱包充值后重试。`,
+          variant: "destructive",
+        });
+        setSelectedMethod("wechat");
+        return;
+      }
     }
 
     setIsPaying(true);
@@ -539,6 +559,23 @@ const PaymentPage = () => {
               </button>
             ))}
           </div>
+          {walletBalance < finalAmount && (
+            <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+              <span className="mt-0.5">💡</span>
+              <div className="flex-1">
+                <div className="font-semibold mb-0.5">钱包余额 ¥{walletBalance.toFixed(2)}，差额 ¥{(finalAmount - walletBalance).toFixed(2)}</div>
+                <div>
+                  已自动切换至其它支付方式；如需使用钱包余额，请先{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/wallet")}
+                    className="underline font-semibold text-primary hover:opacity-80"
+                  >前往充值</button>
+                  。
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Summary */}
