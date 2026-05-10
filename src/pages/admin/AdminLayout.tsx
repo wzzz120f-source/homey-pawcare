@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, LayoutDashboard, ClipboardList, Percent, BarChart3, Banknote } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ClipboardList, Percent, BarChart3, Banknote, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
