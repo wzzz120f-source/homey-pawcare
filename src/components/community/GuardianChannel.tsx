@@ -148,28 +148,21 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
     finally { setSubmitting(false); }
   };
 
-  const cloudFeed = async (storyId: string) => {
+  const openFeedDialog = (story: any) => {
     if (!user) { navigate("/auth"); return; }
-    try {
-      await supabase.from("cloud_feeding" as any).insert({
-        rescue_story_id: storyId, user_id: user.id, points: 1, message: "投喂爱心粮 🍖",
-      });
-      // 累计
-      const story = stories.find((s) => s.id === storyId);
-      if (story) {
-        await supabase.from("rescue_stories" as any).update({
-          cloud_feed_count: (story.cloud_feed_count || 0) + 1,
-          cloud_feed_points: (story.cloud_feed_points || 0) + 1,
-        }).eq("id", storyId);
-      }
-      await (supabase as any).rpc("award_love_points", {
-        _action: "cloud_feed", _points: 5,
-        _related_type: "rescue_story", _related_id: storyId,
-        _description: "云投喂爱心粮",
-      });
-      toast.success("投喂成功 +5 爱心积分 ❤️");
-      load();
-    } catch (e: any) { toast.error(e.message || "投喂失败"); }
+    if (story.user_id === user.id) { toast.error("不能给自己投喂哦"); return; }
+    setFeedTarget(story);
+  };
+
+  const handleFeedSuccess = (storyId: string, amount: number) => {
+    setStories((prev) => prev.map((s) => s.id === storyId
+      ? {
+          ...s,
+          cloud_feed_count: (s.cloud_feed_count || 0) + 1,
+          total_feed_amount: Number(s.total_feed_amount || 0) + amount,
+        }
+      : s,
+    ));
   };
 
   const joinTnr = async (tnr: any) => {
