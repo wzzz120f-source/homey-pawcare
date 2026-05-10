@@ -854,14 +854,14 @@ const HotelDetailPage = () => {
           onClick={() => { setShowBooking(false); resetBookingForm(); }}
         >
           <div
-            className="bg-background w-full max-w-lg rounded-t-2xl flex flex-col animate-fade-in-up max-h-[92vh]"
+            className="bg-background w-full max-w-lg rounded-t-2xl flex flex-col animate-fade-in-up h-[92vh]"
             onClick={e => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="预订房型"
           >
             {/* Sticky header */}
-            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3 border-b border-border/60">
+            <div className="shrink-0 flex items-center justify-between gap-3 px-5 pt-5 pb-3 border-b border-border/60">
               <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 min-w-0">
                 <CalendarDays className="w-5 h-5 text-primary shrink-0" />
                 <span className="truncate">
