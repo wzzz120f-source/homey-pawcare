@@ -559,6 +559,23 @@ const PaymentPage = () => {
               </button>
             ))}
           </div>
+          {walletBalance < finalAmount && (
+            <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+              <span className="mt-0.5">💡</span>
+              <div className="flex-1">
+                <div className="font-semibold mb-0.5">钱包余额 ¥{walletBalance.toFixed(2)}，差额 ¥{(finalAmount - walletBalance).toFixed(2)}</div>
+                <div>
+                  已自动切换至其它支付方式；如需使用钱包余额，请先{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/wallet")}
+                    className="underline font-semibold text-primary hover:opacity-80"
+                  >前往充值</button>
+                  。
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Summary */}
