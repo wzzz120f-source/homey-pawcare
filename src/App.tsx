@@ -50,6 +50,7 @@ const AdminApplicationsPage = lazyTracked("路由 AdminApplicationsPage", () => 
 const AdminCommissionPage = lazyTracked("路由 AdminCommissionPage", () => import("./pages/admin/AdminCommissionPage"));
 const AdminRevenuePage = lazyTracked("路由 AdminRevenuePage", () => import("./pages/admin/AdminRevenuePage"));
 const AdminWithdrawalsPage = lazyTracked("路由 AdminWithdrawalsPage", () => import("./pages/admin/AdminWithdrawalsPage"));
+const AdminAuditLogPage = lazyTracked("路由 AdminAuditLogPage", () => import("./pages/admin/AdminAuditLogPage"));
 const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/WithdrawPage"));
 
 const queryClient = new QueryClient();
