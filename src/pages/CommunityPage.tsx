@@ -352,7 +352,9 @@ const CommunityPage = () => {
     const safety = checkTextSafety(commentText);
     if (!safety.safe) { toast.error(`评论被拦截：${safety.violations.join("；")}`); return; }
     await supabase.from("comments").insert({ user_id: user.id, post_id: postId, content: commentText.trim() });
-    setCommentText(""); loadComments(postId); fetchPosts();
+    setCommentText("");
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p));
+    loadComments(postId);
   };
 
   return (
