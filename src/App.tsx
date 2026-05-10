@@ -50,6 +50,7 @@ const AdminApplicationsPage = lazyTracked("路由 AdminApplicationsPage", () => 
 const AdminCommissionPage = lazyTracked("路由 AdminCommissionPage", () => import("./pages/admin/AdminCommissionPage"));
 const AdminRevenuePage = lazyTracked("路由 AdminRevenuePage", () => import("./pages/admin/AdminRevenuePage"));
 const AdminWithdrawalsPage = lazyTracked("路由 AdminWithdrawalsPage", () => import("./pages/admin/AdminWithdrawalsPage"));
+const AdminAuditLogPage = lazyTracked("路由 AdminAuditLogPage", () => import("./pages/admin/AdminAuditLogPage"));
 const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/WithdrawPage"));
 
 const queryClient = new QueryClient();
@@ -103,6 +104,7 @@ const App = () => (
             <Route path="/admin/commission" element={<RoleGuard allow={["admin"]}><AdminCommissionPage /></RoleGuard>} />
             <Route path="/admin/revenue" element={<RoleGuard allow={["admin"]}><AdminRevenuePage /></RoleGuard>} />
             <Route path="/admin/withdrawals" element={<RoleGuard allow={["admin"]}><AdminWithdrawalsPage /></RoleGuard>} />
+            <Route path="/admin/audit" element={<RoleGuard allow={["admin"]}><AdminAuditLogPage /></RoleGuard>} />
             <Route path="/worker/withdraw" element={<RoleGuard allow={["sitter","groomer","driver"]}><WithdrawPage /></RoleGuard>} />
             <Route path="/roles" element={<RoleSwitchPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
