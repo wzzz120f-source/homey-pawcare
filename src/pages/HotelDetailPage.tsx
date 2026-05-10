@@ -854,14 +854,14 @@ const HotelDetailPage = () => {
           onClick={() => { setShowBooking(false); resetBookingForm(); }}
         >
           <div
-            className="bg-background w-full max-w-lg rounded-t-2xl flex flex-col animate-fade-in-up max-h-[92vh]"
+            className="bg-background w-full max-w-lg rounded-t-2xl flex flex-col animate-fade-in-up h-[92vh]"
             onClick={e => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="预订房型"
           >
             {/* Sticky header */}
-            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3 border-b border-border/60">
+            <div className="shrink-0 flex items-center justify-between gap-3 px-5 pt-5 pb-3 border-b border-border/60">
               <h3 className="text-lg font-extrabold text-foreground flex items-center gap-2 min-w-0">
                 <CalendarDays className="w-5 h-5 text-primary shrink-0" />
                 <span className="truncate">
@@ -879,7 +879,7 @@ const HotelDetailPage = () => {
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
             {bookingStep === "form" ? (
               <div className="space-y-4">
                 {/* Room type selection */}
@@ -1112,7 +1112,7 @@ const HotelDetailPage = () => {
 
             {/* Sticky footer: 合计 + 操作 (always visible, safe-area aware) */}
             <div
-              className="border-t border-border bg-background/95 backdrop-blur px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 rounded-b-none"
+              className="shrink-0 border-t border-border bg-background/95 backdrop-blur px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 rounded-b-none"
               data-testid="booking-modal-footer"
             >
               <div className="flex items-center justify-between text-base">

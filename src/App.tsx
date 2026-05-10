@@ -52,6 +52,9 @@ const AdminRevenuePage = lazyTracked("路由 AdminRevenuePage", () => import("./
 const AdminWithdrawalsPage = lazyTracked("路由 AdminWithdrawalsPage", () => import("./pages/admin/AdminWithdrawalsPage"));
 const AdminAuditLogPage = lazyTracked("路由 AdminAuditLogPage", () => import("./pages/admin/AdminAuditLogPage"));
 const WithdrawPage = lazyTracked("路由 WithdrawPage", () => import("./pages/WithdrawPage"));
+const AddressBookPage = lazyTracked("路由 AddressBookPage", () => import("./pages/AddressBookPage"));
+const WalletPage = lazyTracked("路由 WalletPage", () => import("./pages/WalletPage"));
+const ProviderEarningsPage = lazyTracked("路由 ProviderEarningsPage", () => import("./pages/ProviderEarningsPage"));
 
 const queryClient = new QueryClient();
 
@@ -106,6 +109,9 @@ const App = () => (
             <Route path="/admin/withdrawals" element={<RoleGuard allow={["admin"]}><AdminWithdrawalsPage /></RoleGuard>} />
             <Route path="/admin/audit" element={<RoleGuard allow={["admin"]}><AdminAuditLogPage /></RoleGuard>} />
             <Route path="/worker/withdraw" element={<RoleGuard allow={["sitter","groomer","driver"]}><WithdrawPage /></RoleGuard>} />
+            <Route path="/worker/earnings" element={<RoleGuard allow={["sitter","groomer","driver"]}><ProviderEarningsPage /></RoleGuard>} />
+            <Route path="/profile/addresses" element={<AddressBookPage />} />
+            <Route path="/wallet" element={<WalletPage />} />
             <Route path="/roles" element={<RoleSwitchPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
