@@ -879,7 +879,7 @@ const HotelDetailPage = () => {
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
             {bookingStep === "form" ? (
               <div className="space-y-4">
                 {/* Room type selection */}
