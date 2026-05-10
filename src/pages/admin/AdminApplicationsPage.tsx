@@ -89,17 +89,37 @@ const AdminApplicationsPage = () => {
               <Card key={a.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold">{a.full_name || a.contact_name || a.store_name || "—"}</p>
-                    <p className="text-xs text-muted-foreground">{a.phone || a.contact_phone}</p>
+                    <p className="font-semibold">
+                      {tab === "rescue"
+                        ? `${a.pet_type === "cat" ? "🐱" : a.pet_type === "dog" ? "🐶" : "🐾"} ${a.pet_name}`
+                        : (a.full_name || a.contact_name || a.store_name || "—")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {tab === "rescue" ? `实名：${a.real_name || "—"} · 末4位：${a.id_card_last4 || "—"} · ${a.location || ""}` : (a.phone || a.contact_phone)}
+                    </p>
                   </div>
-                  {tab === "driver"
-                    ? <Badge>{ROLE_LABEL[a.role_requested] || a.role_requested}</Badge>
-                    : <Badge>商家</Badge>}
+                  {tab === "driver" ? <Badge>{ROLE_LABEL[a.role_requested] || a.role_requested}</Badge>
+                    : tab === "merchant" ? <Badge>商家</Badge>
+                    : <Badge>救助</Badge>}
                 </div>
                 {tab === "driver" && (
                   <p className="text-xs text-muted-foreground">驾龄 {a.driving_years} 年 · {a.vehicle_type} · 性别 {a.gender}</p>
                 )}
                 {tab === "merchant" && a.address && <p className="text-xs text-muted-foreground">{a.address}</p>}
+                {tab === "rescue" && (
+                  <>
+                    <p className="text-xs text-foreground line-clamp-3">{a.story}</p>
+                    {a.proof_urls?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {a.proof_urls.map((u: string, i: number) => (
+                          <a key={i} href={u} target="_blank" rel="noreferrer">
+                            <img src={u} className="w-16 h-16 object-cover rounded border border-border" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" onClick={() => approve(a.id)}>通过</Button>
                   <Button size="sm" variant="outline" onClick={() => { setRejectTarget({ id: a.id, kind: tab }); setReason(""); }}>驳回</Button>
