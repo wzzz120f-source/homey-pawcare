@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, LayoutDashboard, ClipboardList, Percent, BarChart3, Banknote, ScrollText } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ClipboardList, Percent, BarChart3, Banknote, ScrollText, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/admin/commission", label: "抽成", icon: Percent },
   { to: "/admin/revenue", label: "收益", icon: BarChart3 },
   { to: "/admin/withdrawals", label: "提现", icon: Banknote },
+  { to: "/admin/refunds", label: "退款", icon: Undo2 },
   { to: "/admin/audit", label: "审计", icon: ScrollText },
 ];
 
