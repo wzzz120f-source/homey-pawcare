@@ -139,6 +139,14 @@ const PaymentPage = () => {
       .then(({ data }) => setWalletBalance(Number(data?.balance ?? 0)));
   }, [user]);
 
+  // 余额不足时自动切换到下一个可用方式
+  useEffect(() => {
+    if (selectedMethod === "wallet" && walletBalance < (orderData?.total_amount ?? 0)) {
+      setSelectedMethod("wechat");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletBalance, orderData?.total_amount]);
+
   // Fetch shipping addresses for shop orders
   useEffect(() => {
     if (!isShop || !user) return;
