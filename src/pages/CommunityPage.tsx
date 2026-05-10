@@ -398,7 +398,7 @@ const CommunityPage = () => {
           </Tabs>
         </div>
         <CommunitySearchBar activeTab={activeTab} value={searchTerm} onChange={setSearchTerm} />
-        <ChunkStatusWidget />
+        {import.meta.env.DEV && <ChunkStatusWidget />}
       </header>
 
       <main className="max-w-lg mx-auto">

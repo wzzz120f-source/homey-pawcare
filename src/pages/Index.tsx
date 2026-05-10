@@ -327,28 +327,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Footer · 加入我们 */}
-        <footer className="mt-6 mx-4 mb-4 rounded-2xl border border-border/60 bg-card/60 p-5 text-center" aria-label="加入我们">
-          <p className="text-xs text-muted-foreground mb-3">想成为平台一员?</p>
-          <div className="flex items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/driver/apply")}
-              className="text-sm font-bold text-primary hover:underline min-h-[44px]"
-            >
-              🚗 宠托师招募
-            </button>
-            <span className="text-muted-foreground/40">·</span>
-            <button
-              type="button"
-              onClick={() => navigate("/merchant/apply")}
-              className="text-sm font-bold text-primary hover:underline min-h-[44px]"
-            >
-              🏪 商家入驻
-            </button>
-          </div>
-          <p className="mt-3 text-[10px] text-muted-foreground/70">时间自由 · 收入透明 · 平台保险保障</p>
-        </footer>
       </main>
 
       <BottomNav />
