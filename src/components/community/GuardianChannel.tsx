@@ -79,11 +79,20 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
 
   const load = async () => {
     setLoading(true);
+    // 公共：仅展示已通过审核 + active 的故事；登录用户额外能看自己未通过的
+    const baseQ = supabase
+      .from("rescue_stories" as any)
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(60);
     const [r1, r2] = await Promise.all([
-      supabase.from("rescue_stories" as any).select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
+      baseQ,
       supabase.from("tnr_collaborations" as any).select("*").order("created_at", { ascending: false }).limit(30),
     ]);
-    setStories(r1.data || []);
+    const all = (r1.data as any[]) || [];
+    const visible = all.filter((s) => s.verify_status === "verified" || (user && s.user_id === user.id));
+    setStories(visible);
     setTnrs(r2.data || []);
     setLoading(false);
   };
