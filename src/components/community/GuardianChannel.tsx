@@ -46,6 +46,7 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
   const [showRescueForm, setShowRescueForm] = useState(false);
   const [showTnrForm, setShowTnrForm] = useState(false);
   const [shareStory, setShareStory] = useState<any | null>(null);
+  const [feedTarget, setFeedTarget] = useState<any | null>(null);
 
   // 救助日记表单
   const [petName, setPetName] = useState("");
