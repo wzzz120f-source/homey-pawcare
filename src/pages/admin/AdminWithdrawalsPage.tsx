@@ -105,7 +105,7 @@ const AdminWithdrawalsPage = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {tab === "pending" && selected.size > 0 && (
-              <Button size="sm" onClick={batchApprove}>批量打款 ({selected.size})</Button>
+              <Button size="sm" onClick={() => setConfirmAction("batch")}>批量打款 ({selected.size})</Button>
             )}
             {selected.size > 0 && (
               <Button size="sm" variant="outline" onClick={() => exportCsv("selected")}>
@@ -148,7 +148,7 @@ const AdminWithdrawalsPage = () => {
                 {r.reject_reason && <p className="text-xs text-destructive">驳回理由：{r.reject_reason}</p>}
                 {(tab === "pending" || tab === "flagged") && (
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" onClick={() => approve(r.id, tab === "flagged")}>{tab === "flagged" ? "确认强制打款" : "审批通过"}</Button>
+                    <Button size="sm" onClick={() => setConfirmAction({ id: r.id, force: tab === "flagged" })}>{tab === "flagged" ? "确认强制打款" : "审批通过"}</Button>
                     <Button size="sm" variant="outline" onClick={() => { setRejectTarget(r.id); setReason(""); }}>驳回</Button>
                   </div>
                 )}
