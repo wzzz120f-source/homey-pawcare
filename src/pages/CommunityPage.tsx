@@ -195,46 +195,32 @@ const CommunityPage = () => {
   const badgeMap = useUserBadges(userIds);
 
   const fetchPosts = async () => {
-    let query: any = (supabase as any)
-      .from("posts")
-      .select("id, user_id, content, created_at, tags, category, is_featured")
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (filterCategory !== "all") query = query.eq("category", filterCategory);
-    if (filterTag) query = query.contains("tags", [filterTag]);
-    if (searchTerm.trim()) query = query.ilike("content", `%${searchTerm.trim()}%`);
-
-    const { data: postsData, error } = await query;
-    if (error || !postsData) {
+    const { data, error } = await (supabase as any).rpc("get_feed_posts", {
+      _viewer: user?.id ?? null,
+      _category: filterCategory === "all" ? null : filterCategory,
+      _tag: filterTag,
+      _search: searchTerm.trim() || null,
+      _limit: 50,
+      _offset: 0,
+    });
+    if (error || !data) {
       setLoading(false);
       return;
     }
-
-    const enriched: Post[] = await Promise.all(
-      (postsData as any[]).map(async (post) => {
-        const [profileRes, mediaRes, likesRes, commentsRes, myLikeRes] = await Promise.all([
-          supabase.from("profiles").select("username, avatar_url").eq("user_id", post.user_id).maybeSingle(),
-          supabase.from("post_media").select("id, media_url, media_type").eq("post_id", post.id),
-          supabase.from("likes").select("id", { count: "exact", head: true }).eq("post_id", post.id),
-          supabase.from("comments").select("id", { count: "exact", head: true }).eq("post_id", post.id),
-          user ? supabase.from("likes").select("id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-        ]);
-        return {
-          ...post,
-          tags: post.tags || [],
-          category: post.category || "life",
-          is_featured: !!post.is_featured,
-          profiles: profileRes.data,
-          media: mediaRes.data || [],
-          likes_count: likesRes.count || 0,
-          comments_count: commentsRes.count || 0,
-          liked_by_me: !!(myLikeRes as any).data,
-        };
-      })
-    );
-
+    const enriched: Post[] = (data as any[]).map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      content: row.content,
+      created_at: row.created_at,
+      tags: row.tags || [],
+      category: row.category || "life",
+      is_featured: !!row.is_featured,
+      profiles: { username: row.username, avatar_url: row.avatar_url },
+      media: row.media || [],
+      likes_count: Number(row.likes_count) || 0,
+      comments_count: Number(row.comments_count) || 0,
+      liked_by_me: !!row.liked_by_me,
+    }));
     setPosts(enriched);
     setLoading(false);
   };
@@ -244,7 +230,7 @@ const CommunityPage = () => {
     fetchPosts();
     const channel = supabase
       .channel("posts-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => fetchPosts())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => fetchPosts())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -328,13 +314,20 @@ const CommunityPage = () => {
     if (!user) { navigate("/auth"); return; }
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
-    if (post.liked_by_me) {
-      await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
+    const willLike = !post.liked_by_me;
+    // Optimistic update — avoid full refetch
+    setPosts((prev) => prev.map((p) =>
+      p.id === postId
+        ? { ...p, liked_by_me: willLike, likes_count: Math.max(0, p.likes_count + (willLike ? 1 : -1)) }
+        : p
+    ));
+    if (willLike) {
+      const { error } = await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
+      if (error) setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, liked_by_me: false, likes_count: Math.max(0, p.likes_count - 1) } : p));
     } else {
-      // 触发器自动给作者发 +2 积分
-      await supabase.from("likes").insert({ user_id: user.id, post_id: postId });
+      const { error } = await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
+      if (error) setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, liked_by_me: true, likes_count: p.likes_count + 1 } : p));
     }
-    fetchPosts();
   };
 
   const loadComments = async (postId: string) => {
@@ -359,7 +352,9 @@ const CommunityPage = () => {
     const safety = checkTextSafety(commentText);
     if (!safety.safe) { toast.error(`评论被拦截：${safety.violations.join("；")}`); return; }
     await supabase.from("comments").insert({ user_id: user.id, post_id: postId, content: commentText.trim() });
-    setCommentText(""); loadComments(postId); fetchPosts();
+    setCommentText("");
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p));
+    loadComments(postId);
   };
 
   return (

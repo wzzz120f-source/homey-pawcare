@@ -2948,6 +2948,31 @@ export type Database = {
         Returns: Json
       }
       driver_grab_order: { Args: { _order_id: string }; Returns: Json }
+      get_feed_posts: {
+        Args: {
+          _category?: string
+          _limit?: number
+          _offset?: number
+          _search?: string
+          _tag?: string
+          _viewer?: string
+        }
+        Returns: {
+          avatar_url: string
+          category: string
+          comments_count: number
+          content: string
+          created_at: string
+          id: string
+          is_featured: boolean
+          liked_by_me: boolean
+          likes_count: number
+          media: Json
+          tags: string[]
+          user_id: string
+          username: string
+        }[]
+      }
       get_product_review_stats: {
         Args: never
         Returns: {
