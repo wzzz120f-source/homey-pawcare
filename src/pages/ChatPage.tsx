@@ -56,10 +56,10 @@ export default function ChatPage() {
       setConv(c as Conv);
       const peerId = c.user_id === user.id ? c.peer_id : c.user_id;
       if (peerId) {
-        const { data: p } = await supabase.from("profiles").select("username, phone").eq("user_id", peerId).maybeSingle();
+        const { data: p } = await supabase.from("profiles").select("username").eq("user_id", peerId).maybeSingle();
         if (p) {
-          setPeerName(p.username ?? "聊天");
-          setPeerPhone((p as any).phone ?? null);
+          setPeerName((p as any).username ?? "聊天");
+          setPeerPhone(null);
         }
       }
       const { data: m } = await supabase
