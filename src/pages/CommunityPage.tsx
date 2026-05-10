@@ -203,6 +203,7 @@ const CommunityPage = () => {
       _search: searchTerm.trim() || null,
       _limit: 50,
       _offset: 0,
+      _only_following: feedScope === "following",
     });
     if (error || !data) {
       setLoading(false);
