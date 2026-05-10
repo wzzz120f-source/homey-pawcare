@@ -44,6 +44,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_chat_quota: {
+        Row: {
+          count: number
+          quota_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          quota_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          quota_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           created_at: string
@@ -2904,6 +2925,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_ai_chat_quota: {
+        Args: { _max?: number; _uid: string }
+        Returns: Json
       }
       is_merchant_owner: {
         Args: { _merchant_id: string; _user_id: string }
