@@ -62,6 +62,7 @@ const GroomerRatingPage = lazyTracked("路由 GroomerRatingPage", () => import("
 const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import("./pages/ServiceCheckinPage"));
 const PaymentResultPage = lazyTracked("路由 PaymentResultPage", () => import("./pages/PaymentResultPage"));
 const AdminRefundsPage = lazyTracked("路由 AdminRefundsPage", () => import("./pages/admin/AdminRefundsPage"));
+const UserProfilePage = lazyTracked("路由 UserProfilePage", () => import("./pages/UserProfilePage"));
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/order/:id" element={<OrderDetailPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/u/:userId" element={<UserProfilePage />} />
             <Route path="/merchant-appeal" element={<MerchantAppealPage />} />
             <Route path="/pet-hotel" element={<PetHotelPage />} />
             <Route path="/pet-hotel/:id" element={<HotelDetailPage />} />

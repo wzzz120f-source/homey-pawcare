@@ -189,6 +189,7 @@ const CommunityPage = () => {
   const [filterCategory, setFilterCategory] = useState<PostCategory>("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [feedScope, setFeedScope] = useState<"recommend" | "following">("recommend");
   // file input handled inside MediaPicker component
 
   const userIds = posts.map((p) => p.user_id);
@@ -202,6 +203,7 @@ const CommunityPage = () => {
       _search: searchTerm.trim() || null,
       _limit: 50,
       _offset: 0,
+      _only_following: feedScope === "following",
     });
     if (error || !data) {
       setLoading(false);
@@ -234,7 +236,7 @@ const CommunityPage = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, filterCategory, filterTag, activeTab, searchTerm]);
+  }, [user, filterCategory, filterTag, activeTab, searchTerm, feedScope]);
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, "");
@@ -403,6 +405,32 @@ const CommunityPage = () => {
       <main className="max-w-lg mx-auto">
         {activeTab === "plaza" && (
           <>
+            {/* 推荐 / 关注 子 Tab */}
+            <div className="flex gap-1 px-4 pt-3 -mb-1">
+              {([
+                { v: "recommend", label: "推荐" },
+                { v: "following", label: "关注" },
+              ] as const).map((s) => (
+                <button
+                  key={s.v}
+                  onClick={() => {
+                    if (s.v === "following" && !user) {
+                      toast.error("请先登录后查看关注内容");
+                      return;
+                    }
+                    setFeedScope(s.v);
+                  }}
+                  className={cn(
+                    "px-3 py-1 text-sm font-extrabold transition-colors relative",
+                    feedScope === s.v
+                      ? "text-foreground after:absolute after:left-2 after:right-2 after:-bottom-1 after:h-0.5 after:bg-primary after:rounded-full"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
             {/* 分类 chips */}
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex gap-2 px-4 pt-3 pb-2">
@@ -595,7 +623,12 @@ const CommunityPage = () => {
 
                           {/* 作者 + 互动 */}
                           <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/u/${post.user_id}`); }}
+                              className="flex items-center gap-1.5 min-w-0 hover:opacity-80"
+                              aria-label="查看用户主页"
+                            >
                               <Avatar className="w-5 h-5 flex-shrink-0">
                                 <AvatarImage src={post.profiles?.avatar_url} />
                                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
@@ -603,7 +636,7 @@ const CommunityPage = () => {
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-[10px] text-muted-foreground truncate">{post.profiles?.username || "宠物主人"}</span>
-                            </div>
+                            </button>
                             <button
                               onClick={() => toggleLike(post.id)}
                               className={cn(
