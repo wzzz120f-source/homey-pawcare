@@ -24,17 +24,29 @@ const AdminApplicationsPage = () => {
 
   const load = async () => {
     setLoading(true); setError(null);
-    const table = tab === "driver" ? "driver_applications" : "merchant_applications";
-    const { data, error } = await supabase.from(table as any).select("*").eq("status", "pending").order("created_at", { ascending: false });
-    if (error) setError(error.message);
-    setList((data as any[]) || []);
+    if (tab === "rescue") {
+      const { data, error } = await supabase
+        .from("rescue_stories" as any)
+        .select("*")
+        .eq("verify_status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) setError(error.message);
+      setList((data as any[]) || []);
+    } else {
+      const table = tab === "driver" ? "driver_applications" : "merchant_applications";
+      const { data, error } = await supabase.from(table as any).select("*").eq("status", "pending").order("created_at", { ascending: false });
+      if (error) setError(error.message);
+      setList((data as any[]) || []);
+    }
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab]);
 
   const approve = async (id: string) => {
-    const fn = tab === "driver" ? "approve_driver_application" : "approve_merchant_application";
-    const { data, error } = await supabase.rpc(fn as any, { _application_id: id });
+    let fn: string; let args: any;
+    if (tab === "rescue") { fn = "admin_review_rescue_story"; args = { _id: id, _approve: true, _note: null }; }
+    else { fn = tab === "driver" ? "approve_driver_application" : "approve_merchant_application"; args = { _application_id: id }; }
+    const { data, error } = await supabase.rpc(fn as any, args);
     if (error || (data as any)?.success === false) {
       toast({ title: "审批失败", description: error?.message || (data as any)?.error, variant: "destructive" });
     } else {
@@ -43,10 +55,10 @@ const AdminApplicationsPage = () => {
   };
   const submitReject = async () => {
     if (!rejectTarget) return;
-    const fn = rejectTarget.kind === "driver" ? "reject_driver_application" : "reject_merchant_application";
-    const args: any = rejectTarget.kind === "driver"
-      ? { _application_id: rejectTarget.id, _reason: reason }
-      : { _application_id: rejectTarget.id, _note: reason };
+    let fn: string; let args: any;
+    if (rejectTarget.kind === "rescue") { fn = "admin_review_rescue_story"; args = { _id: rejectTarget.id, _approve: false, _note: reason }; }
+    else if (rejectTarget.kind === "driver") { fn = "reject_driver_application"; args = { _application_id: rejectTarget.id, _reason: reason }; }
+    else { fn = "reject_merchant_application"; args = { _application_id: rejectTarget.id, _note: reason }; }
     const { data, error } = await supabase.rpc(fn as any, args);
     if (error || (data as any)?.success === false) {
       toast({ title: "驳回失败", description: error?.message || (data as any)?.error, variant: "destructive" });
