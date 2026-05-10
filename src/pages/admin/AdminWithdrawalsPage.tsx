@@ -33,6 +33,7 @@ const AdminWithdrawalsPage = () => {
   const [reason, setReason] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [confirmAction, setConfirmAction] = useState<null | "batch" | { id: string; force: boolean }>(null);
 
   const load = async () => {
     setLoading(true); setError(null);
@@ -53,14 +54,14 @@ const AdminWithdrawalsPage = () => {
     const fn = force ? "admin_force_pay_withdrawal" : "admin_approve_withdrawal";
     const { data, error } = await supabase.rpc(fn as any, { _id: id });
     if (error || (data as any)?.success === false) {
-      toast({ title: "操作失败", description: error?.message || (data as any)?.error, variant: "destructive" });
+      toast({ title: "操作失败", description: friendlySupabaseError(error?.message || (data as any)?.error), variant: "destructive" });
     } else {
       const flagged = (data as any)?.flagged;
       toast({ title: flagged ? "已标记风险，待复核" : "已打款", description: flagged ? `风险标签: ${(data as any).risk_flags?.join(",")}` : undefined });
       load();
     }
   };
-  const batchApprove = async () => { for (const id of selected) await approve(id, false); };
+  const doBatchApprove = async () => { for (const id of selected) await approve(id, false); };
   const submitReject = async () => {
     if (!rejectTarget) return;
     const { data, error } = await supabase.rpc("admin_reject_withdrawal" as any, { _id: rejectTarget, _reason: reason });
