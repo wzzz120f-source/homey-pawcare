@@ -230,7 +230,7 @@ const CommunityPage = () => {
     fetchPosts();
     const channel = supabase
       .channel("posts-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => fetchPosts())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => fetchPosts())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
