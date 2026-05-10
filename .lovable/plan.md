@@ -1,119 +1,132 @@
-## 一、司机只读宠物档案页加固
 
-**1. PetProfilesPage.tsx — 只读模式增强**
-- 顶部新增 sticky 横幅：返回按钮（`navigate(-1)` + 兜底 `/worker`）+ 标题「乘客宠物档案（只读）」+ 订单号 + 乘客昵称 chip。
-- 友好回退分三种：
-  - 无 `orderId` → 空态卡：`🔒 此页面仅司机在订单中查看`，CTA「返回工作台」。
-  - 订单不存在或 `driver_id ≠ user.id` → 空态卡：`无权查看该乘客资料`，CTA「查看我的订单」→ `/worker?tab=orders`。
-  - 订单状态不在白名单 → 空态卡：`订单已结束/未开始，资料已收回`。
-- 全局隐藏新增/编辑/删除/auto_share 开关；详情字段仅展示对司机有用的：名字/品种/体重/疫苗有效期/过敏/行为备注。
+# 商业模块精细化补全方案
 
-**2. RLS 扩展（migration）**
-扩展 `pets` 的 `Drivers view pets of active orders` 策略，订单状态白名单加到：`accepted, confirmed, driver_assigned, pickup_pending, in_progress`（最终以现有 `order_status` 实际取值为准，迁移前用 `read_query` 核对 distinct 值）。
-
-**3. 自动化测试 (`PetProfilesPage.readonly.test.tsx`)**
-- 司机访问本订单 → 渲染只读字段、无编辑按钮。
-- 司机访问他人订单（`driver_id` 不匹配）→ 渲染无权限空态。
-- 缺 `orderId` → 渲染缺参空态。
-- 订单状态为 `completed` → 渲染已结束空态（mock supabase 返回）。
-- mock `@/integrations/supabase/client`，断言只读 UI 不出现 `data-testid="pet-edit-btn"` 等。
+围绕用户提出的 8 个业务点，按"数据→后端→UI"三层补齐，复用已有的 `orders / trip_tracking / commission_settings / provider_balances / Amap` 基础设施。
 
 ---
 
-## 二、开发者（admin）后台全生命周期管理
+## 1. 宠物接送（司机模块）
 
-判定方式：**复用现有 `admin` 角色**，登录后若 `isAdmin` 自动把默认 active role 设为 `admin`，并在 `/admin` 入口聚合下列模块。RoleSwitcher 行为不变。
+### 司机端「接单大厅」`/worker?tab=hall`
+- 拉取 `orders` where `driver_id IS NULL AND service_type IN ('pickup','delivery') AND order_status='pending'`。
+- 卡片字段：起止地址、距离（Amap 路径规划，缓存到本地）、预计行程时长、`driver_fare` 净收益（扣除 `commission_settings.driver` 后的 net）。
+- 「一键抢单」RPC `driver_grab_order(_order_id)`：原子 update + 触发器校验仅一名司机。
 
-### A. 路由与骨架
-新增页面，统一 `RoleGuard allow={["admin"]}`：
-- `/admin` — 总览仪表盘（卡片导航 + KPI）
-- `/admin/applications` — 注册审核（合并 driver/groomer/sitter/merchant_applications，沿用现有表 + 新接 reject reason 输入框）
-- `/admin/commission` — 抽成配置
-- `/admin/revenue` — 收益看板
-- `/admin/withdrawals` — 提现审批
-- 服务端工作：所有列表/审批走 RLS + RPC，避免暴露写权限。
+### 宠主端「实时位置地图」(`TripTrackingPage`)
+- 已存在 `trip_tracking.driver_lat/lng + Realtime`，但目前仅展示文字。新增 `<DriverLiveMap />`（Amap JS Map），订阅 Realtime 推送的经纬度更新司机 marker 平滑插值；展示路线、ETA、刷新时间。
+- 司机端在路上每 15s 调用 `update_trip_tracking` 上报浏览器 `geolocation`。
 
-### B. 数据库迁移（migration）
+## 2. 上门喂养 / 洗护：硬性打卡相机
+
+### 数据
+- 新表 `service_checkins(id, order_id, user_id, action_key, photo_url, lat, lng, exif_at, created_at)`。
+- `action_key` 枚举：`feed_food / clean_litter / brush / bath_before / bath_after / play / leave`。
+- 配置 `SERVICE_CHECKLISTS: Record<service_type, action_key[]>`。
+
+### 强制流程
+- 服务者面板 `<ServiceCheckinChecklist />`：按清单逐项拍照（`<MediaPicker capture="environment">`），上传后画 EXIF 时间 + GPS 文字水印（canvas 合成）后再写入 `service-checkins` 桶。
+- RPC `complete_service_order(_order_id)` 校验清单全部满足，否则返回 `error: 'checkin_incomplete'`，前端结单按钮禁用并提示缺项。
+- 宠主 `OrderDetailPage` 新增「实时动态」时间线，订阅 `service_checkins` Realtime。
+
+## 3. 宠物酒店
+
+### 修复结账/取消按钮丢失
+- 现因房型选中后某条件渲染遮挡 BottomCta；改为 `<BottomCta>` 始终渲染，按 `selectedRoom && selectedPet` 切换 disabled 状态。
+
+### 房型 + 入住宠物档案
+- 新表 `hotel_rooms(id, hotel_id, type, name, capacity, base_price, amenities[], image_url, stock)` 替代当前硬编码 `ROOM_TYPES`。
+- UI：房型卡片网格 → 选择 → 弹出宠物多选（`pets` 表，限 capacity 内）→ 入离日期 → 自动算价 `nights * base_price * pets.length` → 进入 PaymentPage。
+
+## 4. 独立商城收货地址
+
+### 新表 `shipping_addresses`
+```
+id, user_id, recipient, phone, province, city, district, detail,
+postal_code, is_default, created_at, updated_at
+```
+- RLS：仅本人 CRUD。触发器保证同用户仅一条 `is_default=true`。
+
+### UI
+- `/profile/addresses`：地址簿增删改默认。
+- 商品 SKU 类型 `shippable=true` 时，`PaymentPage` 顶部出现「选择收货地址」抽屉；下单将 `shipping_address_snapshot jsonb` 写入 `orders`（避免后续地址变更影响历史单）。
+
+## 5. 钱包系统：双入口
+
+### A. 宠主钱包 `/wallet`
+- 新表 `user_wallets(user_id, balance, frozen)` + `wallet_transactions(user_id, type, amount, related_order_id, ...)`。
+- 充值（接入已存在的微信/支付宝 PaymentPage），余额支付订单，退款回退。
+- 页签：余额 / 充值记录 / 消费记录。
+
+### B. 服务商收益 `/worker/earnings`
+- 复用 `provider_balances` + `earning_transactions` + `withdrawal_requests`（已存在）。
+- 模块：当前可用余额、冻结中、累计提现、本月佣金收入、按订单的明细列表、「去提现」入口（已有 `/worker/withdraw`）。
+
+## 6. IM 即时通讯（丰富版）
+
+### 数据
+- 沿用 `chat_conversations` 增列 `peer_id, order_id, last_message_at, unread_user, unread_peer`。
+- 扩展 `chat_messages.message_type`: `text|image|location|voice|system`，新增 `media_url, duration_sec, lat, lng`。
+- 触发器：插消息 → 更新会话 last_message_at + 自增对方 unread。
+- Realtime publication 加入两表。
+
+### 功能
+- 会话列表 `/messages` + 详情 `/messages/:id`。
+- 文本（敏感词过滤：调用 edge function `moderate-text`，本地维护 `sensitive_words` 列表 + AI 兜底）。
+- 图片（复用 community-media 桶）、语音录制（MediaRecorder 上传 webm，新增 `chat-media` 桶）。
+- 高德定位选点（POI 选择器）→ 卡片消息。
+- 拨号：基于平台中转的"虚拟号"——edge function `voice-dial-init` 返回临时号码（MVP 直接返回对方虚拟号；真实电信侧后续接入）。
+- 已读回执 + 未读数。
+- 入口：`OrderDetailPage`、`TripTrackingPage`、`WorkerDashboard` 订单卡片均插入「联系对方」按钮。
+
+## 7. 评价系统细化
+
+- 司机评价 `trip_ratings`（已含 safety / pet_care / punctuality / communication）：补充 quick tags `["驾驶平稳","急刹少","空调适宜","上下车温柔"]`，并把 safety_rating 文案改为「驾驶稳不稳」。
+- 新增 `groomer_ratings(order_id, user_id, technique, gentleness, pet_stress_level(1-5 反向), env_clean, tags[], content)`，列在洗护订单完成后；`pet_stress_level` 1=很放松 5=很紧张，UI 用表情滑块。
+- 入口：`OrderDetailPage` 完成态根据 `service_type` 跳转对应评价页。
+
+---
+
+## 技术细节 / 实施顺序
 
 ```text
-commission_settings(id, role app_role UNIQUE, mode 'percent'|'fixed',
-                    value numeric, updated_by, updated_at)
+Phase 1  数据迁移
+  ├─ shipping_addresses + 默认地址触发器
+  ├─ hotel_rooms + 种子数据
+  ├─ service_checkins + 完成校验 RPC
+  ├─ user_wallets / wallet_transactions
+  ├─ chat_* 扩列 + 触发器 + Realtime
+  └─ groomer_ratings + RLS
 
-provider_balances(user_id PK, role app_role, available numeric default 0,
-                  frozen numeric default 0, withdrawn_total numeric default 0,
-                  updated_at)
+Phase 2  司机/服务模块
+  ├─ DriverLiveMap (Amap)
+  ├─ HallTab + driver_grab_order RPC
+  └─ ServiceCheckinChecklist + 水印工具 lib/photoStamp.ts
 
-earning_transactions(id, user_id, role, order_id, gross numeric,
-                     commission numeric, net numeric, settled_at, created_at)
-  -- 订单完成时由 trigger 写入：按 commission_settings 计算 commission/net,
-     net 进 provider_balances.available
+Phase 3  酒店修复 + 商城地址
+  ├─ HotelDetailPage 重构 BottomCta 渲染
+  └─ AddressBookPage + PaymentPage 接入
 
-withdrawal_requests(id, user_id, role, amount, fee numeric default 0,
-                    actual_amount numeric, bank_info jsonb,
-                    status 'pending'|'approved'|'paid'|'rejected'|'flagged',
-                    risk_flags text[], reject_reason text,
-                    requested_at, reviewed_by, reviewed_at, paid_at,
-                    voucher_no text)
+Phase 4  钱包
+  ├─ /wallet 宠主页
+  └─ /worker/earnings 收益页
+
+Phase 5  IM
+  ├─ MessagesListPage + ChatRoomPage
+  ├─ VoiceRecorder + LocationPicker
+  ├─ moderate-text edge function
+  └─ 各订单页"联系对方"入口
+
+Phase 6  评价细化
+  ├─ TripRatingPage 文案 + tags
+  └─ GroomerRatingPage 新建
 ```
 
-**RPC（SECURITY DEFINER, has_role(admin)）**
-- `admin_approve_application(table, id, note)` / `admin_reject_application(table, id, reason)`
-- `admin_set_commission(role, mode, value)`
-- `admin_approve_withdrawal(id)` — 校验 available ≥ amount → 扣 available + withdrawn_total += amount → status=`paid` + 生成 `voucher_no` + 通知。
-- `admin_reject_withdrawal(id, reason)` — 解冻 frozen → available。
-- `provider_request_withdrawal(amount, bank_info)` — 校验 available ≥ amount → 移到 frozen → 插入 pending。
+### 关键约定
+- 所有新表均 `ALTER TABLE ... ENABLE RLS`；写策略遵循「本人/订单参与方/admin」三类。
+- 照片水印走前端 canvas，保证 EXIF 时间 ≥ now()-10min（防旧图）；服务端在 RPC 内再二次校验 `exif_at`。
+- IM 所有富媒体走对应 public 桶，但敏感语音/位置不存原始定位以外字段。
+- 单元测试：`driver_grab_order` 并发抢单、`complete_service_order` checklist 校验、地址默认唯一性、IM 未读数累加。
 
-**RLS**
-- `commission_settings`：select 全员；写仅 admin。
-- `provider_balances`：select 自己 OR admin。
-- `earning_transactions`：select 自己 OR admin。
-- `withdrawal_requests`：select 自己 OR admin；insert 自己（amount>0 + status='pending'）；update 仅 admin。
-
-**风控**
-- 在 `admin_approve_withdrawal` 内置规则：24h 内 ≥3 次提现、单日金额 > 阈值、订单含 user_id == driver_id（自买自卖）→ 写入 `risk_flags`，状态置 `flagged` 而非 `paid`，需第二次确认 RPC `admin_force_pay(id)`。
-
-### C. 前端模块
-
-**1. ApplicationsAuditPage**
-- Tabs：商家 / 司机 / 宠托师 / 护理师；列表项展示资质图、身份信息、联系方式。
-- Approve → 调对应 RPC（merchant 已有 `approve_merchant_application`，新增 driver/groomer/sitter 类似函数 → 通过后写入 `user_roles`）。
-- Reject → Dialog 输入理由 → RPC + notifications。
-- 注册状态语义：`*_applications.status = approved` 才是有效角色，`pending` 时 RoleGuard 已经会把用户挡在 /roles。
-
-**2. CommissionConfigPage**
-- 表格：每个角色一行，切换 % / Fixed，输入框 + 保存（RPC `admin_set_commission`）。
-- 顶部说明：「修改即时对新订单生效，已结订单不追溯」。
-
-**3. RevenueDashboardPage**
-- KPI 卡：平台总收益、本月佣金、待结算（frozen 总和）、本周环比。
-- 角色贡献分组柱状图（用 recharts，已存在）。
-- 数据源：`earning_transactions` 聚合，supabase view 或前端 group。
-
-**4. WithdrawalsAdminPage**
-- 三 Tab：待审批 / 已标红 / 历史。
-- 行内：用户、角色、金额、可用余额、风控标签、申请时间。
-- 操作：单条 Approve/Reject、批量勾选 → 「导出银行报表(CSV)」(前端 generate)、「确认转账」批量 RPC。
-- 详情 Drawer：展示该用户最近 10 条 earning_transactions + 历史提现。
-
-**5. Provider 端 WithdrawalPage（`/worker/withdraw`）**
-- 顶部：可用 / 冻结 / 已提现总额。
-- 申请表单：金额 + 银行信息 + 透明计算 `实际到账 = 金额 - 手续费`。
-- 进度条组件：`pending → approved → paid`（按 status 渲染步骤条）。
-- 入口加在 WorkerDashboardPage 「我的收益」Tab。
-
-### D. 测试
-- `withdrawal-rls.test.ts`（vitest + supabase mock）：providerA 不可读 providerB 的 withdrawal。
-- `commission-calc.test.ts`：percent / fixed 两种 mode 计算正确。
-- `admin-approve-withdrawal.test.ts`：余额不足返回错误；自买自卖订单触发 risk_flag。
-
----
-
-## 三、执行顺序（迁移先行，前端紧随）
-
-1. `read_query` 核对 `orders.order_status` distinct 值 → 调整 RLS 白名单 + commission/withdrawal migration（一次性）。
-2. PetProfilesPage 只读加固 + 测试。
-3. Admin 路由骨架 + ApplicationsAuditPage（最小闭环）。
-4. CommissionConfigPage + RevenueDashboardPage。
-5. Withdrawals（admin + provider 两端） + 风控 + 测试。
-
-技术细节：所有金额 `numeric(12,2)`；所有写操作走 RPC，避免在前端用 service role；新增 RPC 全部 `SECURITY DEFINER` + `set search_path = public` + 入口校验 `has_role(auth.uid(),'admin')`。
+### 暂不做
+- 真实电信级"虚拟号回拨"——MVP 仅展示号码与拨号 deeplink，真实接入后续。
+- 钱包提现到银行——继续走已有 `withdrawal_requests` 流程。
