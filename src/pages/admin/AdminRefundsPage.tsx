@@ -62,6 +62,7 @@ const AdminRefundsPage = () => {
   const [processing, setProcessing] = useState<string | null>(null);
   const [filter, setFilter] = useState<"pending" | "approved" | "all">("pending");
   const [detail, setDetail] = useState<RefundRow | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ r: RefundRow; action: "approve" | "reject"; note: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -78,26 +79,33 @@ const AdminRefundsPage = () => {
 
   useEffect(() => { void load(); }, [filter]);
 
-  const handle = async (r: RefundRow, action: "approve" | "reject") => {
+  const requestHandle = (r: RefundRow, action: "approve" | "reject") => {
     const note = action === "reject"
       ? window.prompt("驳回原因（必填）：")
       : (window.prompt("审核备注（可选）：") ?? "");
     if (action === "reject" && !note) return;
+    setPendingConfirm({ r, action, note: note ?? "" });
+  };
+
+  const executeHandle = async () => {
+    if (!pendingConfirm) return;
+    const { r, action, note } = pendingConfirm;
     setProcessing(r.id);
     const { data, error } = await supabase.rpc("process_refund", { _refund_id: r.id, _action: action, _note: note });
     setProcessing(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(friendlySupabaseError(error)); return; }
     const res = data as any;
-    if (!res?.success) { toast.error(res?.error ?? "处理失败"); return; }
+    if (!res?.success) { toast.error(friendlySupabaseError(res?.error ?? "处理失败")); return; }
 
     if (action === "approve" && res.channel && res.channel !== "wallet" && res.channel !== "mock") {
       const { error: e2 } = await supabase.functions.invoke("refund-payment", { body: { refund_id: r.id } });
-      if (e2) toast.error("渠道退款调用失败：" + e2.message);
+      if (e2) toast.error("渠道退款调用失败：" + friendlySupabaseError(e2));
       else toast.success("已批准并已提交渠道退款");
     } else {
       toast.success(action === "approve" ? "已批准并退款到余额" : "已驳回");
     }
     setDetail(null);
+    setPendingConfirm(null);
     await load();
   };
 
