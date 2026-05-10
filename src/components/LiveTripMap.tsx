@@ -51,20 +51,25 @@ const LiveTripMap = ({
         mapStyle: "amap://styles/light",
       });
     }
-    if (
-      pickupLat != null && pickupLng != null &&
-      dropoffLat != null && dropoffLng != null
-    ) {
-      if (!drivingRef.current) {
-        drivingRef.current = new AMap.Driving({ map: mapRef.current, hideMarkers: false });
-      }
+    if (!drivingRef.current) {
+      drivingRef.current = new AMap.Driving({ map: mapRef.current, hideMarkers: false });
+    }
+    if (pickupLat != null && pickupLng != null && dropoffLat != null && dropoffLng != null) {
       drivingRef.current.search(
         new AMap.LngLat(pickupLng, pickupLat),
         new AMap.LngLat(dropoffLng, dropoffLat),
-        () => { /* 渲染由 SDK 完成 */ },
+        () => {},
+      );
+    } else if (pickupAddress && dropoffAddress) {
+      drivingRef.current.search(
+        [
+          { keyword: pickupAddress },
+          { keyword: dropoffAddress },
+        ],
+        () => {},
       );
     }
-  }, [ready, pickupLat, pickupLng, dropoffLat, dropoffLng]);
+  }, [ready, pickupLat, pickupLng, dropoffLat, dropoffLng, pickupAddress, dropoffAddress]);
 
   // update / animate driver marker
   useEffect(() => {
