@@ -166,17 +166,26 @@ export default function ServiceCheckinChecklist({
   };
 
   const allDone = actions.every((a) => completed.has(a.key));
+  const missing = actions.filter((a) => !completed.has(a.key));
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleComplete = async () => {
+    setSubmitting(true);
     const required = actions.map((a) => a.key);
     const { data, error } = await (supabase as any).rpc("complete_service_order", {
       _order_id: orderId,
       _required: required,
     });
+    setSubmitting(false);
+    setConfirmOpen(false);
     if (error || !data?.success) {
       toast({
         title: "无法完成订单",
-        description: data?.error === "checkin_incomplete" ? `缺少打卡：${(data.missing ?? []).join(", ")}` : error?.message ?? "请检查打卡是否齐全",
+        description:
+          data?.error === "checkin_incomplete"
+            ? `缺少打卡：${(data.missing ?? []).join(", ")}`
+            : error?.message ?? "请检查打卡是否齐全",
         variant: "destructive",
       });
       return;
@@ -196,6 +205,19 @@ export default function ServiceCheckinChecklist({
           {completed.size}/{actions.length} 已完成
         </span>
       </div>
+
+      {!allDone && missing.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-3 flex gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-semibold text-amber-700 dark:text-amber-300">还差 {missing.length} 项才能结单</p>
+            <p className="text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+              缺少：{missing.map((m) => m.label).join("、")}
+            </p>
+          </div>
+        </div>
+      )}
+
       <input
         ref={inputRef}
         type="file"
@@ -223,7 +245,11 @@ export default function ServiceCheckinChecklist({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold flex items-center gap-1">
                     {a.label}
-                    {done && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                    {done ? (
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    ) : (
+                      <span className="text-[10px] text-amber-600 font-normal">待完成</span>
+                    )}
                   </p>
                   {done && row?.lat != null && (
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
@@ -245,9 +271,32 @@ export default function ServiceCheckinChecklist({
           })}
         </ul>
       )}
-      <Button className="w-full mt-4" variant="hero" disabled={!allDone} onClick={handleComplete}>
-        {allDone ? "全部完成 · 提交结单" : "完成全部打卡后可结单"}
+      <Button
+        className="w-full mt-4"
+        variant="hero"
+        disabled={!allDone}
+        onClick={() => setConfirmOpen(true)}
+      >
+        {allDone ? "全部完成 · 提交结单" : `还差 ${missing.length} 项可结单`}
       </Button>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认提交结单？</AlertDialogTitle>
+            <AlertDialogDescription>
+              提交后订单将标记为已完成，宠主会收到结单通知。请确认所有 {actions.length} 项打卡照片均真实有效。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>再检查一下</AlertDialogCancel>
+            <AlertDialogAction onClick={handleComplete} disabled={submitting}>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              确认结单
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
