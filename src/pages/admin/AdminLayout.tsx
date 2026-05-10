@@ -9,6 +9,7 @@ const NAV = [
   { to: "/admin/commission", label: "抽成", icon: Percent },
   { to: "/admin/revenue", label: "收益", icon: BarChart3 },
   { to: "/admin/withdrawals", label: "提现", icon: Banknote },
+  { to: "/admin/audit", label: "审计", icon: ScrollText },
 ];
 
 const AdminLayout = ({ children, title }: { children: ReactNode; title: string }) => {
