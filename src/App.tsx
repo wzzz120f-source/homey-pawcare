@@ -118,11 +118,11 @@ const App = () => (
             <Route path="/profile/addresses" element={<AddressBookPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/roles" element={<RoleSwitchPage />} />
-            <Route path="/worker/hall" element={<RoleGuard allow={["driver","sitter","groomer"]}><DriverHallPage /></RoleGuard>} />
+            <Route path="/worker/hall" element={<RoleGuard allow={["driver","sitter","groomer","admin"]}><DriverHallPage /></RoleGuard>} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/chat/:id" element={<ChatPage />} />
             <Route path="/groom-rate/:id" element={<GroomerRatingPage />} />
-            <Route path="/checkin/:id" element={<RoleGuard allow={["driver","sitter","groomer"]}><ServiceCheckinPage /></RoleGuard>} />
+            <Route path="/checkin/:id" element={<RoleGuard allow={["driver","sitter","groomer","admin"]}><ServiceCheckinPage /></RoleGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
