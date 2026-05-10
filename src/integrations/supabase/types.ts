@@ -1424,16 +1424,20 @@ export type Database = {
           driver_id: string | null
           dropoff_address: string | null
           id: string
+          is_physical: boolean
           notes: string | null
           order_no: string
           order_status: string
           order_type: string
+          payment_expire_at: string | null
+          payment_id: string | null
           payment_method: string | null
           payment_status: string
           pet_id: string | null
           pet_snapshot: Json | null
           pet_type: string | null
           pickup_address: string | null
+          refund_status: string
           service_type: string | null
           shipping_address_snapshot: Json | null
           store_name: string | null
@@ -1450,16 +1454,20 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           id?: string
+          is_physical?: boolean
           notes?: string | null
           order_no?: string
           order_status?: string
           order_type?: string
+          payment_expire_at?: string | null
+          payment_id?: string | null
           payment_method?: string | null
           payment_status?: string
           pet_id?: string | null
           pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
+          refund_status?: string
           service_type?: string | null
           shipping_address_snapshot?: Json | null
           store_name?: string | null
@@ -1476,16 +1484,20 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           id?: string
+          is_physical?: boolean
           notes?: string | null
           order_no?: string
           order_status?: string
           order_type?: string
+          payment_expire_at?: string | null
+          payment_id?: string | null
           payment_method?: string | null
           payment_status?: string
           pet_id?: string | null
           pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
+          refund_status?: string
           service_type?: string | null
           shipping_address_snapshot?: Json | null
           store_name?: string | null
@@ -1493,7 +1505,143 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_refunds: {
+        Row: {
+          amount: number
+          channel_refund_id: string | null
+          created_at: string
+          id: string
+          operator_id: string | null
+          operator_note: string | null
+          order_id: string
+          payment_id: string
+          reason: string | null
+          refund_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          channel_refund_id?: string | null
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          operator_note?: string | null
+          order_id: string
+          payment_id: string
+          reason?: string | null
+          refund_type?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          channel_refund_id?: string | null
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          operator_note?: string | null
+          order_id?: string
+          payment_id?: string
+          reason?: string | null
+          refund_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          channel: string
+          channel_txn_id: string | null
+          client_params: Json
+          closed_at: string | null
+          created_at: string
+          currency: string
+          expire_at: string
+          id: string
+          idempotency_key: string | null
+          order_id: string
+          paid_at: string | null
+          raw_payload: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          channel: string
+          channel_txn_id?: string | null
+          client_params?: Json
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          expire_at?: string
+          id?: string
+          idempotency_key?: string | null
+          order_id: string
+          paid_at?: string | null
+          raw_payload?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          channel?: string
+          channel_txn_id?: string | null
+          client_params?: Json
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          expire_at?: string
+          id?: string
+          idempotency_key?: string | null
+          order_id?: string
+          paid_at?: string | null
+          raw_payload?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pet_hotels: {
         Row: {
@@ -2721,8 +2869,13 @@ export type Database = {
         }
         Returns: Json
       }
+      close_expired_payments: { Args: never; Returns: number }
       complete_service_order: {
         Args: { _order_id: string; _required: string[] }
+        Returns: Json
+      }
+      create_payment_intent: {
+        Args: { _channel: string; _idempotency_key?: string; _order_id: string }
         Returns: Json
       }
       donate_love_points: {
@@ -2766,6 +2919,23 @@ export type Database = {
         Returns: undefined
       }
       mark_conversation_read: { Args: { _conv_id: string }; Returns: Json }
+      mark_payment_failed: {
+        Args: { _payload?: Json; _payment_id: string }
+        Returns: Json
+      }
+      mark_payment_succeeded: {
+        Args: {
+          _amount: number
+          _channel_txn_id: string
+          _payload?: Json
+          _payment_id: string
+        }
+        Returns: Json
+      }
+      process_refund: {
+        Args: { _action: string; _note?: string; _refund_id: string }
+        Returns: Json
+      }
       provider_request_withdrawal: {
         Args: { _amount: number; _bank_info: Json }
         Returns: Json
@@ -2776,6 +2946,10 @@ export type Database = {
       }
       reject_merchant_application: {
         Args: { _application_id: string; _note?: string }
+        Returns: Json
+      }
+      request_refund: {
+        Args: { _order_id: string; _reason: string }
         Returns: Json
       }
       spend_love_points: {
