@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, LocateFixed, Route } from "lucide-react";
+import { loadAMap } from "@/lib/amapLoader";
 
 export interface LngLat {
   lng: number;
@@ -27,7 +28,6 @@ interface AMapRealProps {
   onDropoffCoordChange?: (coord: LngLat | null) => void;
 }
 
-import { loadAMap } from "@/lib/amapLoader";
 
 const AMapReal = ({
   pickupAddress,
