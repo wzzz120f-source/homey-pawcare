@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Syringe, AlertTriangle, Share2, Edit3, PawPrint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,18 +48,43 @@ const PetProfilesPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [sp] = useSearchParams();
+  const orderId = sp.get("orderId");
+  const readonly = sp.get("readonly") === "1";
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Pet | null>(null);
   const [open, setOpen] = useState(false);
+  const [customerName, setCustomerName] = useState<string>("");
 
   const fetchPets = async () => {
     if (!user) return;
     setLoading(true);
+    let targetUserId = user.id;
+    if (readonly && orderId) {
+      const { data: ord } = await supabase
+        .from("orders")
+        .select("user_id, driver_id")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (ord && (ord as any).driver_id === user.id) {
+        targetUserId = (ord as any).user_id;
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+        if (prof) setCustomerName((prof as any).username || "乘客");
+      } else {
+        toast({ title: "无权限查看", description: "仅当前订单的司机可查看", variant: "destructive" });
+        navigate(-1);
+        return;
+      }
+    }
     const { data, error } = await supabase
       .from("pets")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) {
@@ -77,7 +102,8 @@ const PetProfilesPage = () => {
       return;
     }
     fetchPets();
-  }, [user, authLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading, orderId, readonly]);
 
   const openNew = () => {
     setEditing({
