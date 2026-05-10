@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import AMapLoader from "@amap/amap-jsapi-loader";
+import { loadAMap } from "@/lib/amapLoader";
 import { ArrowLeft, Search, Star, MapPin, Phone, LocateFixed, Hotel, PawPrint, Car, Loader2, MessageSquare, SlidersHorizontal, ArrowUpDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,12 +28,6 @@ const getHotelImage = (hotel: { name: string; image_url: string | null }, index:
   return ALL_IMAGES[index % ALL_IMAGES.length];
 };
 
-declare global {
-  interface Window { AMap: any; _AMapSecurityConfig: any; }
-}
-
-const AMAP_KEY = "f1be18c642140d1114b326946ab357cc";
-const AMAP_SECURITY_KEY = "99a72147fee06b466b18e76ded5cc55c";
 
 const PRICE_RANGES = [
   { label: "全部", min: 0, max: 99999 },
@@ -79,17 +73,11 @@ const PetHotelPage = () => {
 
   useEffect(() => {
     if (window.AMap) { setLoaded(true); return; }
-    window._AMapSecurityConfig = { securityJsCode: AMAP_SECURITY_KEY };
-    AMapLoader.load({
-      key: AMAP_KEY,
-      version: "2.0",
-      plugins: ["AMap.Geolocation", "AMap.Geocoder", "AMap.Driving"],
-    })
-      .then((AMap) => {
-        window.AMap = AMap;
-        setLoaded(true);
-      })
+    let cancelled = false;
+    loadAMap(["AMap.Geolocation", "AMap.Geocoder", "AMap.Driving", "AMap.Marker"])
+      .then(() => { if (!cancelled) setLoaded(true); })
       .catch((e) => console.error("[AMap] 加载失败", e));
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
