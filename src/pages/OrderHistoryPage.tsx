@@ -86,6 +86,7 @@ const OrderHistoryPage = () => {
   }, [orders]);
 
   const reuse = (o: Order) => {
+    // 再次预约：回填地址/宠物/服务类型，但强制清空旧日期/时间，避免提交过期日期
     navigate("/booking", {
       state: {
         prefill: {
@@ -97,7 +98,11 @@ const OrderHistoryPage = () => {
           notes: (o as any).notes ?? null,
           rebook: true,
           source_order_no: o.order_no,
+          // 强制清空
+          booking_date: null,
+          booking_time: null,
         },
+        toast: "已为你复用上次的预约信息，请重新选择服务时间。",
       },
     });
   };

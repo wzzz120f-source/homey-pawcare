@@ -1,96 +1,143 @@
-## 目标
+## 总体方案
 
-修复三个核心问题：实时定位演示数据化、AI 客服鉴权与缺失实现、地图 Key 前端硬编码。
-
----
-
-## 1. 真实 GPS 定位追踪（替换 SVG 模拟）
-
-**司机端自动上报**
-- 在司机端 `DriverHallPage` / `DriverOrderPage`（或现有进行中订单页）增加后台定位上报逻辑：
-  - 使用 `navigator.geolocation.watchPosition`，频率 10–15 秒一次（移动距离 > 30m 才写库，节流防抖）。
-  - 通过新建 Edge Function `report-location` 写入 `trip_tracking`（已存在），字段：`driver_lat/lng/speed/heading/distance_km/eta_minutes/updated_at`。
-  - 服务端做权限校验：`driver_id = auth.uid()` 且订单状态 ∈ in_progress。
-- 阶段切换（departed/picking_up/picked_up/delivered）保留按钮触发，但额外根据"司机距离接送点 < 100m"自动建议进入下一阶段。
-
-**用户端真实地图**
-- `TripTrackingPage.tsx`：删除手写 SVG 与 `simRef` 模拟动画；用 `<AMapReal>` 渲染：
-  - 标记：起点 / 终点 / 司机当前位置（活体动画 marker）。
-  - 路线：调用高德 `AMap.Driving` 规划，订阅 Realtime `trip_tracking` UPDATE 实时移动 marker。
-  - 离线/无定位时：显示「最近上报时间 + 信号弱提示」，不再显示假动画。
-
-**距离/ETA**
-- 用高德 Driving 计算实际剩余里程与 ETA，写回 `trip_tracking`，移除前端伪进度条。
+按主题分 6 个 PR 串行交付，每个 PR 独立可回滚。重构作为最后一个独立 PR。
 
 ---
 
-## 2. AI 客服安全化 & 实现完善
+### PR1 - 后端鉴权与高危操作（问题 5、6、7）
 
-**鉴权修复**
-- `CustomerServicePage.tsx` 与 `AIChatWidget.tsx`：移除自构造 `fetch` + `VITE_SUPABASE_PUBLISHABLE_KEY` 的写法，统一改为：
-  ```ts
-  const { data, error } = await supabase.functions.invoke('chat-ai', { body: { messages } });
-  ```
-  SDK 会自动注入当前登录用户的 JWT，不再暴露 publishable key 用法。
+**问题 5：RLS 全面审计**
+- 编写一次性审计脚本，列出所有表的 RLS 策略，逐一核对管理员相关表（`admin_audit_logs`、`commission_settings`、`payment_refunds`、`merchant_applications`、`driver_applications`、`payouts/withdrawals`）必须用 `has_role(auth.uid(),'admin')` 守护写操作。
+- 缺失的表补上 admin-only INSERT/UPDATE/DELETE 策略迁移。
+- 所有管理员"批量"动作改走 Edge Function（`admin-batch-payout`、`admin-approve-refund` 等），函数内：① `getClaims()` 校验 JWT；② 服务端二次 `has_role` 校验；③ 强制写 `admin_audit_logs`。
 
-**Edge Function `chat-ai` 完善**
-- 现有 `index.ts` 已有 SYSTEM_PROMPT 与 Lovable AI Gateway 调用骨架，补齐：
-  - 在代码里使用 `getClaims()` 校验 JWT，只允许已登录用户调用。
-  - 限流：基于 `user_id` 写入 `ai_chat_quota`（新表，每日 50 条），超限返回 429。
-  - 入参 zod 校验：`messages: {role, content}[]`，长度 ≤ 30，单条 ≤ 2000 字符。
-  - 流式返回（SSE）保持 Markdown，前端继续支持打字效果。
-  - 错误分类：402 余额不足 / 429 限流 / 500 通用，前端给对应文案。
+**问题 6：管理员二次确认（密码再校验）**
+- 新建 `<AdminConfirmDialog>` 组件：要求输入当前账号密码，前端用 `supabase.auth.signInWithPassword({ email, password })` 验证（不替换会话）。
+- 验证通过后才允许调用敏感 Edge Function；后端再用 `recent_admin_auth` 表（5 分钟有效）做二次保险。
+- 接入点：`AdminWithdrawalsPage` 批量打款、`AdminRefundsPage` 审核退款、`AdminCommissionPage` 改佣金率、`AdminApplicationsPage` 拒绝/通过。
 
----
-
-## 3. 高德地图 Key 安全化
-
-**前端不再持有真 Key**
-- 删除 `AMapReal.tsx`、`PetHotelPage.tsx` 中硬编码的 `AMAP_KEY` 与 `AMAP_SECURITY_KEY`。
-- Edge Function 已有 `AMAP_API_KEY` / `AMAP_SECURITY_KEY` Secret，新增 Edge Function `amap-jscode`：
-  - 校验登录用户。
-  - 返回**短期一次性 token**（自定义签名，TTL 5 分钟，绑定 user_id + 时间戳），而不是直接返回真 Key。
-  - 配套高德"代理服务"模式：用 Edge Function `amap-proxy` 作为 JS API 安全代理，前端通过 `serviceHost` 指向该代理；代理在服务端注入真 Key + securityJsCode 后转发给高德 REST。
-- `AMapReal.tsx`：
-  - 启动时调用 `amap-jscode` 拿临时配置；用 `AMapLoader` 的 `serviceHost` 指向 Edge Function 域名 + `/_AMapService`。
-  - 真实 Key 仅存在于 Supabase Secrets 与代理函数内存中，前端不可见。
-
-**REST 调用（geocode/路线/搜索）**
-- 所有 REST 调用（如 `PetHotelPage` 周边搜索、接送费用估算）改走 `amap-proxy` Edge Function，前端只传业务参数。
+**问题 7：图片上传服务端校验**
+- 收紧 storage bucket RLS：`avatars / certs / posts` 等 bucket 仅允许 `auth.uid()::text = (storage.foldername(name))[1]` 的用户写。
+- 新建 `validate-upload` Edge Function：客户端先调用获取签名上传 URL，函数检查 mime/大小（图片 ≤5MB、视频 ≤50MB）并返回临时 token，前端直传完成后回调验证。
+- 替换所有 `DocUploader` / `MediaPicker` 走新流程。
 
 ---
 
-## 技术细节（开发参考）
+### PR2 - 业务逻辑漏洞（问题 20、21、22）
 
-**新建表**
-```sql
-create table public.ai_chat_quota (
-  user_id uuid not null,
-  quota_date date not null default current_date,
-  count int not null default 0,
-  primary key (user_id, quota_date)
-);
-alter table public.ai_chat_quota enable row level security;
-create policy "self read" on public.ai_chat_quota for select using (auth.uid() = user_id);
+**问题 20：积分防刷**
+- 新建 `award-love-points` Edge Function：服务端校验"每日 100 封顶 + 单类型 1 分钟限频"，写入 `daily_point_caps`、`love_point_transactions`。
+- 前端发帖、评论、点赞奖励统一调用此函数，删除前端直接 RPC 调用。
+
+**问题 21：取消订单触发退款**
+- `OrderDetailPage` 取消按钮改为调用新 Edge Function `cancel-order`：① 校验订单归属与可取消状态；② 若 `payment_status='succeeded'`，自动调用现有 `refund-payment`（虚拟订单全额退、实物订单走人工审核队列）；③ 写 `admin_audit_logs`（系统操作员）。
+
+**问题 22：申请重复提交防护**
+- 在 `sitter_applications`、`groomer_applications`、`driver_applications` 加 unique partial index：`UNIQUE (user_id) WHERE status IN ('pending','approved')`。
+- 三个 Apply 页统一抽出 `useLatestApplication` hook，loading/error 时按钮也禁用，并在 submit 入口再做 server-side 二次查询。
+
+---
+
+### PR3 - UX 与底部布局（问题 8、9、10、11、12）
+
+**8. 底部遮挡**
+- 在 `SafeAreaBottomLayout` 暴露动态高度（CTA 高 + nav 高 + safe-area-inset-bottom），通过 `--bottom-offset` CSS 变量分发；所有 `pb-nav` 改为 `pb-[var(--bottom-offset)]`。
+- 添加 e2e 用例：iPhone 14 Pro / Pixel 7 viewport 下最后一个表单元素可见。
+
+**9. 草稿统一**
+- 新建 `useDraft(key)` hook：默认 localStorage + 30 天 TTL，可选 `scope: 'session' | 'persistent'`。
+- `BookingPage` 与 `HotelDetailPage` 共用，自动恢复 + 一键清除。
+
+**10. 错误提示友好化**
+- 新建 `src/lib/supabaseError.ts`：将 Postgres / Auth / Storage 错误码映射到中文（zh）和英文（en，i18n key）。
+- 全局封装 `toastError(err)`，替换 `toast.error(error.message)`。
+
+**11. 图片占位**
+- 新建 `<SafeImage>` 组件：未加载显示 `<Skeleton>`，失败显示统一爪印兜底图。
+- 替换商品列表、社区动态、酒店、宠物头像。
+
+**12. 再次预约清空日期**
+- `OrderHistoryPage` 复用按钮跳转 BookingPage 时只回填 `pet_id / pet_type / address`，强制清空 `booking_date / booking_time`，并加提示"请重新选择服务时间"。
+
+---
+
+### PR4 - 性能（问题 13、14、15）
+
+**13. 社区页 N+1**
+- 新建 RPC `get_feed_posts(limit, offset, viewer_id)`：单 SQL 用 `LEFT JOIN` + `jsonb_agg` 一次返回 posts + profile + media + counts + 当前用户是否点赞。
+- `CommunityPage` 改用此 RPC，从 250 次请求降到 1 次。
+
+**14. Realtime 范围**
+- `posts-realtime` 改为只订阅 INSERT 事件，且 `filter` 限制 `created_at>now()`；收到事件只 prepend 新数据，不全量刷新。
+- 评论/点赞实时改为局部更新计数（订阅 `likes`/`comments`，按 `post_id` 累加）。
+
+**15. ProfilePage 并发**
+- 6 个 fetch 改为 `Promise.all` + `useQueries`（React Query）；首屏只阻塞 profile + counts，其它 tab 内容懒加载。
+- `fetchFavorites` 两阶段查询合并为一次 `select(*, products(*))`。
+
+---
+
+### PR5 - 代码质量与重构（问题 16、17、18、19）独立 PR
+
+**16. BookingPage 拆分**
+```
+src/pages/BookingPage.tsx                        (壳，<200 行)
+  ├─ components/booking/PetPicker.tsx
+  ├─ components/booking/ServicePicker.tsx
+  ├─ components/booking/AddressPicker.tsx
+  ├─ components/booking/TimeSlotPicker.tsx
+  ├─ components/booking/AISuggestionCard.tsx
+  ├─ components/booking/ConfirmDialog.tsx
+  └─ hooks/useBookingForm.ts (状态、校验、草稿、提交)
 ```
 
-**新建 Edge Functions**
-- `report-location`：driver 写入 trip_tracking，含 RLS 校验 + 距离阈值。
-- `amap-jscode`：返回前端可用的 jscode 配置（不含真 Key）。
-- `amap-proxy`：通用 REST 代理，按白名单转发 `/v3/geocode/*`、`/v3/direction/*`、`/v3/place/*`。
+**17. 消除 as any**
+- 重新生成 `supabase/types.ts`，全局 `rg "as any"` 列出 ~100 处，按文件逐个用真实类型或 `unknown` + 类型守卫替换。
+- ESLint 加 `@typescript-eslint/no-explicit-any: error`（warn 起步）。
 
-**前端改造文件**
-- `src/pages/TripTrackingPage.tsx`：移除 SVG/模拟动画，接入 AMapReal + 实时订阅。
-- `src/pages/DriverHallPage.tsx`（或司机进行中订单页）：增加 `useDriverLocationReporter(orderId)` Hook。
-- `src/components/AMapReal.tsx` & `src/pages/PetHotelPage.tsx`：删除硬编码 Key，改走 `amap-jscode` + `amap-proxy`。
-- `src/pages/CustomerServicePage.tsx`、`src/components/AIChatWidget.tsx`：改用 `supabase.functions.invoke('chat-ai')`。
+**18. i18n 补全**
+- 脚本扫描 JSX 中的中文字面量 → 输出待翻译清单 → 批量替换为 `t('...')`，同步补 zh.ts / en.ts。
+- 优先级：Booking、Order、Payment、Profile、Auth、Admin。
 
-**回滚策略**
-- 三块改造相互独立，可分 PR 验证：PR-A 地图安全、PR-B AI 客服、PR-C 实时定位。
+**19. 环境变量统一**
+- 所有 `import.meta.env.VITE_*` 收敛到 `src/config/env.ts`。
+- AMap key 已通过 `amap-config` Edge Function 下发，删除残留硬编码（`PetHotelPage`、`AMapReal` 已处理过，再做一次扫描兜底）。
+- `.env.example` 补全所有可选 VITE_ 变量及说明。
 
 ---
 
-## 不在本次范围
+### 技术细节（供工程参考）
 
-- 高德企业账号申请、域名白名单配置（需用户在高德控制台操作，本计划只搭好代理框架）。
-- 司机端原生 App 后台定位（浏览器仅前台 watchPosition；后台定位需 PWA 或后续原生壳）。
+**密码二次确认实现**
+```ts
+const { error } = await supabase.auth.signInWithPassword({ email: user.email!, password });
+if (error) throw new Error('密码错误');
+// 成功后 5 分钟内允许敏感操作；写入 recent_admin_auth (admin_id, expires_at)
+await supabase.functions.invoke('admin-confirm-auth');
+```
+
+**RLS 审计 SQL**
+```sql
+SELECT schemaname, tablename, policyname, cmd, qual, with_check
+FROM pg_policies WHERE schemaname='public' ORDER BY tablename;
+```
+
+**Feed RPC 返回结构**
+```sql
+SELECT p.*, row_to_json(prof.*) AS author,
+  (SELECT jsonb_agg(m.*) FROM post_media m WHERE m.post_id=p.id) AS media,
+  (SELECT count(*) FROM likes WHERE post_id=p.id) AS like_count,
+  EXISTS(SELECT 1 FROM likes WHERE post_id=p.id AND user_id=viewer_id) AS liked
+FROM posts p LEFT JOIN profiles prof ON prof.id=p.user_id
+ORDER BY p.created_at DESC LIMIT $1 OFFSET $2;
+```
+
+---
+
+### 不在范围内
+- 用户自有 AMap / Stripe 商户账号注册
+- 服务器端 OCR 鉴别证件真伪（仅做 mime/大小/尺寸校验）
+- BookingPage 之外其它超 500 行文件的拆分（后续专项）
+
+### 交付顺序与预估
+PR1 → PR2 → PR3 → PR4 → PR5。每个 PR 完成后单独验证：RLS linter、e2e、network 抓包。

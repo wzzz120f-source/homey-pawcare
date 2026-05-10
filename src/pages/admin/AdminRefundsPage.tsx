@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import AdminConfirmDialog from "@/components/AdminConfirmDialog";
+import { friendlySupabaseError } from "@/lib/supabaseError";
 
 interface RefundRow {
   id: string;
@@ -60,6 +62,7 @@ const AdminRefundsPage = () => {
   const [processing, setProcessing] = useState<string | null>(null);
   const [filter, setFilter] = useState<"pending" | "approved" | "all">("pending");
   const [detail, setDetail] = useState<RefundRow | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ r: RefundRow; action: "approve" | "reject"; note: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -76,26 +79,33 @@ const AdminRefundsPage = () => {
 
   useEffect(() => { void load(); }, [filter]);
 
-  const handle = async (r: RefundRow, action: "approve" | "reject") => {
+  const requestHandle = (r: RefundRow, action: "approve" | "reject") => {
     const note = action === "reject"
       ? window.prompt("驳回原因（必填）：")
       : (window.prompt("审核备注（可选）：") ?? "");
     if (action === "reject" && !note) return;
+    setPendingConfirm({ r, action, note: note ?? "" });
+  };
+
+  const executeHandle = async () => {
+    if (!pendingConfirm) return;
+    const { r, action, note } = pendingConfirm;
     setProcessing(r.id);
     const { data, error } = await supabase.rpc("process_refund", { _refund_id: r.id, _action: action, _note: note });
     setProcessing(null);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(friendlySupabaseError(error)); return; }
     const res = data as any;
-    if (!res?.success) { toast.error(res?.error ?? "处理失败"); return; }
+    if (!res?.success) { toast.error(friendlySupabaseError(res?.error ?? "处理失败")); return; }
 
     if (action === "approve" && res.channel && res.channel !== "wallet" && res.channel !== "mock") {
       const { error: e2 } = await supabase.functions.invoke("refund-payment", { body: { refund_id: r.id } });
-      if (e2) toast.error("渠道退款调用失败：" + e2.message);
+      if (e2) toast.error("渠道退款调用失败：" + friendlySupabaseError(e2));
       else toast.success("已批准并已提交渠道退款");
     } else {
       toast.success(action === "approve" ? "已批准并退款到余额" : "已驳回");
     }
     setDetail(null);
+    setPendingConfirm(null);
     await load();
   };
 
@@ -171,7 +181,7 @@ const AdminRefundsPage = () => {
                       <Button
                         variant="hero" size="sm" className="flex-1"
                         disabled={processing === r.id}
-                        onClick={() => handle(r, "approve")}
+                        onClick={() => requestHandle(r, "approve")}
                       >
                         {processing === r.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
                         {r.payments?.channel === "wallet" || r.payments?.channel === "mock" ? "批准并退款" : "批准并提交渠道"}
@@ -179,7 +189,7 @@ const AdminRefundsPage = () => {
                       <Button
                         variant="outline" size="sm" className="flex-1"
                         disabled={processing === r.id}
-                        onClick={() => handle(r, "reject")}
+                        onClick={() => requestHandle(r, "reject")}
                       >
                         <XCircle className="w-4 h-4 mr-1" />驳回
                       </Button>
@@ -301,10 +311,10 @@ const AdminRefundsPage = () => {
                 {/* Footer actions */}
                 {detail.status === "pending" && (
                   <div className="flex gap-2 pt-2 border-t border-border">
-                    <Button variant="hero" className="flex-1" disabled={processing === detail.id} onClick={() => handle(detail, "approve")}>
+                    <Button variant="hero" className="flex-1" disabled={processing === detail.id} onClick={() => requestHandle(detail, "approve")}>
                       <CheckCircle2 className="w-4 h-4 mr-1" /> 批准退款
                     </Button>
-                    <Button variant="outline" className="flex-1" disabled={processing === detail.id} onClick={() => handle(detail, "reject")}>
+                    <Button variant="outline" className="flex-1" disabled={processing === detail.id} onClick={() => requestHandle(detail, "reject")}>
                       <XCircle className="w-4 h-4 mr-1" /> 驳回
                     </Button>
                   </div>
@@ -314,6 +324,14 @@ const AdminRefundsPage = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      <AdminConfirmDialog
+        open={!!pendingConfirm}
+        onOpenChange={(o) => !o && setPendingConfirm(null)}
+        actionLabel={pendingConfirm ? `${pendingConfirm.action === "approve" ? "批准退款" : "驳回退款"} · ¥${Number(pendingConfirm.r.amount).toFixed(2)}` : ""}
+        description="该操作将真实触发退款或拒绝流程，请输入密码继续。"
+        onConfirmed={executeHandle}
+      />
     </div>
   );
 };

@@ -172,17 +172,27 @@ const OrderDetailPage = () => {
     if (!user || !order) return;
     setCancelling(true);
     try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ order_status: "cancelled" })
-        .eq("id", order.id)
-        .eq("user_id", user.id);
+      const { data, error } = await supabase.functions.invoke("cancel-order", {
+        body: { order_id: order.id, reason: "用户主动取消" },
+      });
       if (error) throw error;
-      setOrder({ ...order, order_status: "cancelled" });
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const refund = (data as any)?.refund;
+      setOrder({
+        ...order,
+        order_status: "cancelled",
+        ...(refund?.type === "auto" ? { payment_status: "refunded" } : {}),
+      });
       setShowCancelConfirm(false);
-      toast.success("订单已取消");
+      if (refund?.ok) {
+        toast.success(refund.type === "auto"
+          ? `订单已取消，¥${refund.amount.toFixed(2)} 将原路退回`
+          : `订单已取消，¥${refund.amount.toFixed(2)} 退款待商家审核`);
+      } else {
+        toast.success("订单已取消");
+      }
     } catch (err: any) {
-      toast.error(err.message || "取消失败");
+      toast.error(err?.message || "取消失败");
     } finally {
       setCancelling(false);
     }

@@ -1134,6 +1134,24 @@ export type Database = {
         }
         Relationships: []
       }
+      love_points_rate: {
+        Row: {
+          action_type: string
+          last_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          last_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          last_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       merchant_appeals: {
         Row: {
           contact_info: string | null
@@ -2129,6 +2147,27 @@ export type Database = {
         }
         Relationships: []
       }
+      recent_admin_auth: {
+        Row: {
+          admin_id: string
+          created_at: string
+          expires_at: string
+          scope: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          expires_at: string
+          scope?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          expires_at?: string
+          scope?: string
+        }
+        Relationships: []
+      }
       rescue_stories: {
         Row: {
           after_image: string | null
@@ -2929,6 +2968,10 @@ export type Database = {
       increment_ai_chat_quota: {
         Args: { _max?: number; _uid: string }
         Returns: Json
+      }
+      is_admin_recently_authed: {
+        Args: { _admin_id: string }
+        Returns: boolean
       }
       is_merchant_owner: {
         Args: { _merchant_id: string; _user_id: string }

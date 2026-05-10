@@ -206,8 +206,8 @@ const GroomerApplyPage = () => {
           ))}
         </section>
 
-        <Button variant="hero" size="xl" className="w-full" disabled={submitting || latestApp?.status === "pending"} onClick={handleSubmit}>
-          {submitting ? "提交中…" : latestApp?.status === "pending" ? "审核中" : latestApp?.status === "rejected" ? "重新提交" : "提交申请"}
+        <Button variant="hero" size="xl" className="w-full" disabled={submitting || loadingApp || latestApp?.status === "pending" || latestApp?.status === "approved"} onClick={handleSubmit}>
+          {submitting ? "提交中…" : loadingApp ? "校验申请状态…" : latestApp?.status === "pending" ? "审核中" : latestApp?.status === "approved" ? "已通过" : latestApp?.status === "rejected" ? "重新提交" : "提交申请"}
         </Button>
       </main>
     </div>
