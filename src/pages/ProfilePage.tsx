@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store, FileText, ShieldCheck, Car, UserCog } from "lucide-react";
+import { Camera, Edit3, LogOut, Heart, MessageCircle, ShoppingBag, Tag, Clock, Trash2, Package, Store, ShieldCheck, UserCog } from "lucide-react";
 import { useMerchantOwnership } from "@/hooks/useMerchantOwnership";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
