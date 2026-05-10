@@ -32,6 +32,27 @@ interface FeedRow {
   feed_count: number;
 }
 
+interface FeedItem {
+  id: string;
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  amount: number;
+  message: string | null;
+  paid_at: string;
+}
+
+const PAGE_SIZE = 20;
+
+const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
+  return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+};
+
 const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, onSuccess }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
