@@ -132,6 +132,13 @@ const PaymentPage = () => {
     fetchCoupons();
   }, []);
 
+  // Fetch wallet balance
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("user_wallets").select("balance").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setWalletBalance(Number(data?.balance ?? 0)));
+  }, [user]);
+
   // Fetch shipping addresses for shop orders
   useEffect(() => {
     if (!isShop || !user) return;
