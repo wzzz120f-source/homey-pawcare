@@ -280,28 +280,76 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
           </span>
         </div>
 
-        {/* 投喂榜 */}
-        {topFeeders.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-foreground flex items-center gap-1">
-              <Trophy className="w-3.5 h-3.5 text-accent" /> 爱心投喂榜
-            </div>
-            <div className="space-y-1">
-              {topFeeders.map((f, i) => (
-                <div key={f.user_id} className="flex items-center gap-2 text-xs">
-                  <span className="w-4 text-center font-bold text-muted-foreground">{i + 1}</span>
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={f.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px]">{(f.username || "宠")[0]}</AvatarFallback>
-                  </Avatar>
-                  <span className="flex-1 truncate text-foreground">{f.username || "爱心人士"}</span>
-                  <span className="text-muted-foreground">{f.feed_count} 次</span>
-                  <span className="font-bold text-destructive">¥{f.total_amount.toFixed(2)}</span>
+        {/* 榜单 / 明细 Tabs */}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "top" | "list")} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-9">
+            <TabsTrigger value="top" className="text-xs gap-1">
+              <Trophy className="w-3.5 h-3.5" /> 投喂榜
+            </TabsTrigger>
+            <TabsTrigger value="list" className="text-xs gap-1">
+              <Heart className="w-3.5 h-3.5" /> 投喂明细
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="top" className="mt-2">
+            {topFeeders.length === 0 ? (
+              <div className="text-center text-xs text-muted-foreground py-4">还没有人投喂，快来当第一名 ❤️</div>
+            ) : (
+              <div className="space-y-1">
+                {topFeeders.map((f, i) => (
+                  <div key={f.user_id} className="flex items-center gap-2 text-xs">
+                    <span className="w-4 text-center font-bold text-muted-foreground">{i + 1}</span>
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={f.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[10px]">{(f.username || "宠")[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate text-foreground">{f.username || "爱心人士"}</span>
+                    <span className="text-muted-foreground">{f.feed_count} 次</span>
+                    <span className="font-bold text-destructive">¥{f.total_amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-2">
+            <ScrollArea className="h-56 pr-2">
+              {items.length === 0 && !listLoading ? (
+                <div className="text-center text-xs text-muted-foreground py-6">暂无投喂记录</div>
+              ) : (
+                <div className="space-y-2">
+                  {items.map((it) => (
+                    <div key={it.id} className="flex items-start gap-2 text-xs">
+                      <Avatar className="w-7 h-7 flex-shrink-0">
+                        <AvatarImage src={it.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px]">{(it.username || "宠")[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-foreground truncate">{it.username || "爱心人士"}</span>
+                          <span className="font-bold text-destructive whitespace-nowrap">¥{it.amount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span className="truncate">{it.message || "—"}</span>
+                          <span className="whitespace-nowrap">{formatTime(it.paid_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={sentinelRef} className="h-4" />
+                  {listLoading && (
+                    <div className="flex items-center justify-center py-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  )}
+                  {!hasMore && items.length > 0 && (
+                    <div className="text-center text-[11px] text-muted-foreground py-2">— 没有更多了 —</div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              )}
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={submitting}>取消</Button>
