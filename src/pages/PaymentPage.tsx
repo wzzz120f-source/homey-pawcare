@@ -124,6 +124,21 @@ const PaymentPage = () => {
     fetchCoupons();
   }, []);
 
+  // Fetch shipping addresses for shop orders
+  useEffect(() => {
+    if (!isShop || !user) return;
+    supabase
+      .from("shipping_addresses")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("is_default", { ascending: false })
+      .then(({ data }) => {
+        setAddresses(data ?? []);
+        const def = (data ?? []).find((a: any) => a.is_default) ?? (data ?? [])[0];
+        if (def) setSelectedAddrId(def.id);
+      });
+  }, [isShop, user]);
+
   const calcDiscount = (coupon: Coupon): number => {
     if (!orderData) return 0;
     if (orderData.total_amount < coupon.min_order_amount) return 0;
