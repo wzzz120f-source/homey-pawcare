@@ -521,9 +521,20 @@ const PaymentPage = () => {
                 <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", method.bgColor)}>
                   <method.icon className={cn("w-5 h-5", method.color)} />
                 </div>
-                <span className="font-semibold text-sm text-foreground">{method.label}</span>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-sm text-foreground">{method.label}</div>
+                  {method.id === "wallet" && (
+                    <div className={cn("text-xs", walletBalance < finalAmount ? "text-destructive" : "text-muted-foreground")}>
+                      余额 ¥{walletBalance.toFixed(2)}
+                      {walletBalance < finalAmount && "（不足）"}
+                    </div>
+                  )}
+                  {(method.id === "wechat" || method.id === "alipay") && (
+                    <div className="text-xs text-muted-foreground">开发模式：模拟收银台</div>
+                  )}
+                </div>
                 {selectedMethod === method.id && (
-                  <CheckCircle2 className={cn("w-5 h-5 ml-auto", method.color)} />
+                  <CheckCircle2 className={cn("w-5 h-5", method.color)} />
                 )}
               </button>
             ))}
