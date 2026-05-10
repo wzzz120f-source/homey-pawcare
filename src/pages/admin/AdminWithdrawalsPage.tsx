@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,17 +18,22 @@ const AdminWithdrawalsPage = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<"pending" | "flagged" | "history">("pending");
   const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
   const load = async () => {
+    setLoading(true); setError(null);
     let q = supabase.from("withdrawal_requests").select("*").order("requested_at", { ascending: false });
     if (tab === "pending") q = q.eq("status", "pending");
     else if (tab === "flagged") q = q.eq("status", "flagged");
     else q = q.in("status", ["paid", "rejected"]);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) setError(error.message);
     setRows((data as any[]) || []); setSelected(new Set());
+    setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab]);
 
@@ -74,7 +81,15 @@ const AdminWithdrawalsPage = () => {
               <Button size="sm" variant="outline" onClick={exportCsv}>导出银行报表</Button>
             </div>
           )}
-          {rows.length === 0 ? <p className="text-center text-muted-foreground py-8">暂无</p>
+          {error && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+              <div className="flex-1"><p className="text-sm text-destructive">{error}</p></div>
+              <Button size="sm" variant="outline" onClick={load}>重试</Button>
+            </Card>
+          )}
+          {loading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
+            : rows.length === 0 && !error ? <p className="text-center text-muted-foreground py-8">暂无</p>
             : rows.map((r) => (
               <Card key={r.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
