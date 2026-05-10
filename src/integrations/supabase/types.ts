@@ -107,24 +107,42 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_message: string | null
+          last_message_at: string
           merchant_id: string | null
+          order_id: string | null
+          peer_id: string | null
           status: string
+          unread_peer: number
+          unread_user: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          last_message?: string | null
+          last_message_at?: string
           merchant_id?: string | null
+          order_id?: string | null
+          peer_id?: string | null
           status?: string
+          unread_peer?: number
+          unread_user?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          last_message?: string | null
+          last_message_at?: string
           merchant_id?: string | null
+          order_id?: string | null
+          peer_id?: string | null
           status?: string
+          unread_peer?: number
+          unread_user?: number
           updated_at?: string
           user_id?: string
         }
@@ -143,8 +161,14 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          duration_sec: number | null
           id: string
+          lat: number | null
+          lng: number | null
+          location_address: string | null
+          media_url: string | null
           message_type: string
+          read_at: string | null
           sender_id: string
           sender_type: string
         }
@@ -152,8 +176,14 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          duration_sec?: number | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          location_address?: string | null
+          media_url?: string | null
           message_type?: string
+          read_at?: string | null
           sender_id: string
           sender_type?: string
         }
@@ -161,8 +191,14 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          duration_sec?: number | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          location_address?: string | null
+          media_url?: string | null
           message_type?: string
+          read_at?: string | null
           sender_id?: string
           sender_type?: string
         }
@@ -694,6 +730,51 @@ export type Database = {
           },
         ]
       }
+      groomer_ratings: {
+        Row: {
+          content: string | null
+          created_at: string
+          env_clean: number
+          gentleness: number
+          groomer_id: string
+          id: string
+          order_id: string
+          overall: number
+          pet_stress_level: number
+          tags: string[]
+          technique: number
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          env_clean?: number
+          gentleness?: number
+          groomer_id: string
+          id?: string
+          order_id: string
+          overall?: number
+          pet_stress_level?: number
+          tags?: string[]
+          technique?: number
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          env_clean?: number
+          gentleness?: number
+          groomer_id?: string
+          id?: string
+          order_id?: string
+          overall?: number
+          pet_stress_level?: number
+          tags?: string[]
+          technique?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_order_members: {
         Row: {
           group_id: string
@@ -817,6 +898,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hotel_rooms: {
+        Row: {
+          amenities: string[]
+          base_price: number
+          capacity: number
+          created_at: string
+          description: string | null
+          hotel_id: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          room_type: string
+          sort_order: number
+          stock: number
+        }
+        Insert: {
+          amenities?: string[]
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          hotel_id: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          room_type: string
+          sort_order?: number
+          stock?: number
+        }
+        Update: {
+          amenities?: string[]
+          base_price?: number
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          hotel_id?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          room_type?: string
+          sort_order?: number
+          stock?: number
+        }
+        Relationships: []
       }
       likes: {
         Row: {
@@ -1306,6 +1435,7 @@ export type Database = {
           pet_type: string | null
           pickup_address: string | null
           service_type: string | null
+          shipping_address_snapshot: Json | null
           store_name: string | null
           total_amount: number
           updated_at: string
@@ -1331,6 +1461,7 @@ export type Database = {
           pet_type?: string | null
           pickup_address?: string | null
           service_type?: string | null
+          shipping_address_snapshot?: Json | null
           store_name?: string | null
           total_amount?: number
           updated_at?: string
@@ -1356,6 +1487,7 @@ export type Database = {
           pet_type?: string | null
           pickup_address?: string | null
           service_type?: string | null
+          shipping_address_snapshot?: Json | null
           store_name?: string | null
           total_amount?: number
           updated_at?: string
@@ -1956,6 +2088,45 @@ export type Database = {
         }
         Relationships: []
       }
+      service_checkins: {
+        Row: {
+          action_key: string
+          created_at: string
+          exif_at: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          note: string | null
+          order_id: string
+          photo_url: string
+          user_id: string
+        }
+        Insert: {
+          action_key: string
+          created_at?: string
+          exif_at?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
+          order_id: string
+          photo_url: string
+          user_id: string
+        }
+        Update: {
+          action_key?: string
+          created_at?: string
+          exif_at?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
+          order_id?: string
+          photo_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       service_recommendation_rules: {
         Row: {
           age_max_months: number | null
@@ -2037,6 +2208,51 @@ export type Database = {
           occurred_at?: string
           order_id?: string
           technician_id?: string | null
+        }
+        Relationships: []
+      }
+      shipping_addresses: {
+        Row: {
+          city: string
+          created_at: string
+          detail: string
+          district: string
+          id: string
+          is_default: boolean
+          phone: string
+          postal_code: string | null
+          province: string
+          recipient: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          detail: string
+          district: string
+          id?: string
+          is_default?: boolean
+          phone: string
+          postal_code?: string | null
+          province: string
+          recipient: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          detail?: string
+          district?: string
+          id?: string
+          is_default?: boolean
+          phone?: string
+          postal_code?: string | null
+          province?: string
+          recipient?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2360,6 +2576,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_wallets: {
+        Row: {
+          balance: number
+          frozen: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          frozen?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          frozen?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          related_order_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_order_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_order_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       withdrawal_requests: {
         Row: {
           actual_amount: number
@@ -2451,6 +2721,10 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_service_order: {
+        Args: { _order_id: string; _required: string[] }
+        Returns: Json
+      }
       donate_love_points: {
         Args: {
           _message?: string
@@ -2460,6 +2734,7 @@ export type Database = {
         }
         Returns: Json
       }
+      driver_grab_order: { Args: { _order_id: string }; Returns: Json }
       get_product_review_stats: {
         Args: never
         Returns: {
@@ -2490,6 +2765,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_conversation_read: { Args: { _conv_id: string }; Returns: Json }
       provider_request_withdrawal: {
         Args: { _amount: number; _bank_info: Json }
         Returns: Json
@@ -2510,6 +2786,18 @@ export type Database = {
           _related_id?: string
           _related_type?: string
         }
+        Returns: Json
+      }
+      start_conversation: {
+        Args: { _order_id?: string; _peer_id: string }
+        Returns: string
+      }
+      wallet_pay: {
+        Args: { _amount: number; _order_id: string }
+        Returns: Json
+      }
+      wallet_recharge: {
+        Args: { _amount: number; _channel: string }
         Returns: Json
       }
     }
