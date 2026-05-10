@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,8 +63,15 @@ const AdminApplicationsPage = () => {
           <TabsTrigger value="merchant">商家</TabsTrigger>
         </TabsList>
         <TabsContent value={tab} className="space-y-3 mt-3">
+          {error && (
+            <Card className="p-4 border-destructive/40 bg-destructive/5 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+              <div className="flex-1"><p className="text-sm text-destructive">{error}</p></div>
+              <Button size="sm" variant="outline" onClick={load}>重试</Button>
+            </Card>
+          )}
           {loading ? <p className="text-center text-muted-foreground py-8">加载中…</p>
-            : list.length === 0 ? <p className="text-center text-muted-foreground py-8">暂无待审核</p>
+            : list.length === 0 && !error ? <p className="text-center text-muted-foreground py-8">暂无待审核</p>
             : list.map((a) => (
               <Card key={a.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
