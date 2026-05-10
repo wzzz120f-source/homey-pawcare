@@ -26,6 +26,12 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   adopted: { text: "已领养", color: "bg-status-success text-status-success-foreground" },
 };
 
+const VERIFY_LABELS: Record<string, { text: string; color: string }> = {
+  pending: { text: "审核中", color: "bg-muted text-muted-foreground" },
+  rejected: { text: "审核未通过", color: "bg-destructive/15 text-destructive" },
+  verified: { text: "已认证", color: "bg-status-success/15 text-status-success" },
+};
+
 const TNR_STATUS_LABELS: Record<string, { text: string; color: string }> = {
   recruiting: { text: "招募中", color: "bg-status-rescue text-status-rescue-foreground" },
   in_progress: { text: "进行中", color: "bg-status-recover text-status-recover-foreground" },
@@ -55,6 +61,9 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
   const [location, setLocation] = useState("");
   const [beforeImg, setBeforeImg] = useState<File | null>(null);
   const [afterImg, setAfterImg] = useState<File | null>(null);
+  const [realName, setRealName] = useState("");
+  const [idLast4, setIdLast4] = useState("");
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // TNR 表单
@@ -70,11 +79,20 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
 
   const load = async () => {
     setLoading(true);
+    // 公共：仅展示已通过审核 + active 的故事；登录用户额外能看自己未通过的
+    const baseQ = supabase
+      .from("rescue_stories" as any)
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(60);
     const [r1, r2] = await Promise.all([
-      supabase.from("rescue_stories" as any).select("*").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
+      baseQ,
       supabase.from("tnr_collaborations" as any).select("*").order("created_at", { ascending: false }).limit(30),
     ]);
-    setStories(r1.data || []);
+    const all = (r1.data as any[]) || [];
+    const visible = all.filter((s) => s.verify_status === "verified" || (user && s.user_id === user.id));
+    setStories(visible);
     setTnrs(r2.data || []);
     setLoading(false);
   };
@@ -103,6 +121,18 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
       toast.error("请填写完整：宠物名 / 故事 / 地点");
       return;
     }
+    if (!realName.trim() || realName.trim().length < 2) {
+      toast.error("请填写真实姓名（用于身份核查，仅审核员可见）");
+      return;
+    }
+    if (!/^\d{4}$/.test(idLast4)) {
+      toast.error("请填写身份证号末 4 位");
+      return;
+    }
+    if (proofFiles.length === 0) {
+      toast.error("请至少上传 1 张救助证据图（医院单据 / 伤情照等）");
+      return;
+    }
     const safety = checkTextSafety(story);
     if (!safety.safe) {
       toast.error(`内容被拦截：${safety.violations.join("；")}`);
@@ -113,15 +143,22 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
       let beforeUrl = null, afterUrl = null;
       if (beforeImg) beforeUrl = await uploadImg(beforeImg);
       if (afterImg) afterUrl = await uploadImg(afterImg);
+      const proofUrls: string[] = [];
+      for (const f of proofFiles) proofUrls.push(await uploadImg(f));
       const { error } = await supabase.from("rescue_stories" as any).insert({
         user_id: user.id, pet_name: petName, pet_type: petType, story, location,
         before_image: beforeUrl, after_image: afterUrl,
+        real_name: realName.trim(),
+        id_card_last4: idLast4,
+        proof_urls: proofUrls,
+        verify_status: "pending",
       });
       if (error) throw error;
       tryAutoAwardBadges(user.id);
-      toast.success("救助日记发布成功！感谢你的善意 ❤️");
+      toast.success("已提交！审核通过后即可接收云投喂 ❤️");
       setShowRescueForm(false);
       setPetName(""); setStory(""); setLocation(""); setBeforeImg(null); setAfterImg(null);
+      setRealName(""); setIdLast4(""); setProofFiles([]);
       load();
     } catch (e: any) { toast.error(e.message || "发布失败"); }
     finally { setSubmitting(false); }
@@ -220,12 +257,21 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                 <div className="p-3">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-bold text-base text-foreground">
+                      <h3 className="font-bold text-base text-foreground flex items-center gap-1.5">
                         {s.pet_type === "cat" ? "🐱" : s.pet_type === "dog" ? "🐶" : "🐾"} {s.pet_name}
+                        {s.verify_status === "verified" && (
+                          <ShieldAlert className="w-3.5 h-3.5 text-status-success" aria-label="已认证" />
+                        )}
                       </h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3" /> {s.location}
                       </p>
+                      {s.verify_status !== "verified" && (
+                        <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full ${VERIFY_LABELS[s.verify_status]?.color}`}>
+                          {VERIFY_LABELS[s.verify_status]?.text || "未审核"}
+                          {s.verify_status === "rejected" && s.verify_note ? `：${s.verify_note}` : ""}
+                        </span>
+                      )}
                     </div>
                     <Badge className={`${STATUS_LABELS[s.status]?.color} text-white`}>
                       {STATUS_LABELS[s.status]?.text || s.status}
@@ -279,7 +325,14 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                       >
                         <Share2 className="w-3.5 h-3.5" /> 分享
                       </Button>
-                      <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => openFeedDialog(s)}>
+                      <Button
+                        size="sm"
+                        variant="warm"
+                        className="h-8 rounded-full text-xs gap-1"
+                        onClick={() => openFeedDialog(s)}
+                        disabled={s.verify_status !== "verified"}
+                        title={s.verify_status !== "verified" ? "审核通过后可投喂" : undefined}
+                      >
                         🍖 投喂
                       </Button>
                     </div>
@@ -388,10 +441,47 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
               <input ref={beforeRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
               <input ref={afterRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
             </div>
+
+            {/* 身份核查（仅审核员可见，反虚假救助） */}
+            <div className="space-y-2 rounded-lg border border-status-success/30 bg-status-success/5 p-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-status-success">
+                <ShieldAlert className="w-3.5 h-3.5" /> 身份核查（必填，仅审核员可见）
+              </div>
+              <Input placeholder="真实姓名" value={realName} onChange={(e) => setRealName(e.target.value)} maxLength={20} />
+              <Input placeholder="身份证号末 4 位" value={idLast4} onChange={(e) => setIdLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} maxLength={4} inputMode="numeric" />
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">救助证据图（医院单据 / 伤情照等，至少 1 张）</div>
+                <div className="flex flex-wrap gap-2">
+                  {proofFiles.map((f, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded overflow-hidden bg-secondary">
+                      <img src={URL.createObjectURL(f)} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setProofFiles((arr) => arr.filter((_, j) => j !== i))}
+                        className="absolute top-0.5 right-0.5 bg-foreground/70 text-background rounded-full p-0.5"
+                        aria-label="移除"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {proofFiles.length < 5 && (
+                    <label className="w-16 h-16 rounded bg-secondary border-2 border-dashed border-border flex items-center justify-center cursor-pointer">
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => e.target.files?.[0] && setProofFiles((arr) => [...arr, e.target.files![0]])}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="hero" onClick={submitRescue} disabled={submitting} className="w-full">
-              {submitting ? "发布中..." : "发布救助日记 ❤️"}
+              {submitting ? "提交中..." : "提交审核 ❤️"}
             </Button>
           </DialogFooter>
         </DialogContent>

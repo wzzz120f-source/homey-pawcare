@@ -2221,16 +2221,23 @@ export type Database = {
           cloud_feed_points: number
           created_at: string
           id: string
+          id_card_last4: string | null
           is_active: boolean
           location: string | null
           medical_progress: string | null
           pet_name: string
           pet_type: string
+          proof_urls: string[] | null
+          real_name: string | null
           status: string
           story: string
           total_feed_amount: number
           updated_at: string
           user_id: string
+          verified_at: string | null
+          verified_by: string | null
+          verify_note: string | null
+          verify_status: string
         }
         Insert: {
           after_image?: string | null
@@ -2239,16 +2246,23 @@ export type Database = {
           cloud_feed_points?: number
           created_at?: string
           id?: string
+          id_card_last4?: string | null
           is_active?: boolean
           location?: string | null
           medical_progress?: string | null
           pet_name: string
           pet_type?: string
+          proof_urls?: string[] | null
+          real_name?: string | null
           status?: string
           story: string
           total_feed_amount?: number
           updated_at?: string
           user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          verify_status?: string
         }
         Update: {
           after_image?: string | null
@@ -2257,16 +2271,23 @@ export type Database = {
           cloud_feed_points?: number
           created_at?: string
           id?: string
+          id_card_last4?: string | null
           is_active?: boolean
           location?: string | null
           medical_progress?: string | null
           pet_name?: string
           pet_type?: string
+          proof_urls?: string[] | null
+          real_name?: string | null
           status?: string
           story?: string
           total_feed_amount?: number
           updated_at?: string
           user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          verify_status?: string
         }
         Relationships: []
       }
@@ -2972,6 +2993,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
+      admin_review_rescue_story: {
+        Args: { _approve: boolean; _id: string; _note?: string }
+        Returns: Json
+      }
       admin_set_commission: {
         Args: {
           _mode: string
@@ -3088,6 +3113,18 @@ export type Database = {
           good_review_count: number
           product_id: string
           review_count: number
+        }[]
+      }
+      get_rescue_feed_list: {
+        Args: { _before?: string; _limit?: number; _story_id: string }
+        Returns: {
+          amount: number
+          avatar_url: string
+          id: string
+          message: string
+          paid_at: string
+          user_id: string
+          username: string
         }[]
       }
       get_rescue_feed_top: {

@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, Wallet, Trophy, ShieldCheck } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Heart, Wallet, Trophy, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { friendlySupabaseError } from "@/lib/supabaseError";
@@ -30,6 +32,27 @@ interface FeedRow {
   feed_count: number;
 }
 
+interface FeedItem {
+  id: string;
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  amount: number;
+  message: string | null;
+  paid_at: string;
+}
+
+const PAGE_SIZE = 20;
+
+const formatTime = (iso: string) => {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
+  return d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+};
+
 const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, onSuccess }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -40,11 +63,50 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
   const [balance, setBalance] = useState<number | null>(null);
   const [topFeeders, setTopFeeders] = useState<FeedRow[]>([]);
   const [totalReceived, setTotalReceived] = useState<number>(0);
+  const [tab, setTab] = useState<"top" | "list">("top");
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const isSelf = user?.id === recipientUserId;
 
+  const loadMore = useCallback(async () => {
+    if (listLoading || !hasMore) return;
+    setListLoading(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("get_rescue_feed_list", {
+        _story_id: storyId,
+        _limit: PAGE_SIZE,
+        _before: cursor,
+      });
+      if (error) throw error;
+      const rows: FeedItem[] = ((data as any[]) || []).map((r) => ({
+        id: r.id,
+        user_id: r.user_id,
+        username: r.username,
+        avatar_url: r.avatar_url,
+        amount: Number(r.amount) || 0,
+        message: r.message,
+        paid_at: r.paid_at,
+      }));
+      setItems((prev) => [...prev, ...rows]);
+      if (rows.length < PAGE_SIZE) setHasMore(false);
+      else setCursor(rows[rows.length - 1].paid_at);
+    } catch (e) {
+      console.error("[feed list]", e);
+    } finally {
+      setListLoading(false);
+    }
+  }, [storyId, cursor, hasMore, listLoading]);
+
   useEffect(() => {
     if (!open) return;
+    setItems([]);
+    setCursor(null);
+    setHasMore(true);
+    setTab("top");
     (async () => {
       if (user) {
         const { data: w } = await supabase
@@ -68,6 +130,23 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
       setTotalReceived(Number((story as any)?.total_feed_amount ?? 0));
     })();
   }, [open, user, storyId]);
+
+  useEffect(() => {
+    if (open && tab === "list" && items.length === 0 && hasMore && !listLoading) {
+      loadMore();
+    }
+  }, [open, tab, items.length, hasMore, listLoading, loadMore]);
+
+  useEffect(() => {
+    if (tab !== "list") return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMore();
+    }, { rootMargin: "100px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [tab, loadMore]);
 
   const finalAmount = (() => {
     const n = Number(custom);
@@ -110,6 +189,7 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
           amount_too_large: "单笔金额上限 ¥9999",
           story_not_found: "救助故事不存在",
           story_inactive: "该救助已结束",
+          story_not_verified: "该救助未通过审核，暂不可投喂",
           self_feed_forbidden: "不能给自己投喂",
           insufficient_balance: "钱包余额不足",
         };
@@ -201,28 +281,76 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
           </span>
         </div>
 
-        {/* 投喂榜 */}
-        {topFeeders.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-foreground flex items-center gap-1">
-              <Trophy className="w-3.5 h-3.5 text-accent" /> 爱心投喂榜
-            </div>
-            <div className="space-y-1">
-              {topFeeders.map((f, i) => (
-                <div key={f.user_id} className="flex items-center gap-2 text-xs">
-                  <span className="w-4 text-center font-bold text-muted-foreground">{i + 1}</span>
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={f.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px]">{(f.username || "宠")[0]}</AvatarFallback>
-                  </Avatar>
-                  <span className="flex-1 truncate text-foreground">{f.username || "爱心人士"}</span>
-                  <span className="text-muted-foreground">{f.feed_count} 次</span>
-                  <span className="font-bold text-destructive">¥{f.total_amount.toFixed(2)}</span>
+        {/* 榜单 / 明细 Tabs */}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "top" | "list")} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-9">
+            <TabsTrigger value="top" className="text-xs gap-1">
+              <Trophy className="w-3.5 h-3.5" /> 投喂榜
+            </TabsTrigger>
+            <TabsTrigger value="list" className="text-xs gap-1">
+              <Heart className="w-3.5 h-3.5" /> 投喂明细
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="top" className="mt-2">
+            {topFeeders.length === 0 ? (
+              <div className="text-center text-xs text-muted-foreground py-4">还没有人投喂，快来当第一名 ❤️</div>
+            ) : (
+              <div className="space-y-1">
+                {topFeeders.map((f, i) => (
+                  <div key={f.user_id} className="flex items-center gap-2 text-xs">
+                    <span className="w-4 text-center font-bold text-muted-foreground">{i + 1}</span>
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={f.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[10px]">{(f.username || "宠")[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate text-foreground">{f.username || "爱心人士"}</span>
+                    <span className="text-muted-foreground">{f.feed_count} 次</span>
+                    <span className="font-bold text-destructive">¥{f.total_amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="list" className="mt-2">
+            <ScrollArea className="h-56 pr-2">
+              {items.length === 0 && !listLoading ? (
+                <div className="text-center text-xs text-muted-foreground py-6">暂无投喂记录</div>
+              ) : (
+                <div className="space-y-2">
+                  {items.map((it) => (
+                    <div key={it.id} className="flex items-start gap-2 text-xs">
+                      <Avatar className="w-7 h-7 flex-shrink-0">
+                        <AvatarImage src={it.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px]">{(it.username || "宠")[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-foreground truncate">{it.username || "爱心人士"}</span>
+                          <span className="font-bold text-destructive whitespace-nowrap">¥{it.amount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span className="truncate">{it.message || "—"}</span>
+                          <span className="whitespace-nowrap">{formatTime(it.paid_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={sentinelRef} className="h-4" />
+                  {listLoading && (
+                    <div className="flex items-center justify-center py-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  )}
+                  {!hasMore && items.length > 0 && (
+                    <div className="text-center text-[11px] text-muted-foreground py-2">— 没有更多了 —</div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              )}
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={submitting}>取消</Button>
