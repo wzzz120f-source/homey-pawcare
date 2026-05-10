@@ -11,7 +11,7 @@ import { useFollow } from "@/hooks/useFollow";
 import { openDmConversation } from "@/lib/dm";
 import MediaThumb from "@/components/MediaThumb";
 import { toast } from "sonner";
-import { mapSupabaseError } from "@/lib/supabaseError";
+import { friendlySupabaseError } from "@/lib/supabaseError";
 
 interface ProfileRow {
   user_id: string;
