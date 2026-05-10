@@ -121,6 +121,18 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
       toast.error("请填写完整：宠物名 / 故事 / 地点");
       return;
     }
+    if (!realName.trim() || realName.trim().length < 2) {
+      toast.error("请填写真实姓名（用于身份核查，仅审核员可见）");
+      return;
+    }
+    if (!/^\d{4}$/.test(idLast4)) {
+      toast.error("请填写身份证号末 4 位");
+      return;
+    }
+    if (proofFiles.length === 0) {
+      toast.error("请至少上传 1 张救助证据图（医院单据 / 伤情照等）");
+      return;
+    }
     const safety = checkTextSafety(story);
     if (!safety.safe) {
       toast.error(`内容被拦截：${safety.violations.join("；")}`);
@@ -131,15 +143,22 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
       let beforeUrl = null, afterUrl = null;
       if (beforeImg) beforeUrl = await uploadImg(beforeImg);
       if (afterImg) afterUrl = await uploadImg(afterImg);
+      const proofUrls: string[] = [];
+      for (const f of proofFiles) proofUrls.push(await uploadImg(f));
       const { error } = await supabase.from("rescue_stories" as any).insert({
         user_id: user.id, pet_name: petName, pet_type: petType, story, location,
         before_image: beforeUrl, after_image: afterUrl,
+        real_name: realName.trim(),
+        id_card_last4: idLast4,
+        proof_urls: proofUrls,
+        verify_status: "pending",
       });
       if (error) throw error;
       tryAutoAwardBadges(user.id);
-      toast.success("救助日记发布成功！感谢你的善意 ❤️");
+      toast.success("已提交！审核通过后即可接收云投喂 ❤️");
       setShowRescueForm(false);
       setPetName(""); setStory(""); setLocation(""); setBeforeImg(null); setAfterImg(null);
+      setRealName(""); setIdLast4(""); setProofFiles([]);
       load();
     } catch (e: any) { toast.error(e.message || "发布失败"); }
     finally { setSubmitting(false); }
