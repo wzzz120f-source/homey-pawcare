@@ -169,6 +169,40 @@ export default function ServiceCheckinChecklist({
   const missing = actions.filter((a) => !completed.has(a.key));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+
+  const focusMissing = (key: string) => {
+    const el = document.getElementById(`checkin-row-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightKey(key);
+      window.setTimeout(() => setHighlightKey((h) => (h === key ? null : h)), 1800);
+    }
+    if (!completed.has(key)) trigger(key);
+  };
+
+  const tryOpenConfirm = async () => {
+    // 二次校验：拉最新打卡数据，避免本地状态滞后
+    await load();
+    const fresh = new Set((rows as CheckinRow[]).map((r) => r.action_key));
+    // 注意：load 后 rows 通过 setState 更新，可能未立即生效，因此直接查一次
+    const { data } = await supabase
+      .from("service_checkins")
+      .select("action_key")
+      .eq("order_id", orderId);
+    const set = new Set(((data as { action_key: string }[]) ?? []).map((r) => r.action_key));
+    const stillMissing = actions.filter((a) => !set.has(a.key) && !fresh.has(a.key));
+    if (stillMissing.length > 0) {
+      toast({
+        title: "还有未完成的打卡",
+        description: `缺少：${stillMissing.map((m) => m.label).join("、")}`,
+        variant: "destructive",
+      });
+      focusMissing(stillMissing[0].key);
+      return;
+    }
+    setConfirmOpen(true);
+  };
 
   const handleComplete = async () => {
     setSubmitting(true);
@@ -188,6 +222,9 @@ export default function ServiceCheckinChecklist({
             : error?.message ?? "请检查打卡是否齐全",
         variant: "destructive",
       });
+      if (data?.error === "checkin_incomplete" && data?.missing?.length) {
+        focusMissing(data.missing[0]);
+      }
       return;
     }
     toast({ title: "服务已完成" });
