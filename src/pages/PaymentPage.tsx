@@ -392,6 +392,45 @@ const PaymentPage = () => {
           </div>
         </section>
 
+        {/* Shipping Address (shop only) */}
+        {isShop && (
+          <section className="bg-card rounded-2xl p-5 card-shadow">
+            <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" /> 收货地址
+            </h2>
+            {addresses.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate("/profile/addresses?pick=1")}
+                className="w-full p-3 rounded-xl border border-dashed text-sm text-muted-foreground hover:bg-muted"
+              >
+                + 添加收货地址
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={selectedAddrId ?? ""}
+                  onChange={(e) => setSelectedAddrId(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-secondary text-sm"
+                >
+                  {addresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.recipient} {a.phone} · {a.province}{a.city}{a.district}{a.detail}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile/addresses")}
+                  className="text-xs text-primary"
+                >
+                  管理地址簿 →
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Coupon Section */}
         <section className="bg-card rounded-2xl p-5 card-shadow">
           <h2 className="font-bold text-foreground mb-3 text-base flex items-center gap-2">
