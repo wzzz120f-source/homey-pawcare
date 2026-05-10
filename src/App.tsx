@@ -59,6 +59,7 @@ const DriverHallPage = lazyTracked("路由 DriverHallPage", () => import("./page
 const MessagesPage = lazyTracked("路由 MessagesPage", () => import("./pages/MessagesPage"));
 const ChatPage = lazyTracked("路由 ChatPage", () => import("./pages/ChatPage"));
 const GroomerRatingPage = lazyTracked("路由 GroomerRatingPage", () => import("./pages/GroomerRatingPage"));
+const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import("./pages/ServiceCheckinPage"));
 
 const queryClient = new QueryClient();
 
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/chat/:id" element={<ChatPage />} />
             <Route path="/groom-rate/:id" element={<GroomerRatingPage />} />
+            <Route path="/checkin/:id" element={<RoleGuard allow={["driver","sitter","groomer"]}><ServiceCheckinPage /></RoleGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
