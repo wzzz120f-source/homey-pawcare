@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import AdminConfirmDialog from "@/components/AdminConfirmDialog";
+import { friendlySupabaseError } from "@/lib/supabaseError";
 
 interface RefundRow {
   id: string;
