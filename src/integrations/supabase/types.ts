@@ -235,6 +235,33 @@ export type Database = {
           },
         ]
       }
+      commission_settings: {
+        Row: {
+          id: string
+          mode: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          updated_by: string | null
+          value: number
+        }
+        Insert: {
+          id?: string
+          mode?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Update: {
+          id?: string
+          mode?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
       companion_reports: {
         Row: {
           actions: string[]
@@ -476,6 +503,42 @@ export type Database = {
           passed?: boolean
           score?: number
           total_questions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      earning_transactions: {
+        Row: {
+          commission: number
+          created_at: string
+          gross: number
+          id: string
+          net: number
+          order_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          settled_at: string
+          user_id: string
+        }
+        Insert: {
+          commission?: number
+          created_at?: string
+          gross?: number
+          id?: string
+          net?: number
+          order_id?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          settled_at?: string
+          user_id: string
+        }
+        Update: {
+          commission?: number
+          created_at?: string
+          gross?: number
+          id?: string
+          net?: number
+          order_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          settled_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1708,6 +1771,33 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_balances: {
+        Row: {
+          available: number
+          frozen: number
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+          withdrawn_total: number
+        }
+        Insert: {
+          available?: number
+          frozen?: number
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+          withdrawn_total?: number
+        }
+        Update: {
+          available?: number
+          frozen?: number
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+          withdrawn_total?: number
+        }
+        Relationships: []
+      }
       rescue_stories: {
         Row: {
           after_image: string | null
@@ -2240,11 +2330,83 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_requests: {
+        Row: {
+          actual_amount: number
+          amount: number
+          bank_info: Json
+          fee: number
+          id: string
+          paid_at: string | null
+          reject_reason: string | null
+          requested_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          risk_flags: string[]
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          user_id: string
+          voucher_no: string | null
+        }
+        Insert: {
+          actual_amount?: number
+          amount: number
+          bank_info?: Json
+          fee?: number
+          id?: string
+          paid_at?: string | null
+          reject_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: string[]
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+          user_id: string
+          voucher_no?: string | null
+        }
+        Update: {
+          actual_amount?: number
+          amount?: number
+          bank_info?: Json
+          fee?: number
+          id?: string
+          paid_at?: string | null
+          reject_reason?: string | null
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          risk_flags?: string[]
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          user_id?: string
+          voucher_no?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_withdrawal: { Args: { _id: string }; Returns: Json }
+      admin_force_pay_withdrawal: { Args: { _id: string }; Returns: Json }
+      admin_reject_withdrawal: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
+      admin_set_commission: {
+        Args: {
+          _mode: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _value: number
+        }
+        Returns: Json
+      }
+      approve_driver_application: {
+        Args: { _application_id: string; _note?: string }
+        Returns: Json
+      }
       approve_merchant_application: {
         Args: { _application_id: string; _note?: string }
         Returns: Json
@@ -2288,6 +2450,14 @@ export type Database = {
       is_merchant_owner: {
         Args: { _merchant_id: string; _user_id: string }
         Returns: boolean
+      }
+      provider_request_withdrawal: {
+        Args: { _amount: number; _bank_info: Json }
+        Returns: Json
+      }
+      reject_driver_application: {
+        Args: { _application_id: string; _reason: string }
+        Returns: Json
       }
       reject_merchant_application: {
         Args: { _application_id: string; _note?: string }
