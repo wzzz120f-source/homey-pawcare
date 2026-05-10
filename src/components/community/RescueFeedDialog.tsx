@@ -189,6 +189,7 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
           amount_too_large: "单笔金额上限 ¥9999",
           story_not_found: "救助故事不存在",
           story_inactive: "该救助已结束",
+          story_not_verified: "该救助未通过审核，暂不可投喂",
           self_feed_forbidden: "不能给自己投喂",
           insufficient_balance: "钱包余额不足",
         };
