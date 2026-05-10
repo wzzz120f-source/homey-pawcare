@@ -441,6 +441,18 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
           badgeText={STATUS_LABELS[shareStory.status]?.text || shareStory.status}
         />
       )}
+
+      {/* 救助投喂弹窗 */}
+      {feedTarget && (
+        <RescueFeedDialog
+          open={!!feedTarget}
+          onClose={() => setFeedTarget(null)}
+          storyId={feedTarget.id}
+          petName={feedTarget.pet_name}
+          recipientUserId={feedTarget.user_id}
+          onSuccess={(amt) => handleFeedSuccess(feedTarget.id, amt)}
+        />
+      )}
     </div>
   );
 };
