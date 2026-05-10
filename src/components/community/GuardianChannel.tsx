@@ -325,7 +325,14 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                       >
                         <Share2 className="w-3.5 h-3.5" /> 分享
                       </Button>
-                      <Button size="sm" variant="warm" className="h-8 rounded-full text-xs gap-1" onClick={() => openFeedDialog(s)}>
+                      <Button
+                        size="sm"
+                        variant="warm"
+                        className="h-8 rounded-full text-xs gap-1"
+                        onClick={() => openFeedDialog(s)}
+                        disabled={s.verify_status !== "verified"}
+                        title={s.verify_status !== "verified" ? "审核通过后可投喂" : undefined}
+                      >
                         🍖 投喂
                       </Button>
                     </div>
