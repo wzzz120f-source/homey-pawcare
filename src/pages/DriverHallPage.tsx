@@ -49,7 +49,7 @@ export default function DriverHallPage() {
   const [orders, setOrders] = useState<HallOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [grabbing, setGrabbing] = useState<string | null>(null);
-  const [confirmOrder, setConfirmOrder] = useState<HallOrder | null>(null);
+  const [confirmOrder, setConfirmOrder] = useState<(HallOrder & { km: number | null; grossFare: number; net: number }) | null>(null);
   const [taken, setTaken] = useState<string[]>([]); // 我接到的当前活跃单
 
   const load = async () => {
