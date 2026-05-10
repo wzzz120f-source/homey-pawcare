@@ -1,51 +1,110 @@
-## 目标
+## 支付系统完整化方案（已根据你的决策定稿）
 
-围绕「接单大厅 / 语音聊天 / 服务打卡」三个模块做体验和稳健性强化，全部为前端改动，不动数据库。
+### 决策摘要
+- **Stripe**：开发用 Lovable 内建测试环境，上线再切换到用户自己的 Live Key（同一份代码、按 env 切换）
+- **微信 / 支付宝**：先 Mock 通道，资质到位后只换 Edge Function 内部实现，前端无感
+- **钱包余额**：默认置顶为首选支付方式，余额够则直接划扣
+- **退款**：虚拟订单（上门服务/酒店/接送）服务商确认后自动原路退；实物订单走人工审核
 
 ---
 
-## 1. 接单大厅卡片（`src/pages/DriverHallPage.tsx`）
+### 一、数据库迁移（PR1）
 
-- 在每张订单卡新增「查看路线详情」可折叠面板（基于本地 `expandedId` 状态，不引入新依赖）：
-  - 起点 / 终点完整地址（不再 `truncate`）
-  - 距离 / 预计耗时 / 预计净收益的**计算口径说明**：`净收益 = max(driver_fare, total_amount, km × ¥2.5) × (1 − 15% 平台佣金)`，平均车速 30km/h
-  - 一键「复制订单摘要」按钮：用 `navigator.clipboard.writeText` 写入订单号、起终点、距离、ETA、净收益的多行文本，复制成功 toast 提示
-- **并发保护强化**：
-  - `grabbing` 状态保留，同时给「一键接单」按钮加 `aria-disabled` 与 `pointer-events-none`
-  - 新增 `lockRef = useRef<Set<string>>(new Set())`，`grab(id)` 入口处先判断是否已锁，避免极快双击在同一渲染帧绕过 React state
-  - 抢单失败：保留当前列表中的订单（不立即清空），用 `await load()` 重新拉取，**保持滚动位置**：在调用 `load` 前后记录并恢复 `window.scrollY`（或 `main` 容器 scrollTop）
+新增表（均带 RLS）：
 
-## 2. 语音录制弹窗（`src/pages/ChatPage.tsx`）
+1. **payments** —— 支付单
+   - `order_id, user_id, channel(stripe|wechat|alipay|wallet|mock), amount, currency, status(pending|succeeded|failed|refunded|closed), channel_txn_id, raw_payload jsonb, paid_at, expire_at, idempotency_key`
+   - 唯一约束：`(order_id, channel)` 防重复下单
+2. **payment_refunds** —— 退款单
+   - `payment_id, amount, reason, refund_type(auto|manual), status(pending|approved|rejected|succeeded|failed), operator_id, channel_refund_id`
+3. **wallet_accounts** —— 钱包账户（按 user + 角色分桶）
+   - `user_id, role(owner|provider), balance, frozen, total_recharge, total_withdraw`
+4. **wallet_transactions** —— 钱包流水
+   - `account_id, type(recharge|consume|refund|earning|withdraw|freeze|unfreeze), amount, balance_after, related_payment_id, related_order_id, memo`
 
-- 倒计时改为可视进度：`MAX_REC_SEC = 60`，到时**不再直接发送**，而是切换状态 `recPhase: "recording" | "review"`
-  - 录音中：到 60s 自动 `mr.stop()` 并保留 `chunks` 在内存，弹窗切到「重录 / 发送」选择
-  - 用户点击「发送」才执行上传 + 写消息；点「重录」清空 chunks 并重新 `startRecord`
-- 用户主动停止录音也进入 review 阶段（在 review 阶段提供本地 `<audio>` 试听）
-- 新增「撤回最近一条未送达语音」入口：
-  - 维护 `lastVoiceMsgRef`：发送语音成功后记录 `{id, sentAt}`
-  - 在底部工具条加一个小型「撤回」按钮，仅在最近 30 秒内、且最后一条语音由当前用户发送时显示
-  - 点击后调用 `supabase.from('chat_messages').delete().eq('id', ...)` 并本地从 `msgs` 列表移除（RLS 已限制 sender 自删）
-- 弹窗 UI 调整：录音中显示秒数 + 60s 进度条；review 阶段显示「重录 / 发送」两个等权按钮
+调整 **orders**：
+- 新增 `payment_id, payment_expire_at, refund_status, is_physical(boolean)`
 
-## 3. 服务打卡缺失项跳转 + 二次校验（`src/components/ServiceCheckinChecklist.tsx`）
+触发器：
+- `payments.status → succeeded` 时：写宠主 `wallet_transactions(consume)` + 服务商 `wallet_transactions(earning, frozen)`
+- 服务确认完成时：服务商 frozen → balance
+- 退款 `succeeded` 时：宠主 `wallet_transactions(refund)`
+- pg_cron 每分钟扫 `pending` 且过期 → `closed`
 
-- 在每个 `<li>` 行加 `id="checkin-row-{key}"` 与 `ref` 收集，便于跨区域定位
-- 顶部缺失项警告条中的项目改为可点击 chip：
-  - 点击后 `scrollIntoView({behavior:'smooth', block:'center'})` 到对应行
-  - 并对该行加临时 `ring-2 ring-amber-400` 高亮 1.5s（通过 `highlightKey` 状态）
-  - 同时如果该项未拍照，自动触发 `trigger(key)` 调起拍照 input（移动端直接进相机）
-- 「确认结单」二次校验：
-  - 在 `AlertDialog` 打开前再 `await load()` 拉一次最新打卡数据，重新计算 `missing`
-  - 若仍有缺失，直接关闭对话框，toast 提示并滚动到第一个缺失项
-  - 若齐全才显示对话框 → `handleComplete` 调用 RPC
+RLS：用户只看自己；服务商看自己订单；admin 全可见；webhook 用 service_role 绕过
 
-## 技术细节
+---
 
-- 仅前端改动，文件清单：
-  - `src/pages/DriverHallPage.tsx`
-  - `src/pages/ChatPage.tsx`
-  - `src/components/ServiceCheckinChecklist.tsx`
-- 不新增依赖；使用现有 shadcn `AlertDialog`、`Button`、`Badge`、`lucide-react` 图标（新增 `Copy`、`ChevronDown`、`Undo2`、`RotateCcw` 等）
-- 撤回语音依赖现有 RLS：`chat_messages` 允许 sender 自删（若策略缺失，撤回会失败并 toast 报错，不破坏发送流程）
+### 二、Edge Functions（PR2 + PR3）
 
-完成后回复一句话总结。
+| 函数 | verify_jwt | 作用 |
+|---|---|---|
+| `create-payment` | true | 校验订单/金额/幂等，按渠道预下单，返回前端所需参数 |
+| `query-payment` | true | 主动查询渠道，回写状态（webhook 兜底） |
+| `payment-webhook-stripe` | false | 校验 Stripe 签名，回写 |
+| `payment-webhook-wechat` | false | V3 平台证书签名校验 + AES-GCM 解密 |
+| `payment-webhook-alipay` | false | RSA2 签名校验 |
+| `refund-payment` | true | 自动/人工触发退款，按 channel 调对应 API |
+
+环境变量（按渠道存在则启用，缺失则 Mock）：
+- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`（开发期 Lovable 内建注入；上线由用户在 Cloud Secrets 替换为 Live Key）
+- `WECHAT_MCH_ID / WECHAT_APP_ID / WECHAT_API_V3_KEY / WECHAT_MCH_PRIVATE_KEY / WECHAT_MCH_SERIAL_NO`（缺失 → 走 Mock）
+- `ALIPAY_APP_ID / ALIPAY_APP_PRIVATE_KEY / ALIPAY_PUBLIC_KEY`（缺失 → 走 Mock）
+
+**Mock 模式**：`create-payment` 直接返回一个"模拟收银台"URL；前端展示"模拟支付（开发模式）"页，点"模拟支付成功/失败"按钮触发 `query-payment` 回写。上线只要在 Cloud Secrets 填入真实密钥即自动切真。
+
+---
+
+### 三、前端改造（PR2 + PR4）
+
+1. **PaymentPage 重构**
+   - 渠道顺序：钱包余额（够则置顶并预选）→ 微信 → 支付宝 → Stripe
+   - 倒计时（基于 `payment_expire_at`，默认 15 分钟）
+   - 防重复点击 + loading 锁 + 客户端幂等 key
+   - 钱包余额不足时灰显并提示去充值
+
+2. **新增 PaymentResultPage** `/payment/result/:orderId`
+   - Realtime 订阅 `payments` 行 + 兜底每 3s 调 `query-payment`
+   - 三态：成功 / 失败重试 / 处理中
+   - "我已完成支付"手动查询按钮
+
+3. **WalletPage**：接真实 `wallet_accounts` + `wallet_transactions`，宠主侧
+4. **ProviderEarningsPage**：服务商侧，分"待结算 / 可提现 / 已提现"三桶
+5. **WithdrawPage**：申请态先做（写 `wallet_transactions(withdraw, frozen)`），实际打款二期接微信/支付宝企业付款
+6. **OrderDetailPage**：增加退款入口
+   - 虚拟订单：服务商确认完成前可"申请退款"，服务商在 WorkerDashboard 一键同意 → 自动退
+   - 实物订单：进入"客服审核"，admin 在 `/admin/refunds` 处理
+
+7. **新增 admin 页**：`/admin/refunds` 退款审核列表
+
+---
+
+### 四、安全与稳健性
+
+- **签名校验**：三家 webhook 必须严格校验签名后再写库
+- **金额校验**：webhook 回写时对比 `payments.amount` 与渠道金额，不一致拒绝并告警
+- **幂等**：`create-payment` 用 `idempotency_key` 唯一约束；webhook 用 `channel_txn_id` 唯一约束
+- **超时关单**：pg_cron + 前端倒计时双保险
+- **审计日志**：退款全程写 `admin_audit_logs`
+
+---
+
+### 五、实施顺序（3 个 PR）
+
+```text
+PR1  数据层      payments / refunds / wallet_* / 触发器 / RLS / pg_cron
+PR2  Stripe + Mock + 钱包  create-payment + query-payment + stripe webhook
+                          + 前端 PaymentPage 重构 + PaymentResultPage
+                          + 钱包优先支付 + 钱包/收益页接真实数据
+PR3  微信 + 支付宝 + 退款  两个 webhook（先 Mock，密钥到位即真）
+                          + refund-payment + 退款审核后台
+```
+
+每个 PR 单独可上线、不阻塞前一个的体验。
+
+---
+
+### 六、需要你确认的最后一项
+
+是否同意按 PR1 → PR2 → PR3 的顺序实施？  
+确认后我会先执行 PR1（数据库迁移），通过审批再继续。
