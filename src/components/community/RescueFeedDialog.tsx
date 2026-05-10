@@ -63,11 +63,50 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
   const [balance, setBalance] = useState<number | null>(null);
   const [topFeeders, setTopFeeders] = useState<FeedRow[]>([]);
   const [totalReceived, setTotalReceived] = useState<number>(0);
+  const [tab, setTab] = useState<"top" | "list">("top");
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const isSelf = user?.id === recipientUserId;
 
+  const loadMore = useCallback(async () => {
+    if (listLoading || !hasMore) return;
+    setListLoading(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("get_rescue_feed_list", {
+        _story_id: storyId,
+        _limit: PAGE_SIZE,
+        _before: cursor,
+      });
+      if (error) throw error;
+      const rows: FeedItem[] = ((data as any[]) || []).map((r) => ({
+        id: r.id,
+        user_id: r.user_id,
+        username: r.username,
+        avatar_url: r.avatar_url,
+        amount: Number(r.amount) || 0,
+        message: r.message,
+        paid_at: r.paid_at,
+      }));
+      setItems((prev) => [...prev, ...rows]);
+      if (rows.length < PAGE_SIZE) setHasMore(false);
+      else setCursor(rows[rows.length - 1].paid_at);
+    } catch (e) {
+      console.error("[feed list]", e);
+    } finally {
+      setListLoading(false);
+    }
+  }, [storyId, cursor, hasMore, listLoading]);
+
   useEffect(() => {
     if (!open) return;
+    setItems([]);
+    setCursor(null);
+    setHasMore(true);
+    setTab("top");
     (async () => {
       if (user) {
         const { data: w } = await supabase
@@ -91,6 +130,23 @@ const RescueFeedDialog = ({ open, onClose, storyId, petName, recipientUserId, on
       setTotalReceived(Number((story as any)?.total_feed_amount ?? 0));
     })();
   }, [open, user, storyId]);
+
+  useEffect(() => {
+    if (open && tab === "list" && items.length === 0 && hasMore && !listLoading) {
+      loadMore();
+    }
+  }, [open, tab, items.length, hasMore, listLoading, loadMore]);
+
+  useEffect(() => {
+    if (tab !== "list") return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMore();
+    }, { rootMargin: "100px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [tab, loadMore]);
 
   const finalAmount = (() => {
     const n = Number(custom);
