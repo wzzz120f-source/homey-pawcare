@@ -167,6 +167,21 @@ const AdminWithdrawalsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AdminConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(o) => !o && setConfirmAction(null)}
+        actionLabel={confirmAction === "batch" ? `批量打款 ${selected.size} 笔` : confirmAction && typeof confirmAction === "object" ? (confirmAction.force ? "强制打款（已标红）" : "审批通过") : ""}
+        description="该操作将真实扣减资金或更新结算状态，请确认无误后输入密码继续。"
+        onConfirmed={async () => {
+          if (confirmAction === "batch") {
+            await doBatchApprove();
+          } else if (confirmAction && typeof confirmAction === "object") {
+            await approve(confirmAction.id, confirmAction.force);
+          }
+          setConfirmAction(null);
+        }}
+      />
     </AdminLayout>
   );
 };
