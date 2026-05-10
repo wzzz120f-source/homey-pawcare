@@ -257,12 +257,21 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
                 <div className="p-3">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-bold text-base text-foreground">
+                      <h3 className="font-bold text-base text-foreground flex items-center gap-1.5">
                         {s.pet_type === "cat" ? "🐱" : s.pet_type === "dog" ? "🐶" : "🐾"} {s.pet_name}
+                        {s.verify_status === "verified" && (
+                          <ShieldAlert className="w-3.5 h-3.5 text-status-success" aria-label="已认证" />
+                        )}
                       </h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3" /> {s.location}
                       </p>
+                      {s.verify_status !== "verified" && (
+                        <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full ${VERIFY_LABELS[s.verify_status]?.color}`}>
+                          {VERIFY_LABELS[s.verify_status]?.text || "未审核"}
+                          {s.verify_status === "rejected" && s.verify_note ? `：${s.verify_note}` : ""}
+                        </span>
+                      )}
                     </div>
                     <Badge className={`${STATUS_LABELS[s.status]?.color} text-white`}>
                       {STATUS_LABELS[s.status]?.text || s.status}
