@@ -441,10 +441,47 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
               <input ref={beforeRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setBeforeImg(e.target.files[0])} />
               <input ref={afterRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic,.mov" hidden onChange={(e) => e.target.files?.[0] && setAfterImg(e.target.files[0])} />
             </div>
+
+            {/* 身份核查（仅审核员可见，反虚假救助） */}
+            <div className="space-y-2 rounded-lg border border-status-success/30 bg-status-success/5 p-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-status-success">
+                <ShieldAlert className="w-3.5 h-3.5" /> 身份核查（必填，仅审核员可见）
+              </div>
+              <Input placeholder="真实姓名" value={realName} onChange={(e) => setRealName(e.target.value)} maxLength={20} />
+              <Input placeholder="身份证号末 4 位" value={idLast4} onChange={(e) => setIdLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} maxLength={4} inputMode="numeric" />
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">救助证据图（医院单据 / 伤情照等，至少 1 张）</div>
+                <div className="flex flex-wrap gap-2">
+                  {proofFiles.map((f, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded overflow-hidden bg-secondary">
+                      <img src={URL.createObjectURL(f)} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setProofFiles((arr) => arr.filter((_, j) => j !== i))}
+                        className="absolute top-0.5 right-0.5 bg-foreground/70 text-background rounded-full p-0.5"
+                        aria-label="移除"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {proofFiles.length < 5 && (
+                    <label className="w-16 h-16 rounded bg-secondary border-2 border-dashed border-border flex items-center justify-center cursor-pointer">
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => e.target.files?.[0] && setProofFiles((arr) => [...arr, e.target.files![0]])}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="hero" onClick={submitRescue} disabled={submitting} className="w-full">
-              {submitting ? "发布中..." : "发布救助日记 ❤️"}
+              {submitting ? "提交中..." : "提交审核 ❤️"}
             </Button>
           </DialogFooter>
         </DialogContent>
