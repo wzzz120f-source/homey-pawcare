@@ -61,6 +61,9 @@ const GuardianChannel = ({ searchTerm = "" }: GuardianChannelProps) => {
   const [location, setLocation] = useState("");
   const [beforeImg, setBeforeImg] = useState<File | null>(null);
   const [afterImg, setAfterImg] = useState<File | null>(null);
+  const [realName, setRealName] = useState("");
+  const [idLast4, setIdLast4] = useState("");
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // TNR 表单
