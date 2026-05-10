@@ -189,6 +189,7 @@ const CommunityPage = () => {
   const [filterCategory, setFilterCategory] = useState<PostCategory>("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [feedScope, setFeedScope] = useState<"recommend" | "following">("recommend");
   // file input handled inside MediaPicker component
 
   const userIds = posts.map((p) => p.user_id);
