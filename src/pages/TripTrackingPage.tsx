@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import EmergencySosFab from "@/components/EmergencySosFab";
 import ServiceTimeline from "@/components/ServiceTimeline";
+import LiveTripMap from "@/components/LiveTripMap";
+import { useDriverLocationReporter } from "@/hooks/useDriverLocationReporter";
 
 const STAGES = [
   { key: "departed", label: "已出发", emoji: "🚗" },
