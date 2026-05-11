@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import RescueKycStatusCard from "@/components/wallet/RescueKycStatusCard";
 
 interface Tx {
   id: string;
@@ -22,6 +23,7 @@ interface Tx {
 
 const TYPE_LABEL: Record<string, string> = {
   recharge: "充值", pay: "支付", refund: "退款",
+  feed_in: "收到爱心投喂", feed_out: "云投喂支出",
 };
 
 const WalletPage = () => {
@@ -82,6 +84,8 @@ const WalletPage = () => {
           )}
           <p className="text-xs opacity-80 mt-1">冻结中：¥{frozen.toFixed(2)}</p>
         </div>
+
+        <RescueKycStatusCard />
 
         <Tabs defaultValue="recharge">
           <TabsList className="grid w-full grid-cols-2">

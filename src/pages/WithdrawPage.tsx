@@ -41,9 +41,20 @@ const WithdrawPage = () => {
     if (!amt || amt <= 0) { toast({ title: "请输入金额", variant: "destructive" }); return; }
     if (amt > bal.available) { toast({ title: "金额超过可用余额", variant: "destructive" }); return; }
     if (!bank.account_no.trim()) { toast({ title: "请填写银行卡号", variant: "destructive" }); return; }
-    const { data, error } = await supabase.rpc("provider_request_withdrawal" as any, { _amount: amt, _bank_info: bank });
-    if (error || (data as any)?.success === false) {
-      toast({ title: "申请失败", description: error?.message || (data as any)?.error, variant: "destructive" });
+    const { data, error } = await supabase.rpc("request_withdrawal_v2" as any, { _amount: amt, _bank_info: bank });
+    const result = data as any;
+    if (error || result?.success === false) {
+      const code = result?.error;
+      if (code === "kyc_required") {
+        toast({ title: "需要实名认证", description: "你的钱包包含爱心投喂资金，请先完成实名认证", variant: "destructive" });
+        navigate("/rescue-kyc");
+        return;
+      }
+      if (code === "name_mismatch") {
+        toast({ title: "户名不符", description: "提现银行卡户名必须与实名一致", variant: "destructive" });
+        return;
+      }
+      toast({ title: "申请失败", description: error?.message || code, variant: "destructive" });
     } else {
       toast({ title: "申请已提交" }); setAmount(""); load();
     }
@@ -95,7 +106,7 @@ const WithdrawPage = () => {
                       <p className="font-semibold">¥{Number(r.amount).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">{new Date(r.requested_at).toLocaleString()}</p>
                     </div>
-                    <Badge variant={r.status === "paid" ? "secondary" : r.status === "rejected" ? "destructive" : "outline"}>
+                    <Badge variant={r.status === "paid" ? "secondary" : r.status === "rejected" ? "destructive" : r.status === "flagged" ? "destructive" : "outline"}>
                       {STATUS_LABEL[r.status]}
                     </Badge>
                   </div>
@@ -103,6 +114,16 @@ const WithdrawPage = () => {
                     <div className="flex items-center gap-1">
                       {STATUS_STEPS.map((s, i) => (
                         <div key={s} className={`flex-1 h-1.5 rounded-full ${i <= idx ? "bg-primary" : "bg-muted"}`} />
+                      ))}
+                    </div>
+                  )}
+                  {r.risk_flags && r.risk_flags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {r.risk_flags.map((f: string) => (
+                        <Badge key={f} variant="destructive" className="text-[10px]">
+                          {({ frequent_24h:"高频提现", large_amount:"大额", self_dealing:"自营自交易",
+                              feed_funds_no_kyc:"投喂资金未实名", payout_name_mismatch:"户名不符" } as any)[f] || f}
+                        </Badge>
                       ))}
                     </div>
                   )}
