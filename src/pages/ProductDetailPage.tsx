@@ -172,6 +172,9 @@ const ProductDetailPage = () => {
   };
 
   const handleBuyNow = () => {
+    if (!user) { navigate("/auth"); return; }
+    if (!product) return;
+    if (activeStock <= 0) { toast({ title: "库存不足", variant: "destructive" }); return; }
     handleAddToCart();
     navigate("/payment", {
       state: {
