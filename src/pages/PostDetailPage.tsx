@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight, Share2 } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Send, Sparkles, AtSign, CornerDownRight, Share2, ShoppingBag } from "lucide-react";
 import SharePostDialog from "@/components/SharePostDialog";
+import PostProductCard from "@/components/community/PostProductCard";
+import ProductPicker from "@/components/community/ProductPicker";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +92,8 @@ const PostDetailPage = () => {
   const [pickedMentions, setPickedMentions] = useState<ProfileLite[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [productsRefresh, setProductsRefresh] = useState(0);
 
   const fetchPost = useCallback(async () => {
     if (!id) return;
@@ -394,6 +398,8 @@ const PostDetailPage = () => {
             </div>
           )}
 
+          <PostProductCard key={productsRefresh} postId={post.id} />
+
           <div className="px-4 py-3 flex items-center gap-5 border-t border-border/50">
             <button onClick={toggleLike} className={cn("flex items-center gap-1.5 text-sm transition-colors min-h-[36px]", post.liked_by_me ? "text-destructive" : "text-muted-foreground hover:text-destructive")}>
               <Heart className={cn("w-5 h-5", post.liked_by_me && "fill-current")} />
@@ -412,7 +418,16 @@ const PostDetailPage = () => {
               <span className="font-semibold">分享</span>
             </button>
           </div>
+          {user?.id === post.user_id && (
+            <div className="px-4 pb-3">
+              <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setPickerOpen(true)}>
+                <ShoppingBag className="w-4 h-4" />挂载商城商品
+              </Button>
+            </div>
+          )}
         </article>
+
+        <ProductPicker open={pickerOpen} onOpenChange={setPickerOpen} postId={post.id} onAdded={() => setProductsRefresh((n) => n + 1)} />
 
         {post && (
           <SharePostDialog
