@@ -10,7 +10,7 @@ import { AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type Kind = "driver" | "merchant" | "rescue";
+type Kind = "driver" | "merchant" | "rescue" | "kyc";
 const ROLE_LABEL: Record<string, string> = { sitter: "宠托师", groomer: "护理师", driver: "司机" };
 
 const AdminApplicationsPage = () => {
@@ -32,6 +32,14 @@ const AdminApplicationsPage = () => {
         .order("created_at", { ascending: false });
       if (error) setError(error.message);
       setList((data as any[]) || []);
+    } else if (tab === "kyc") {
+      const { data, error } = await supabase
+        .from("rescue_kyc" as any)
+        .select("*")
+        .eq("status", "pending")
+        .order("submitted_at", { ascending: false });
+      if (error) setError(error.message);
+      setList((data as any[]) || []);
     } else {
       const table = tab === "driver" ? "driver_applications" : "merchant_applications";
       const { data, error } = await supabase.from(table as any).select("*").eq("status", "pending").order("created_at", { ascending: false });
@@ -45,6 +53,7 @@ const AdminApplicationsPage = () => {
   const approve = async (id: string) => {
     let fn: string; let args: any;
     if (tab === "rescue") { fn = "admin_review_rescue_story"; args = { _id: id, _approve: true, _note: null }; }
+    else if (tab === "kyc") { fn = "admin_review_rescue_kyc"; args = { _uid: id, _approve: true, _note: null }; }
     else { fn = tab === "driver" ? "approve_driver_application" : "approve_merchant_application"; args = { _application_id: id }; }
     const { data, error } = await supabase.rpc(fn as any, args);
     if (error || (data as any)?.success === false) {
@@ -57,6 +66,7 @@ const AdminApplicationsPage = () => {
     if (!rejectTarget) return;
     let fn: string; let args: any;
     if (rejectTarget.kind === "rescue") { fn = "admin_review_rescue_story"; args = { _id: rejectTarget.id, _approve: false, _note: reason }; }
+    else if (rejectTarget.kind === "kyc") { fn = "admin_review_rescue_kyc"; args = { _uid: rejectTarget.id, _approve: false, _note: reason }; }
     else if (rejectTarget.kind === "driver") { fn = "reject_driver_application"; args = { _application_id: rejectTarget.id, _reason: reason }; }
     else { fn = "reject_merchant_application"; args = { _application_id: rejectTarget.id, _note: reason }; }
     const { data, error } = await supabase.rpc(fn as any, args);
@@ -70,10 +80,11 @@ const AdminApplicationsPage = () => {
   return (
     <AdminLayout title="注册审核">
       <Tabs value={tab} onValueChange={(v) => setTab(v as Kind)}>
-        <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="driver">司机/宠托/护理</TabsTrigger>
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="driver">司机/宠托</TabsTrigger>
           <TabsTrigger value="merchant">商家</TabsTrigger>
           <TabsTrigger value="rescue">救助审核</TabsTrigger>
+          <TabsTrigger value="kyc">提现实名</TabsTrigger>
         </TabsList>
         <TabsContent value={tab} className="space-y-3 mt-3">
           {error && (
@@ -86,20 +97,24 @@ const AdminApplicationsPage = () => {
           {loading ? <p className="text-center text-muted-foreground py-8">加载中…</p>
             : list.length === 0 && !error ? <p className="text-center text-muted-foreground py-8">暂无待审核</p>
             : list.map((a) => (
-              <Card key={a.id} className="p-4 space-y-2">
+              <Card key={a.id || a.user_id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-semibold">
                       {tab === "rescue"
                         ? `${a.pet_type === "cat" ? "🐱" : a.pet_type === "dog" ? "🐶" : "🐾"} ${a.pet_name}`
+                        : tab === "kyc" ? a.real_name
                         : (a.full_name || a.contact_name || a.store_name || "—")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {tab === "rescue" ? `实名：${a.real_name || "—"} · 末4位：${a.id_card_last4 || "—"} · ${a.location || ""}` : (a.phone || a.contact_phone)}
+                      {tab === "rescue" ? `实名：${a.real_name || "—"} · 末4位：${a.id_card_last4 || "—"} · ${a.location || ""}`
+                        : tab === "kyc" ? `证件末4位：${a.id_card_last4 || "—"} · ${a.bank_name} · ${a.bank_account_no?.slice(-4)}`
+                        : (a.phone || a.contact_phone)}
                     </p>
                   </div>
                   {tab === "driver" ? <Badge>{ROLE_LABEL[a.role_requested] || a.role_requested}</Badge>
                     : tab === "merchant" ? <Badge>商家</Badge>
+                    : tab === "kyc" ? <Badge>实名</Badge>
                     : <Badge>救助</Badge>}
                 </div>
                 {tab === "driver" && (
@@ -120,9 +135,16 @@ const AdminApplicationsPage = () => {
                     )}
                   </>
                 )}
+                {tab === "kyc" && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[a.id_card_front_url, a.id_card_back_url, a.hold_id_url].filter(Boolean).map((path: string, i: number) => (
+                      <KycThumb key={i} path={path} />
+                    ))}
+                  </div>
+                )}
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" onClick={() => approve(a.id)}>通过</Button>
-                  <Button size="sm" variant="outline" onClick={() => { setRejectTarget({ id: a.id, kind: tab }); setReason(""); }}>驳回</Button>
+                  <Button size="sm" onClick={() => approve(tab === "kyc" ? a.user_id : a.id)}>通过</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setRejectTarget({ id: tab === "kyc" ? a.user_id : a.id, kind: tab }); setReason(""); }}>驳回</Button>
                 </div>
               </Card>
             ))}
