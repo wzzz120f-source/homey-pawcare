@@ -1945,6 +1945,35 @@ export type Database = {
           },
         ]
       }
+      post_product_links: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_product_links_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           category: string
@@ -2210,6 +2239,66 @@ export type Database = {
           created_at?: string
           expires_at?: string
           scope?: string
+        }
+        Relationships: []
+      }
+      rescue_kyc: {
+        Row: {
+          bank_account_name: string
+          bank_account_no: string
+          bank_name: string
+          created_at: string
+          hold_id_url: string
+          id_card_back_url: string
+          id_card_front_url: string
+          id_card_last4: string | null
+          id_card_no_hash: string
+          real_name: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_account_name: string
+          bank_account_no: string
+          bank_name: string
+          created_at?: string
+          hold_id_url: string
+          id_card_back_url: string
+          id_card_front_url: string
+          id_card_last4?: string | null
+          id_card_no_hash: string
+          real_name: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_account_name?: string
+          bank_account_no?: string
+          bank_name?: string
+          created_at?: string
+          hold_id_url?: string
+          id_card_back_url?: string
+          id_card_front_url?: string
+          id_card_last4?: string | null
+          id_card_no_hash?: string
+          real_name?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2993,6 +3082,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
+      admin_review_rescue_kyc: {
+        Args: { _approve: boolean; _note?: string; _uid: string }
+        Returns: Json
+      }
       admin_review_rescue_story: {
         Args: { _approve: boolean; _id: string; _note?: string }
         Returns: Json
@@ -3200,6 +3293,10 @@ export type Database = {
         Args: { _order_id: string; _reason: string }
         Returns: Json
       }
+      request_withdrawal_v2: {
+        Args: { _amount: number; _bank_info: Json }
+        Returns: Json
+      }
       spend_love_points: {
         Args: {
           _description?: string
@@ -3213,6 +3310,19 @@ export type Database = {
       start_conversation: {
         Args: { _order_id?: string; _peer_id: string }
         Returns: string
+      }
+      submit_rescue_kyc: {
+        Args: {
+          _back_url: string
+          _bank_account_name: string
+          _bank_account_no: string
+          _bank_name: string
+          _front_url: string
+          _hold_url: string
+          _id_card_no: string
+          _real_name: string
+        }
+        Returns: Json
       }
       wallet_pay: {
         Args: { _amount: number; _order_id: string }
