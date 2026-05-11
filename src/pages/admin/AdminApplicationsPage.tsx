@@ -13,6 +13,17 @@ import { useToast } from "@/hooks/use-toast";
 type Kind = "driver" | "merchant" | "rescue" | "kyc";
 const ROLE_LABEL: Record<string, string> = { sitter: "宠托师", groomer: "护理师", driver: "司机" };
 
+const KycThumb = ({ path }: { path: string }) => {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    void supabase.storage.from("kyc-documents").createSignedUrl(path, 300).then(({ data }) => {
+      if (data?.signedUrl) setUrl(data.signedUrl);
+    });
+  }, [path]);
+  if (!url) return <div className="w-16 h-16 rounded bg-muted animate-pulse" />;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} className="w-16 h-16 object-cover rounded border border-border" /></a>;
+};
+
 const AdminApplicationsPage = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState<Kind>("driver");
