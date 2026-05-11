@@ -63,6 +63,7 @@ const ServiceCheckinPage = lazyTracked("路由 ServiceCheckinPage", () => import
 const PaymentResultPage = lazyTracked("路由 PaymentResultPage", () => import("./pages/PaymentResultPage"));
 const AdminRefundsPage = lazyTracked("路由 AdminRefundsPage", () => import("./pages/admin/AdminRefundsPage"));
 const UserProfilePage = lazyTracked("路由 UserProfilePage", () => import("./pages/UserProfilePage"));
+const RescueKycPage = lazyTracked("路由 RescueKycPage", () => import("./pages/RescueKycPage"));
 
 const queryClient = new QueryClient();
 
@@ -123,6 +124,7 @@ const App = () => (
             <Route path="/worker/earnings" element={<RoleGuard allow={["sitter","groomer","driver"]}><ProviderEarningsPage /></RoleGuard>} />
             <Route path="/profile/addresses" element={<AddressBookPage />} />
             <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/rescue-kyc" element={<RescueKycPage />} />
             <Route path="/roles" element={<RoleSwitchPage />} />
             <Route path="/worker/hall" element={<RoleGuard allow={["driver","sitter","groomer","admin"]}><DriverHallPage /></RoleGuard>} />
             <Route path="/messages" element={<MessagesPage />} />
