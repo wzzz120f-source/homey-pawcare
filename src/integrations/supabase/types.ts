@@ -719,6 +719,33 @@ export type Database = {
           },
         ]
       }
+      feature_flags: {
+        Row: {
+          description: string | null
+          enabled: boolean
+          key: string
+          payload: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          enabled?: boolean
+          key: string
+          payload?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          payload?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       flash_sales: {
         Row: {
           created_at: string
@@ -2161,9 +2188,13 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banned_at: string | null
+          banned_reason: string | null
           bio: string | null
           created_at: string
           id: string
+          is_banned: boolean
+          is_super_admin: boolean
           is_verified_real_name: boolean
           love_points: number
           updated_at: string
@@ -2172,9 +2203,13 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banned_at?: string | null
+          banned_reason?: string | null
           bio?: string | null
           created_at?: string
           id?: string
+          is_banned?: boolean
+          is_super_admin?: boolean
           is_verified_real_name?: boolean
           love_points?: number
           updated_at?: string
@@ -2183,9 +2218,13 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banned_at?: string | null
+          banned_reason?: string | null
           bio?: string | null
           created_at?: string
           id?: string
+          is_banned?: boolean
+          is_super_admin?: boolean
           is_verified_real_name?: boolean
           love_points?: number
           updated_at?: string
@@ -3125,6 +3164,45 @@ export type Database = {
         Args: { _channel: string; _idempotency_key?: string; _order_id: string }
         Returns: Json
       }
+      dev_health_overview: { Args: never; Returns: Json }
+      dev_list_users: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: {
+          avatar_url: string
+          banned_reason: string
+          created_at: string
+          is_banned: boolean
+          is_super_admin: boolean
+          love_points: number
+          roles: string[]
+          user_id: string
+          username: string
+        }[]
+      }
+      dev_set_ban: {
+        Args: { _ban: boolean; _reason?: string; _user_id: string }
+        Returns: Json
+      }
+      dev_set_flag: {
+        Args: { _enabled: boolean; _key: string; _payload?: Json }
+        Returns: Json
+      }
+      dev_set_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: Json
+      }
+      dev_set_super_admin: {
+        Args: { _user_id: string; _value: boolean }
+        Returns: Json
+      }
+      dev_update_profile: {
+        Args: { _avatar_url?: string; _user_id: string; _username?: string }
+        Returns: Json
+      }
       donate_love_points: {
         Args: {
           _message?: string
@@ -3250,6 +3328,7 @@ export type Database = {
         Args: { _merchant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_super_admin: { Args: { _uid: string }; Returns: boolean }
       log_admin_action: {
         Args: {
           _action: string
