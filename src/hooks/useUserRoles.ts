@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
 export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver";
 export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin";
@@ -83,12 +84,17 @@ export const useUserRoles = () => {
   const defaultRole = computeDefault(roles);
 
   // Available roles user is allowed to switch into
+  const { isSuperAdmin } = useSuperAdmin();
   const availableRoles: ActiveRole[] = ["user"];
-  if (roles.includes("sitter")) availableRoles.push("sitter");
-  if (roles.includes("groomer")) availableRoles.push("groomer");
-  if (roles.includes("driver")) availableRoles.push("driver");
-  if (roles.includes("merchant")) availableRoles.push("merchant");
-  if (roles.includes("admin")) availableRoles.push("admin");
+  if (isSuperAdmin) {
+    availableRoles.push("sitter", "groomer", "driver", "merchant", "admin");
+  } else {
+    if (roles.includes("sitter")) availableRoles.push("sitter");
+    if (roles.includes("groomer")) availableRoles.push("groomer");
+    if (roles.includes("driver")) availableRoles.push("driver");
+    if (roles.includes("merchant")) availableRoles.push("merchant");
+    if (roles.includes("admin")) availableRoles.push("admin");
+  }
 
   const activeRole: ActiveRole =
     override && availableRoles.includes(override) ? override : defaultRole;

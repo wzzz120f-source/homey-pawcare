@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
+import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
 interface Props {
   allow: AppRole[];
@@ -26,11 +27,12 @@ const ROLE_CN: Record<AppRole, string> = {
 const RoleGuard = ({ allow, children, loginPath = "/auth" }: Props) => {
   const { user, loading: authLoading } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles();
+  const { isSuperAdmin, loading: superLoading } = useSuperAdmin();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const ready = !authLoading && !rolesLoading;
-  const allowed = ready && !!user && roles.some((r) => allow.includes(r));
+  const ready = !authLoading && !rolesLoading && !superLoading;
+  const allowed = ready && !!user && (isSuperAdmin || roles.some((r) => allow.includes(r)));
 
   useEffect(() => {
     if (ready && user && !allowed) {
