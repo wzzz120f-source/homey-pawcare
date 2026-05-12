@@ -9,6 +9,8 @@ import NotFound from "./pages/NotFound";
 import { lazyTracked } from "@/lib/chunkRecovery";
 import AIChatWidget from "@/components/AIChatWidget";
 import RoleGuard from "@/components/RoleGuard";
+import SuperAdminGuard from "@/components/dev/SuperAdminGuard";
+import MaintenanceGate from "@/components/MaintenanceGate";
 
 // Community-adjacent routes are marked critical: a chunk-load failure on these
 // triggers the global capped reload flow so future community additions inherit
@@ -64,6 +66,11 @@ const PaymentResultPage = lazyTracked("路由 PaymentResultPage", () => import("
 const AdminRefundsPage = lazyTracked("路由 AdminRefundsPage", () => import("./pages/admin/AdminRefundsPage"));
 const UserProfilePage = lazyTracked("路由 UserProfilePage", () => import("./pages/UserProfilePage"));
 const RescueKycPage = lazyTracked("路由 RescueKycPage", () => import("./pages/RescueKycPage"));
+const DevEntryPage = lazyTracked("路由 DevEntryPage", () => import("./pages/dev/DevEntryPage"));
+const DevConsolePage = lazyTracked("路由 DevConsolePage", () => import("./pages/dev/DevConsolePage"));
+const DevUsersPage = lazyTracked("路由 DevUsersPage", () => import("./pages/dev/DevUsersPage"));
+const DevFlagsPage = lazyTracked("路由 DevFlagsPage", () => import("./pages/dev/DevFlagsPage"));
+const DevHealthPage = lazyTracked("路由 DevHealthPage", () => import("./pages/dev/DevHealthPage"));
 
 const queryClient = new QueryClient();
 
@@ -80,6 +87,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
+          <MaintenanceGate>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/booking" element={<BookingPage />} />
@@ -131,9 +139,15 @@ const App = () => (
             <Route path="/chat/:id" element={<ChatPage />} />
             <Route path="/groom-rate/:id" element={<GroomerRatingPage />} />
             <Route path="/checkin/:id" element={<RoleGuard allow={["driver","sitter","groomer","admin"]}><ServiceCheckinPage /></RoleGuard>} />
+            <Route path="/__dev" element={<DevEntryPage />} />
+            <Route path="/__dev/console" element={<SuperAdminGuard><DevConsolePage /></SuperAdminGuard>} />
+            <Route path="/__dev/users" element={<SuperAdminGuard><DevUsersPage /></SuperAdminGuard>} />
+            <Route path="/__dev/flags" element={<SuperAdminGuard><DevFlagsPage /></SuperAdminGuard>} />
+            <Route path="/__dev/health" element={<SuperAdminGuard><DevHealthPage /></SuperAdminGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </MaintenanceGate>
         </Suspense>
         <AIChatWidget />
       </BrowserRouter>
