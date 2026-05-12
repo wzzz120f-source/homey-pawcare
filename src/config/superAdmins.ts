@@ -4,7 +4,7 @@
  * 直接在此添加你的特权邮箱即可立即生效，无需迁移。
  */
 export const SUPER_ADMIN_EMAILS: string[] = [
-  // "your-email@example.com",
+  // "774947086@qq.com",
 ];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {
