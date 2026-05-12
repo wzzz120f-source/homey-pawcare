@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
 export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver";
 export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin";
