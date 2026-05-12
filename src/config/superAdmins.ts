@@ -4,7 +4,7 @@
  * 774947086@qq.com zyx991201直接在此添加你的特权邮箱即可立即生效，无需迁移。
  */
 export const SUPER_ADMIN_EMAILS: string[] = [
-  // "774947086@qq.com",zyx991201
+   "774947086@qq.com",zyx991201
 ];
 
 export const isSuperAdminEmail = (email?: string | null): boolean => {
