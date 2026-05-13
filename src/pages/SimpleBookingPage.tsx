@@ -26,7 +26,7 @@ const SERVICE_META: Record<SimpleType, { title: string; emoji: string; price: nu
 
 const TIME_SLOTS = ["09:00-10:00", "10:00-11:00", "14:00-15:00", "15:00-16:00", "18:00-19:00", "19:00-20:00"];
 
-interface AddrRow { id: string; full_address: string; receiver_name?: string; receiver_phone?: string; is_default?: boolean }
+interface AddrRow { id: string; recipient: string; phone: string; province: string; city: string; district: string; detail: string; is_default?: boolean }
 interface PetRow { id: string; name: string; pet_type: string; breed?: string; is_default?: boolean }
 interface ProviderRow { user_id: string; username?: string; avatar_url?: string; rating?: number; orders_done?: number; verified?: boolean }
 
@@ -95,18 +95,20 @@ const SimpleBookingPage = () => {
     (async () => {
       const [{ data: petRows }, { data: addrRows }] = await Promise.all([
         supabase.from("pets").select("id,name,pet_type,breed,is_default").eq("user_id", user.id),
-        supabase.from("shipping_addresses").select("id,full_address,receiver_name,receiver_phone,is_default").eq("user_id", user.id),
+        supabase.from("shipping_addresses").select("id,recipient,phone,province,city,district,detail,is_default").eq("user_id", user.id),
       ]);
-      const pl = (petRows as PetRow[]) || [];
+      const pl = ((petRows as any[]) || []) as PetRow[];
       setPets(pl);
       const dp = pl.find((p) => p.is_default) || pl[0];
       if (dp) setPetId(dp.id);
-      const al = (addrRows as AddrRow[]) || [];
+      const al = ((addrRows as any[]) || []) as AddrRow[];
       setAddresses(al);
       const da = al.find((a) => a.is_default) || al[0];
       if (da) setAddrId(da.id);
     })();
   }, [user]);
+
+  const fmtAddr = (a: AddrRow) => `${a.province}${a.city}${a.district}${a.detail}`;
 
   // Load nearby providers (best-effort: list approved sitters/groomers)
   useEffect(() => {
