@@ -11,6 +11,7 @@ import AIChatWidget from "@/components/AIChatWidget";
 import RoleGuard from "@/components/RoleGuard";
 import SuperAdminGuard from "@/components/dev/SuperAdminGuard";
 import MaintenanceGate from "@/components/MaintenanceGate";
+import { RequireAuthProvider } from "@/hooks/useRequireAuth";
 
 // Community-adjacent routes are marked critical: a chunk-load failure on these
 // triggers the global capped reload flow so future community additions inherit
@@ -86,6 +87,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <RequireAuthProvider>
         <Suspense fallback={<PageLoader />}>
           <MaintenanceGate>
           <Routes>
@@ -150,6 +152,7 @@ const App = () => (
           </MaintenanceGate>
         </Suspense>
         <AIChatWidget />
+        </RequireAuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
