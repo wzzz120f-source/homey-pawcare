@@ -1,125 +1,208 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PawPrint, Mail, Lock, User, ArrowLeft, PawPrint as PawIcon, Briefcase, Stethoscope, Store } from "lucide-react";
+import { PawPrint, Mail, Lock, User, ArrowLeft, Smartphone, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { friendlySupabaseError } from "@/lib/supabaseError";
 import { cn } from "@/lib/utils";
 
-type RoleKey = "user" | "sitter" | "groomer" | "merchant";
-type Step = "auth" | "role" | "done";
+type Channel = "phone" | "email";
 
-const ROLE_OPTIONS: {
-  key: RoleKey;
-  title: string;
-  subtitle: string;
-  icon: typeof PawIcon;
-  next: string;
-}[] = [
-  { key: "user", title: "我是铲屎官", subtitle: "需要上门服务", icon: PawIcon, next: "/pets" },
-  { key: "sitter", title: "我是宠托师", subtitle: "兼职照顾宠物", icon: Briefcase, next: "/driver/apply?type=sitter" },
-  { key: "groomer", title: "我是护理师", subtitle: "提供专业护理（洗浴/医疗）", icon: Stethoscope, next: "/driver/apply?type=groomer" },
-  { key: "merchant", title: "我是商家", subtitle: "实体店铺入驻", icon: Store, next: "/merchant/apply" },
-];
-
-const WELCOME = "我们相信，真正爱宠的人，值得被生活温柔以待。Homey 的创立，是为了让每一份对毛孩子的爱都不被辜负，也让每一位守护者都能在善意中获得体面的回报，欢迎加入我们！";
+const PHONE_RE = /^1[3-9]\d{9}$/;
 
 const AuthPage = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [step, setStep] = useState<Step>(params.get("step") === "role" ? "role" : "auth");
-  const [isLogin, setIsLogin] = useState(true);
+  const initialMode = (params.get("mode") as Channel) || "phone";
+  const redirect = params.get("redirect") || "/";
+
+  const [channel, setChannel] = useState<Channel>(initialMode);
+  const [emailMode, setEmailMode] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
+
+  // email
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
 
-  const handleAuth = async (e: React.FormEvent) => {
+  // phone
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    timerRef.current = window.setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => { if (timerRef.current) window.clearTimeout(timerRef.current); };
+  }, [countdown]);
+
+  const goAfterLogin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: roleRows } = await supabase
+        .from("user_roles").select("role").eq("user_id", user.id);
+      const roles = (roleRows || []).map((r: any) => r.role);
+      if (roles.includes("admin")) {
+        navigate("/admin", { replace: true });
+        return;
+      }
+      // First-login: auto-grant 'user' role so普通用户无需选择身份
+      if (roles.length === 0) {
+        await supabase.from("user_roles").insert({ user_id: user.id, role: "user" } as any);
+      }
+    }
+    navigate(redirect, { replace: true });
+  };
+
+  const sendCode = async () => {
+    if (!PHONE_RE.test(phone)) { toast.error("请输入有效手机号"); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-sms-code", { body: { phone } });
+      if (error) throw error;
+      setCountdown(60);
+      const dev = (data as any)?.dev_code;
+      if (dev) toast.success(`验证码已发送（演示模式：${dev}）`, { duration: 8000 });
+      else toast.success("验证码已发送，请查收短信");
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("rate_limited")) toast.error("请 60 秒后再试");
+      else if (msg.includes("daily_limit")) toast.error("当日已达发送上限");
+      else toast.error("发送失败，请稍后再试");
+    } finally { setLoading(false); }
+  };
+
+  const handlePhoneLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!PHONE_RE.test(phone)) { toast.error("请输入有效手机号"); return; }
+    if (!/^\d{4,8}$/.test(code)) { toast.error("请输入验证码"); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-sms-code", { body: { phone, code } });
+      if (error) throw error;
+      const { access_token, refresh_token } = data as any;
+      if (!access_token || !refresh_token) throw new Error("登录失败");
+      const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (setErr) throw setErr;
+      toast.success("登录成功！");
+      await goAfterLogin();
+    } catch (err: any) {
+      toast.error(err?.message?.includes("wrong_or_expired") ? "验证码错误或已过期" : "登录失败，请重试");
+    } finally { setLoading(false); }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isLogin) {
-        const { data: signIn, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (emailMode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("登录成功!");
-        // 开发者（admin）自动进入后台
-        const uid = signIn.user?.id;
-        if (uid) {
-          const { data: roleRows } = await supabase
-            .from("user_roles").select("role").eq("user_id", uid);
-          if ((roleRows || []).some((r: any) => r.role === "admin")) {
-            navigate("/admin", { replace: true });
-            return;
-          }
-        }
-        navigate("/");
+        await goAfterLogin();
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { username: username || "宠物伙伴" },
-            emailRedirectTo: window.location.origin,
-          },
+          email, password,
+          options: { data: { username: username || "宠物伙伴" }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success("注册成功！请选择身份");
-        setStep("role");
+        toast.success("注册成功！请前往邮箱验证");
+        setEmailMode("login");
       }
     } catch (err: any) {
       toast.error(friendlySupabaseError(err, "操作失败"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const pickRole = async (role: typeof ROLE_OPTIONS[number]) => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // 普通用户写入 user 角色；其他角色等审核通过后由系统授予，仅记录意向
-        if (role.key === "user") {
-          await supabase.from("user_roles").insert({ user_id: user.id, role: "user" } as any);
-        }
-      }
-      navigate(role.next);
-    } catch (err: any) {
-      toast.error(friendlySupabaseError(err, "保存失败"));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center gap-3 px-4 h-14">
-        <button onClick={() => (step === "role" ? setStep("auth") : navigate(-1))} className="p-1.5 rounded-lg hover:bg-secondary" aria-label="返回">
+        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-secondary" aria-label="返回">
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
       </header>
 
       <main className="flex-1 flex flex-col items-center px-6 max-w-lg mx-auto w-full pb-12">
-        <div className="flex items-center gap-2 mb-4 mt-4">
+        <div className="flex items-center gap-2 mb-2 mt-4">
           <PawPrint className="w-10 h-10 text-primary" />
           <span className="font-extrabold text-2xl text-foreground">萌宠到家 · Homey</span>
         </div>
+        <p className="text-xs text-muted-foreground mb-6">让每一份对毛孩子的爱都被温柔以待</p>
 
-        {step === "auth" && (
-          <>
-            <p className="text-xs text-muted-foreground text-center leading-relaxed mb-6 px-2">{WELCOME}</p>
+        <div className="w-full bg-card rounded-2xl p-6 card-shadow">
+          {/* Channel tabs */}
+          <div className="flex justify-center gap-1 mb-5 bg-secondary rounded-full p-1" role="tablist">
+            {([
+              { k: "phone" as const, label: "手机号", icon: Smartphone, hot: true },
+              { k: "email" as const, label: "邮箱", icon: Mail },
+            ]).map(({ k, label, icon: Icon, hot }) => {
+              const active = channel === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => setChannel(k)}
+                  className={cn(
+                    "flex-1 px-4 py-2 rounded-full text-sm font-bold transition flex items-center justify-center gap-1.5",
+                    active ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                  {hot && !active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">推荐</span>}
+                </button>
+              );
+            })}
+          </div>
 
-            <div className="w-full bg-card rounded-2xl p-6 card-shadow">
-              <div className="flex justify-center gap-2 mb-5" role="tablist">
+          {channel === "phone" ? (
+            <form onSubmit={handlePhoneLogin} className="space-y-3">
+              <div className="relative">
+                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="tel" inputMode="numeric" maxLength={11}
+                  placeholder="手机号" value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  className="pl-10" required
+                />
+              </div>
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text" inputMode="numeric" maxLength={6}
+                    placeholder="验证码" value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  type="button" variant="outline" onClick={sendCode}
+                  disabled={loading || countdown > 0 || !PHONE_RE.test(phone)}
+                  className="shrink-0"
+                >
+                  {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                </Button>
+              </div>
+              <Button variant="hero" size="xl" className="w-full" type="submit" disabled={loading}>
+                {loading ? "登录中…" : "一键登录 / 注册"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                未注册手机号将自动创建账号 · 7 天内免重复登录
+              </p>
+            </form>
+          ) : (
+            <>
+              <div className="flex justify-center gap-2 mb-4" role="tablist">
                 {(["登录", "注册"] as const).map((t, i) => {
                   const isLog = i === 0;
-                  const active = isLog === isLogin;
+                  const active = isLog === (emailMode === "login");
                   return (
                     <button
                       key={t}
-                      onClick={() => setIsLogin(isLog)}
+                      onClick={() => setEmailMode(isLog ? "login" : "signup")}
                       className={cn(
                         "px-6 py-1.5 rounded-full text-sm font-bold transition",
                         active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
@@ -130,9 +213,8 @@ const AuthPage = () => {
                   );
                 })}
               </div>
-
-              <form onSubmit={handleAuth} className="space-y-3">
-                {!isLogin && (
+              <form onSubmit={handleEmailAuth} className="space-y-3">
+                {emailMode === "signup" && (
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input placeholder="昵称" value={username} onChange={(e) => setUsername(e.target.value)} className="pl-10" />
@@ -147,50 +229,19 @@ const AuthPage = () => {
                   <Input type="password" placeholder="密码（至少6位）" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pl-10" />
                 </div>
                 <Button variant="hero" size="xl" className="w-full" type="submit" disabled={loading}>
-                  {loading ? "处理中…" : isLogin ? "登录" : "下一步：选择身份"}
+                  {loading ? "处理中…" : emailMode === "login" ? "登录" : "注册"}
                 </Button>
               </form>
+            </>
+          )}
+        </div>
 
-              {isLogin && (
-                <button
-                  type="button"
-                  onClick={() => setStep("role")}
-                  className="block w-full text-center text-xs text-primary mt-4 hover:underline"
-                >
-                  已登录？前往身份选择 →
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {step === "role" && (
-          <>
-            <h2 className="text-xl font-extrabold text-foreground mb-1 text-center">选择你的身份</h2>
-            <p className="text-xs text-muted-foreground text-center mb-6">不同身份将看到不同的工作台，可在「我的」中再次切换或申请。</p>
-
-            <div className="grid grid-cols-2 gap-3 w-full">
-              {ROLE_OPTIONS.map((r) => (
-                <button
-                  key={r.key}
-                  onClick={() => pickRole(r)}
-                  disabled={loading}
-                  className="bg-card rounded-2xl p-4 card-shadow flex flex-col items-center text-center gap-2 hover:scale-[1.02] active:scale-95 transition disabled:opacity-50"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <r.icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <p className="font-bold text-sm text-foreground">{r.title}</p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">{r.subtitle}</p>
-                </button>
-              ))}
-            </div>
-
-            <p className="text-[11px] text-muted-foreground text-center mt-6">
-              服务人员/商家提交资料后将进入「审核中」状态，通过后自动解锁对应工作台。
-            </p>
-          </>
-        )}
+        <button
+          onClick={() => navigate(redirect, { replace: true })}
+          className="mt-6 text-xs text-muted-foreground hover:text-foreground"
+        >
+          以游客身份继续浏览 →
+        </button>
       </main>
     </div>
   );
