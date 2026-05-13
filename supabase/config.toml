@@ -2,3 +2,9 @@ project_id = "cmehteacoupipqlgvsir"
 
 [functions.chat-ai]
 verify_jwt = false
+
+[functions.send-sms-code]
+verify_jwt = false
+
+[functions.verify-sms-code]
+verify_jwt = false

@@ -1871,6 +1871,24 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_accounts: {
+        Row: {
+          created_at: string
+          phone: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          phone: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          phone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       point_donations: {
         Row: {
           created_at: string
@@ -2197,6 +2215,7 @@ export type Database = {
           is_super_admin: boolean
           is_verified_real_name: boolean
           love_points: number
+          phone: string | null
           updated_at: string
           user_id: string
           username: string
@@ -2212,6 +2231,7 @@ export type Database = {
           is_super_admin?: boolean
           is_verified_real_name?: boolean
           love_points?: number
+          phone?: string | null
           updated_at?: string
           user_id: string
           username?: string
@@ -2227,6 +2247,7 @@ export type Database = {
           is_super_admin?: boolean
           is_verified_real_name?: boolean
           love_points?: number
+          phone?: string | null
           updated_at?: string
           user_id?: string
           username?: string
@@ -2658,6 +2679,36 @@ export type Database = {
           recipient?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      sms_codes: {
+        Row: {
+          code: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          purpose: string
+        }
+        Insert: {
+          code: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+          purpose?: string
+        }
+        Update: {
+          code?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+          purpose?: string
         }
         Relationships: []
       }
