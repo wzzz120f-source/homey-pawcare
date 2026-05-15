@@ -245,7 +245,10 @@ const Index = () => {
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 scrollbar-none" role="list" style={{ WebkitOverflowScrolling: "touch" }}>
             {loadingServices
               ? Array.from({ length: 4 }).map((_, i) => <ServiceSkeleton key={i} />)
-              : services?.map((s) => <ServiceCard key={s.id} {...s} onClick={() => navigate("/booking")} />)}
+              : services?.map((s) => {
+                  const t = s.id === "walking" ? "walk" : (s.id === "bath" || s.id === "grooming") ? "groom" : s.id === "health" ? "feed" : null;
+                  return <ServiceCard key={s.id} {...s} onClick={() => navigate(t ? `/book/${t}` : "/booking")} />;
+                })}
           </div>
         </section>
 
