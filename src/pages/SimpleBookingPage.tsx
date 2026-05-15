@@ -131,7 +131,7 @@ const SimpleBookingPage = () => {
 
   const selectedPet = useMemo(() => pets.find((p) => p.id === petId), [pets, petId]);
   const selectedAddr = useMemo(() => addresses.find((a) => a.id === addrId), [addresses, addrId]);
-  const addrText = newAddr.trim() || selectedAddr?.full_address || "";
+  const addrText = newAddr.trim() || (selectedAddr ? fmtAddr(selectedAddr) : "");
   const selectedProvider = useMemo(() => providers.find((p) => p.user_id === providerId), [providers, providerId]);
 
   const next = () => {
