@@ -8,6 +8,7 @@ import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, Mess
 import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
 import CompanionReportGenerator, { type SavedReport } from "@/components/CompanionReportGenerator";
+import EscrowStatusCard from "@/components/EscrowStatusCard";
 import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
