@@ -460,6 +460,17 @@ const OrderDetailPage = () => {
           </section>
         )}
 
+        <EscrowStatusCard
+          orderId={order.id}
+          escrowStatus={order.escrow_status}
+          orderStatus={order.order_status}
+          amount={order.total_amount}
+          onReleased={async () => {
+            const { data } = await supabase.from("orders").select("*").eq("id", order.id).single();
+            if (data) setOrder(data as Order);
+          }}
+        />
+
         {/* Quick links */}
         {["confirmed", "in_progress"].includes(order.order_status) && (
           <Button variant="hero" className="w-full" onClick={() => navigate(`/track/${order.id}`)}>
