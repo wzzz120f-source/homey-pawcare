@@ -222,23 +222,27 @@ const SimpleBookingPage = () => {
               </button>
               <div className="space-y-2">
                 {providers.map((p) => (
-                  <button key={p.user_id} onClick={() => setProviderId(p.user_id)}
-                    className={cn("w-full p-3 rounded-xl border text-left flex items-center gap-3",
+                  <div key={p.user_id}
+                    className={cn("w-full p-3 rounded-xl border flex items-center gap-3",
                       providerId === p.user_id ? "border-primary bg-primary/5" : "border-border")}>
-                    <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden">
-                      {p.avatar_url ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" /> : <PawPrint className="w-full h-full p-2 text-muted-foreground" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-bold text-sm truncate">{p.username || "服务者"}</p>
-                        {p.verified && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 flex items-center gap-0.5"><ShieldCheck className="w-3 h-3" />已审核</span>}
+                    <button onClick={() => setProviderId(p.user_id)} className="flex items-center gap-3 flex-1 text-left min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden">
+                        {p.avatar_url ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" /> : <PawPrint className="w-full h-full p-2 text-muted-foreground" />}
                       </div>
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-2">
-                        <span className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-500 fill-amber-500" />{p.rating?.toFixed(1)}</span>
-                        <span>{p.orders_done} 单</span>
-                      </p>
-                    </div>
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-sm truncate">{p.username || "服务者"}</p>
+                          {p.verified && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 flex items-center gap-0.5"><ShieldCheck className="w-3 h-3" />已审核</span>}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-2">
+                          <span className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-500 fill-amber-500" />{p.rating?.toFixed(1)}</span>
+                          <span>{p.orders_done} 单</span>
+                        </p>
+                      </div>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); navigate(`/provider/${p.user_id}`); }}
+                      className="text-[11px] text-primary px-2 py-1 rounded hover:bg-primary/10 shrink-0">主页</button>
+                  </div>
                 ))}
               </div>
             </section>
