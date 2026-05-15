@@ -284,8 +284,8 @@ const SimpleBookingPage = () => {
                     <button key={a.id} onClick={() => { setAddrId(a.id); setNewAddr(""); }}
                       className={cn("w-full p-3 rounded-xl border text-left",
                         addrId === a.id && !newAddr ? "border-primary bg-primary/5" : "border-border")}>
-                      <p className="text-sm font-medium truncate">{a.full_address}</p>
-                      {a.receiver_name && <p className="text-[11px] text-muted-foreground">{a.receiver_name} · {a.receiver_phone}</p>}
+                      <p className="text-sm font-medium truncate">{fmtAddr(a)}</p>
+                      {a.recipient && <p className="text-[11px] text-muted-foreground">{a.recipient} · {a.phone}</p>}
                     </button>
                   ))}
                 </div>
