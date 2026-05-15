@@ -690,6 +690,36 @@ export type Database = {
         }
         Relationships: []
       }
+      escrow_ledger: {
+        Row: {
+          action: string
+          amount: number
+          created_at: string
+          id: string
+          note: string | null
+          order_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1534,6 +1564,7 @@ export type Database = {
           driver_fare: number | null
           driver_id: string | null
           dropoff_address: string | null
+          escrow_status: string
           id: string
           is_physical: boolean
           notes: string | null
@@ -1564,6 +1595,7 @@ export type Database = {
           driver_fare?: number | null
           driver_id?: string | null
           dropoff_address?: string | null
+          escrow_status?: string
           id?: string
           is_physical?: boolean
           notes?: string | null
@@ -1594,6 +1626,7 @@ export type Database = {
           driver_fare?: number | null
           driver_id?: string | null
           dropoff_address?: string | null
+          escrow_status?: string
           id?: string
           is_physical?: boolean
           notes?: string | null
@@ -3337,6 +3370,14 @@ export type Database = {
           review_count: number
         }[]
       }
+      get_provider_stats: {
+        Args: { provider_uid: string }
+        Returns: {
+          avg_rating: number
+          orders_done: number
+          review_count: number
+        }[]
+      }
       get_rescue_feed_list: {
         Args: { _before?: string; _limit?: number; _story_id: string }
         Returns: {
@@ -3419,6 +3460,7 @@ export type Database = {
         Args: { _application_id: string; _note?: string }
         Returns: Json
       }
+      release_escrow: { Args: { _order_id: string }; Returns: Json }
       request_refund: {
         Args: { _order_id: string; _reason: string }
         Returns: Json

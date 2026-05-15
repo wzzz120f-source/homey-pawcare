@@ -8,6 +8,7 @@ import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, Mess
 import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
 import CompanionReportGenerator, { type SavedReport } from "@/components/CompanionReportGenerator";
+import EscrowStatusCard from "@/components/EscrowStatusCard";
 import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
@@ -31,6 +32,7 @@ interface Order {
   pickup_address: string | null;
   dropoff_address: string | null;
   notes: string | null;
+  escrow_status?: string | null;
 }
 
 interface Review {
@@ -457,6 +459,17 @@ const OrderDetailPage = () => {
             </div>
           </section>
         )}
+
+        <EscrowStatusCard
+          orderId={order.id}
+          escrowStatus={order.escrow_status}
+          orderStatus={order.order_status}
+          amount={order.total_amount}
+          onReleased={async () => {
+            const { data } = await supabase.from("orders").select("*").eq("id", order.id).single();
+            if (data) setOrder(data as Order);
+          }}
+        />
 
         {/* Quick links */}
         {["confirmed", "in_progress"].includes(order.order_status) && (
