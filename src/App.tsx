@@ -23,6 +23,7 @@ const CharityFootprintPage = lazyTracked("路由 CharityFootprintPage", () => im
 // Other routes get tracking only (visible in the status widget) without
 // auto-reload, to avoid surprise reloads on rarely-used screens.
 const BookingPage = lazyTracked("路由 BookingPage", () => import("./pages/BookingPage"));
+const SimpleBookingPage = lazyTracked("路由 SimpleBookingPage", () => import("./pages/SimpleBookingPage"));
 const AuthPage = lazyTracked("路由 AuthPage", () => import("./pages/AuthPage"));
 const ProfilePage = lazyTracked("路由 ProfilePage", () => import("./pages/ProfilePage"));
 const ShopPage = lazyTracked("路由 ShopPage", () => import("./pages/ShopPage"));
@@ -93,6 +94,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/booking" element={<BookingPage />} />
+            <Route path="/book/:type" element={<SimpleBookingPage />} />
             <Route path="/stores" element={<BookingPage />} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/shop" element={<ShopPage />} />
