@@ -32,6 +32,7 @@ interface Order {
   pickup_address: string | null;
   dropoff_address: string | null;
   notes: string | null;
+  escrow_status?: string | null;
 }
 
 interface Review {
