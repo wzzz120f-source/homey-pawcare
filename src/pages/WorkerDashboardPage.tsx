@@ -93,7 +93,7 @@ const WorkerDashboardPage = () => {
       let q = supabase
         .from("orders")
         .select("id, order_no, service_type, order_status, total_amount, pickup_address, dropoff_address, booking_date, booking_time, driver_fare")
-        .eq("driver_id", user.id)
+        .or(`provider_id.eq.${user.id},driver_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(50);
       // 当日相关：今日及未来
@@ -112,8 +112,8 @@ const WorkerDashboardPage = () => {
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const todays = orders.filter((o) => (o.booking_date ?? "").slice(0, 10) === today);
-    const pending = orders.filter((o) => o.order_status === "confirmed").length;
-    const inProg = orders.filter((o) => o.order_status === "in_progress").length;
+    const pending = orders.filter((o) => ["accepted","confirmed"].includes(o.order_status)).length;
+    const inProg = orders.filter((o) => ["on_the_way","serving","in_progress","awaiting_confirm"].includes(o.order_status)).length;
     const done = todays.filter((o) => o.order_status === "completed").length;
     const incomeToday = todays
       .filter((o) => o.order_status === "completed")
@@ -121,7 +121,7 @@ const WorkerDashboardPage = () => {
     return { pending, inProg, done, incomeToday };
   }, [orders]);
 
-  const activeTrip = orders.find((o) => o.order_status === "in_progress");
+  const activeTrip = orders.find((o) => ["on_the_way","serving","in_progress"].includes(o.order_status));
 
   return (
     <div className="min-h-screen bg-background pb-32">
