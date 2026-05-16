@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -39,14 +39,16 @@ const REASONS = ["服务质量问题", "收费异议", "技师态度问题", "�
 
 const MerchantAppealPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefilledOrder = searchParams.get("order");
   const { user, loading: authLoading } = useAuth();
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [orders, setOrders] = useState<OrderOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(!!prefilledOrder);
   const [submitting, setSubmitting] = useState(false);
 
-  const [selectedOrder, setSelectedOrder] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(prefilledOrder || "");
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
   const [contactInfo, setContactInfo] = useState("");
@@ -62,10 +64,19 @@ const MerchantAppealPage = () => {
       supabase.from("orders").select("id, order_no, service_type").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
     ]).then(([appealsRes, ordersRes]) => {
       if (appealsRes.data) setAppeals(appealsRes.data);
-      if (ordersRes.data) setOrders(ordersRes.data as OrderOption[]);
+      if (ordersRes.data) {
+        const list = ordersRes.data as OrderOption[];
+        setOrders(list);
+        // If prefilled order missing in last 20, fetch its number for display
+        if (prefilledOrder && !list.find((o) => o.id === prefilledOrder)) {
+          supabase.from("orders").select("id, order_no, service_type").eq("id", prefilledOrder).maybeSingle().then(({ data }) => {
+            if (data) setOrders((p) => [data as OrderOption, ...p]);
+          });
+        }
+      }
       setLoading(false);
     });
-  }, [user]);
+  }, [user, prefilledOrder]);
 
   const handleSubmit = async () => {
     if (!user || !reason || !description.trim()) {
