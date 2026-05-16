@@ -1,130 +1,103 @@
-## 优化方向总览
+# 全角色端到端测试 & 修复计划
 
-四块优化：登录注册、游客模式、3 步下单、安全感（实名徽章+担保支付+GPS 留痕）。
+## 🔴 头号 Bug（已定位，阻塞几乎所有角色）
 
----
+线上抓包显示登录用户访问首页推荐时返回 **403**：
 
-## 一、登录 / 注册：双通道 + 一秒进入
-
-### 1.1 改造 `AuthPage.tsx` 为 Tabs 双通道
-- 顶部 Tab：「**手机号**（推荐）」/「邮箱」
-- 手机号通道：手机号输入 + 「获取验证码」按钮（60 秒倒计时）+ 6 位验证码输入
-- 邮箱通道：保留现有逻辑
-- 注册场景手机号也可走验证码直登，自动建账户
-
-### 1.2 验证码下发（开发/演示模式）
-- 新增 edge function `send-sms-code`：
-  - 开发模式：写入新表 `sms_codes(phone, code, expires_at)`，验证码固定 `1234` 或随机 6 位（toast 给开发者看）
-  - 60 秒发送频率限制 + 每天每号 10 次
-  - 预留接入真实短信网关接口（Twilio / 阿里云）的位置，后续仅替换发送实现
-- 新增 edge function `verify-sms-code`：
-  - 验证码正确 → 用 service_role 调 `auth.admin.createUser`（首次）或 `signInWithPassword`（已注册）
-  - 手机号→email 映射策略：`{phone}@phone.local` 作为 Supabase Auth 的 email，固定派生密码（哈希存储，不暴露），实现"凭手机号一键登录"
-  - 返回 access/refresh token，前端 `supabase.auth.setSession()` 写入本地
-
-### 1.3 持久登录
-- Supabase 客户端默认 `persistSession: true`（已是默认），明确补足 `autoRefreshToken: true` 与 `storage: localStorage`
-- 在 `useAuth` 中确认 onAuthStateChange 重新挂起后能恢复会话（已 OK，文案中写明"7 天免登录"）
-
-### 1.4 首次登录自动绑定身份
-- 登录成功若 `user_roles` 为空，自动写入 `user` 角色（去掉强制选身份步骤，仅在用户主动申请时才走师傅/商家流程）
-
----
-
-## 二、游客模式
-
-### 2.1 路由调整（`App.tsx`）
-- 把以下路由从 `RoleGuard` 包裹中拿出，改为公开访问：
-  - `/`、`/shop`、`/community`、`/product/:id`、`/post/:id`、`/hotel/:id`、`/pet-hotel`、`/booking/:type`（仅展示，提交时拦截）
-- 仍受保护的路由：`/profile`、`/orders`、`/wallet`、`/cart`、`/messages` 等私有页面
-
-### 2.2 登录拦截 Hook
-- 新增 `useRequireAuth()`：返回 `(action: () => void) => void`，未登录时弹出 `LoginRequiredDialog`（轻量 dialog，主按钮"手机号一键登录"，副按钮"去注册/邮箱"），登录后回到原动作
-- 在以下行为接入：下单 / 收藏 / 评论 / 点赞 / 关注 / 加购物车 / 发帖
-- 顶部右上角对游客显示「登录 / 注册」入口，登录后变成头像
-
----
-
-## 三、3 步极简下单（仅遛狗 / 喂宠 / 洗护）
-
-### 3.1 重构 `BookingPage.tsx` 为 Stepper
-固定 3 步，顶部进度条 1 / 2 / 3：
-
-```text
-Step 1  选服务 + 服务者
-  ├─ 已根据 :type 预选服务
-  └─ 列表展示附近匹配的师傅（已审核徽章+评分），可"系统派单"
-
-Step 2  选时间 + 地址
-  ├─ 时间：今日/明日快捷 + 时间段
-  └─ 地址：常用家庭地址默认勾选；新增地址折叠在下
-
-Step 3  确认 + 支付
-  ├─ 订单预览卡（服务、时间、地址、宠物、金额），每行右侧"修改"快速回到对应 Step
-  └─ 立即支付 / 担保支付说明
+```
+permission denied for function has_role
 ```
 
-### 3.2 实现要点
-- 用单页 stepper（不切路由），`useReducer` 维护草稿；离开页面写 `localStorage`，回来自动恢复
-- 自动填充：用户名、手机号（来自 profiles）、默认地址（shipping_addresses 的 is_default）、默认宠物（pets 的第一只）
-- 接送 / 酒店保持现状不动
+数据库权限核查结果：
+
+| 函数 | EXECUTE 授权 |
+|---|---|
+| `public.has_role` | ❌ 仅 postgres / service_role |
+| `public.is_merchant_owner` | ❌ 仅 postgres / service_role |
+| `public.is_super_admin` | ✅ anon / authenticated |
+
+项目里有 **64 处** RLS 策略调用 `has_role`（涉及 admin/merchant/sitter/driver 几乎所有后台表），多处调用 `is_merchant_owner`。任何带「FOR ALL + has_role」管理员策略的表，普通登录用户做一次 SELECT 都会触发函数求值 → 直接 42501。
+
+→ 这会同时导致：首页推荐挂掉、商家中心打不开、订单列表偶发空、审核台 403、客服会话拉不到等一系列「明明登录了却没数据」的现象。
+
+**修复**：迁移中 `GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role), public.is_merchant_owner(uuid, uuid) TO anon, authenticated;` 并在 SQL 末尾把所有 SECURITY DEFINER 工具函数权限统一对齐。
 
 ---
 
-## 四、安全感模块
+## 测试矩阵（5 角色 × 核心链路）
 
-### 4.1 服务者主页徽章 + 评分（前端）
-- 新增 `ProviderProfileCard` 组件，展示位置：
-  - `TechnicianCard`、`TechnicianDetailDialog`、`DriverHallPage` 师傅信息区
-- 内容：
-  - 「已审核」徽章：依据 `driver_applications.status='approved'`
-  - 「资质」徽章：从 `driver_applications.role_requested` + `pet_experience` 推导（"宠物护理证 / 驾龄 X 年"）
-  - 评分 / 单数：聚合 `groomer_ratings` 与 `orders`（driver_id=该用户 & status=completed 计数）
-- 新增 RPC `get_provider_stats(_uid uuid)`，一次返回 avg_rating / total_orders / approved_at
+会按以下顺序在预览里跑一遍，每条记录截图 + 控制台/网络错误。
 
-### 4.2 担保支付（Escrow）
-**数据层（migration）**
-- `orders` 增加：`escrow_status text default 'none'`（none / held / released / refunded）、`escrow_held_at`、`escrow_released_at`
-- 新增表 `escrow_ledger(order_id, user_id, provider_id, amount, status, created_at, released_at)`，仅 admin/系统可写
+### 1. 游客 Guest
+- 首页/商城/社区/酒店浏览价格 → 应可见
+- 点「下单 / 收藏 / 评论 / 关注」→ 弹 LoginRequiredDialog（验证拦截覆盖）
+- 刷新后停留在原页面（draft + 路由保留）
 
-**流程**
-1. 用户支付成功 → 现有 `create-payment` / `wallet_pay` 之后调用新 RPC `escrow_hold(_order_id, _amount)` → orders.escrow_status='held'，金额暂不入服务者 `provider_balances`
-2. 服务完成（complete_service_order 末尾）→ 状态转 `completed` 但 escrow 仍 held，等用户在订单详情点「确认完成」，或 7 天自动确认（cron 边缘函数 `escrow-auto-release`）
-3. 用户确认 → RPC `escrow_release(_order_id)` → 写 `earning_transactions` + 增加 `provider_balances.available`，escrow_status='released'
-4. 退款路径：`escrow_refund(_order_id)` 走原 `refund-payment` 流程
+### 2. 铲屎官 User
+- **手机验证码登录**：send-sms-code / verify-sms-code 链路（dev 模式日志取码）
+- **邮箱登录**：保留兼容
+- 会话持久化：关页面再开仍登录
+- 3 步极简下单（遛狗 / 喂宠 / 洗护）：选服务→时选地址→预览→支付
+- 接送、酒店保留原流程，确认入口正确
+- 订单详情 EscrowStatusCard：付款后状态变 held，确认完成触发 release_escrow
+- 服务者主页 `/provider/:uid`：徽章 + 历史评价 + 评分聚合
+- 个人中心、订单、收藏、优惠券、积分、钱包
 
-**UI**
-- 订单详情页加担保支付状态条：「资金担保中 · 服务完成后将释放给服务者」/「资金已释放」
-- 服务完成后出现「确认完成并释放资金」主按钮 + 倒计时提示
+### 3. 宠托师 / 护理师 / 司机 Sitter/Groomer/Driver
+- 角色切换到对应身份
+- WorkerDashboard 接单列表
+- 服务打卡：GPS + 多张照片强制上传（ServiceCheckinChecklist）
+- complete_service_order RPC → 订单状态、escrow 进入可结算
+- 收益页 ProviderEarningsPage：earning_transactions 显示
+- 提现申请
 
-### 4.3 GPS 打卡 + 服务照片（强制）
-- 现有 `service_checkins` + `ServiceCheckinPage` 已存在：
-  - 改为：每个 action 必须包含 `lat/lng`（H5 geolocation；失败给重试和"无法获取定位"原因）
-  - 必传字段：照片（喂宠/遛狗实拍），上传到 Storage `checkin-photos` bucket
-  - `complete_service_order` 已校验缺失项；为 sitter 服务把 `_required` 默认设为 `['arrival_gps','during_photo','leave_gps']`
-- 用户订单详情新增"服务时间线"卡片：按 checkins 顺序展示打卡时间、坐标、缩略图
+### 4. 商家 Merchant
+- 商家中心、订单、申诉
+- 商品发布 / 库存 / 闪购
 
-### 4.4 评价真实可见
-- 服务者主页（新增 `ProviderPublicPage` 路由 `/provider/:uid`）展示：
-  - 头部：头像 + 已审核 / 资质徽章 + 评分均值 + 完成单数
-  - 下方：最近 20 条 `groomer_ratings` 真实评价（含 tags、内容、用户头像/昵称）
-- `TechnicianCard` 点击跳转该页
+### 5. 审核员 / 超管 Admin
+- /admin 面板：申请审核、退款、提现、佣金、收入、审计
+- /dev 入口（超管登录）：功能开关、用户、健康检查、维护模式
 
 ---
 
-## 技术细节摘要
+## 已知/可疑问题清单（探测中发现，待验证修复）
 
-| 模块 | 新增/修改文件 | 数据库变更 |
-|---|---|---|
-| 手机登录 | `AuthPage.tsx` 重构、`PhoneAuthTab.tsx`、edge `send-sms-code` / `verify-sms-code` | 新表 `sms_codes` |
-| 游客模式 | `App.tsx` 公开路由、`hooks/useRequireAuth.ts`、`LoginRequiredDialog.tsx` | 无 |
-| 3 步下单 | `BookingPage.tsx` 重构、`booking/Step1Service.tsx` / `Step2TimeAddress.tsx` / `Step3Review.tsx` | 无 |
-| 服务者徽章 | `ProviderBadges.tsx`、`ProviderPublicPage.tsx`、改 `TechnicianCard` | RPC `get_provider_stats` |
-| 担保支付 | `useEscrow.ts`、订单详情新区块、edge `escrow-auto-release` | `orders` 加列 + 新表 `escrow_ledger` + RPC 三个 |
-| GPS 留痕 | 改 `ServiceCheckinPage.tsx`、`ServiceTimeline.tsx` | `service_checkins` 加 NOT NULL（迁移温和：先加列，逐步生效） |
+1. **has_role / is_merchant_owner 无 EXECUTE 权限**（上文，必修）
+2. 推荐规则表 `service_recommendation_rules` 的「Admins manage rules」是 `FOR ALL`，建议拆成 `FOR INSERT/UPDATE/DELETE`，避免普通用户 SELECT 时也触发 has_role 求值（即使权限修了，这也是更稳的写法）
+3. `useUserRoles` 仍依赖 `user_roles` SELECT —— 需确认其 RLS 允许自查
+4. 手机登录 OTP：上次 dev 模式直接日志输出验证码，需在 UI 给出明显提示，避免用户找不到
+5. EscrowStatusCard 在非「服务类」订单（商品订单）上应隐藏，避免误导
+6. 担保支付 release 触发后通知是否落到 notifications 表 + Realtime 推送
+7. 服务打卡照片若上传失败需可重试（mediaUpload 已有，复核 UI 错误态）
+8. 游客 LoginRequiredDialog 在「关注 / 评论 / 加购」全路径是否都接入 `useRequireAuth`
+9. 3 步下单 draft localStorage 在退出登录后需清空，避免串号
 
-## 实施顺序（建议分两批）
-1. **第一批（用户感知最强）**：手机号登录 + 游客模式 + 3 步下单
-2. **第二批（信任建设）**：服务者徽章页 + 担保支付 + GPS 强制留痕
+---
 
-确认后我按第一批先开干。
+## 修复执行顺序
+
+1. **DB 迁移**：GRANT EXECUTE + 拆分 service_recommendation_rules 管理员策略
+2. 跑 5 角色矩阵，逐条复现 / 截屏
+3. 把矩阵里实测到的失败项按「前端拦截 / RLS / RPC / UI」分类，分批修
+4. 回归一遍游客 + User + 一个服务者 + Admin 的关键路径
+5. 报告：表格化列出每条用例「通过 / 修复后通过 / 仍待办」
+
+## 技术要点
+
+```sql
+-- 迁移核心
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_merchant_owner(uuid, uuid) TO anon, authenticated;
+
+-- 推荐策略加固
+DROP POLICY "Admins manage rules" ON public.service_recommendation_rules;
+CREATE POLICY rules_admin_iud ON public.service_recommendation_rules
+  FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(),'admin'));
+CREATE POLICY rules_admin_upd ON public.service_recommendation_rules
+  FOR UPDATE TO authenticated USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
+CREATE POLICY rules_admin_del ON public.service_recommendation_rules
+  FOR DELETE TO authenticated USING (has_role(auth.uid(),'admin'));
+```
+
+确认计划后我会立刻执行迁移，再用浏览器逐角色回归并把每个发现的问题修掉。
