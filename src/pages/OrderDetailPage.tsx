@@ -530,7 +530,7 @@ const OrderDetailPage = () => {
               <XCircle className="w-4 h-4 mr-1" /> 取消订单
             </Button>
           )}
-          <Button variant="outline" className="flex-1" onClick={() => navigate("/merchant-appeal")}>
+          <Button variant="outline" className="flex-1" onClick={() => navigate(`/merchant-appeal?order=${order.id}`)}>
             <AlertTriangle className="w-4 h-4 mr-1" /> 商家申诉
           </Button>
           <Button variant="outline" className="flex-1" onClick={() => navigate("/customer-service")}>联系客服</Button>
