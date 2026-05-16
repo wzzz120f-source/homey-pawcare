@@ -170,7 +170,13 @@ const OrderDetailPage = () => {
       setShowReviewForm(false);
       revokePreviews(media);
       setMedia([]);
-      toast.success("评价提交成功！");
+      // 评价完成 → 发放爱心积分（失败不阻断）
+      supabase.functions.invoke("award-love-points", {
+        body: { action: "order_review", related_type: "order", related_id: order.id, description: "完成订单评价" },
+      }).then(({ data: ap }: any) => {
+        if (ap?.ok && ap?.granted) toast.success(`评价提交成功！+${ap.granted} 爱心积分`);
+        else toast.success("评价提交成功！");
+      }).catch(() => toast.success("评价提交成功！"));
     } catch (err: any) {
       toast.error(err.message || "提交失败");
     } finally {
