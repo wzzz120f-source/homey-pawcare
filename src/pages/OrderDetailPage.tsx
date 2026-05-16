@@ -34,6 +34,9 @@ interface Order {
   dropoff_address: string | null;
   notes: string | null;
   escrow_status?: string | null;
+  user_id?: string;
+  provider_id?: string | null;
+  driver_id?: string | null;
 }
 
 interface Review {
@@ -106,11 +109,17 @@ const OrderDetailPage = () => {
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
+  const refetch = async () => {
+    if (!user || !id) return;
+    const { data } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+    if (data) setOrder(data as Order);
+  };
+
   useEffect(() => {
     if (!user || !id) return;
     const fetchData = async () => {
       const [orderRes, reviewRes] = await Promise.all([
-        supabase.from("orders").select("*").eq("id", id).eq("user_id", user.id).single(),
+        supabase.from("orders").select("*").eq("id", id).maybeSingle(),
         supabase.from("order_reviews" as any).select("*, media:review_media(id, media_url, media_type)").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
       ]);
       if (orderRes.data) setOrder(orderRes.data as Order);
