@@ -1557,8 +1557,11 @@ export type Database = {
       }
       orders: {
         Row: {
+          accepted_at: string | null
           booking_date: string | null
           booking_time: string | null
+          completed_at: string | null
+          confirmed_at: string | null
           created_at: string
           driver_distance_km: number | null
           driver_fare: number | null
@@ -1579,17 +1582,23 @@ export type Database = {
           pet_snapshot: Json | null
           pet_type: string | null
           pickup_address: string | null
+          provider_id: string | null
+          provider_role: Database["public"]["Enums"]["app_role"] | null
           refund_status: string
           service_type: string | null
           shipping_address_snapshot: Json | null
+          started_at: string | null
           store_name: string | null
           total_amount: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          accepted_at?: string | null
           booking_date?: string | null
           booking_time?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
           driver_distance_km?: number | null
           driver_fare?: number | null
@@ -1610,17 +1619,23 @@ export type Database = {
           pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
+          provider_id?: string | null
+          provider_role?: Database["public"]["Enums"]["app_role"] | null
           refund_status?: string
           service_type?: string | null
           shipping_address_snapshot?: Json | null
+          started_at?: string | null
           store_name?: string | null
           total_amount?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          accepted_at?: string | null
           booking_date?: string | null
           booking_time?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
           driver_distance_km?: number | null
           driver_fare?: number | null
@@ -1641,9 +1656,12 @@ export type Database = {
           pet_snapshot?: Json | null
           pet_type?: string | null
           pickup_address?: string | null
+          provider_id?: string | null
+          provider_role?: Database["public"]["Enums"]["app_role"] | null
           refund_status?: string
           service_type?: string | null
           shipping_address_snapshot?: Json | null
+          started_at?: string | null
           store_name?: string | null
           total_amount?: number
           updated_at?: string
@@ -3229,6 +3247,7 @@ export type Database = {
         Args: { _application_id: string; _note?: string }
         Returns: Json
       }
+      auto_confirm_stale_orders: { Args: never; Returns: number }
       award_love_points: {
         Args: {
           _action: string
@@ -3496,12 +3515,18 @@ export type Database = {
         }
         Returns: Json
       }
+      user_confirm_complete: { Args: { _order_id: string }; Returns: Json }
       wallet_pay: {
         Args: { _amount: number; _order_id: string }
         Returns: Json
       }
       wallet_recharge: {
         Args: { _amount: number; _channel: string }
+        Returns: Json
+      }
+      worker_grab_order: { Args: { _order_id: string }; Returns: Json }
+      worker_update_progress: {
+        Args: { _order_id: string; _to_status: string }
         Returns: Json
       }
     }

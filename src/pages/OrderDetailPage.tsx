@@ -9,6 +9,7 @@ import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
 import CompanionReportGenerator, { type SavedReport } from "@/components/CompanionReportGenerator";
 import EscrowStatusCard from "@/components/EscrowStatusCard";
+import ServiceProgressTimeline from "@/components/ServiceProgressTimeline";
 import { type PreparedMedia, uploadPreparedMedia, revokePreviews } from "@/lib/mediaUpload";
 import { cn } from "@/lib/utils";
 import { format, addHours, addMinutes } from "date-fns";
@@ -33,6 +34,9 @@ interface Order {
   dropoff_address: string | null;
   notes: string | null;
   escrow_status?: string | null;
+  user_id?: string;
+  provider_id?: string | null;
+  driver_id?: string | null;
 }
 
 interface Review {
@@ -105,11 +109,17 @@ const OrderDetailPage = () => {
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
+  const refetch = async () => {
+    if (!user || !id) return;
+    const { data } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+    if (data) setOrder(data as Order);
+  };
+
   useEffect(() => {
     if (!user || !id) return;
     const fetchData = async () => {
       const [orderRes, reviewRes] = await Promise.all([
-        supabase.from("orders").select("*").eq("id", id).eq("user_id", user.id).single(),
+        supabase.from("orders").select("*").eq("id", id).maybeSingle(),
         supabase.from("order_reviews" as any).select("*, media:review_media(id, media_url, media_type)").eq("order_id", id).eq("user_id", user.id).maybeSingle(),
       ]);
       if (orderRes.data) setOrder(orderRes.data as Order);
@@ -220,6 +230,9 @@ const OrderDetailPage = () => {
   const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === order.order_status);
   const activeStep = currentStepIndex === -1 ? 0 : currentStepIndex;
   const logistics = generateLogistics(order);
+  const isOwner = order.user_id === user?.id;
+  const isProvider = (order.provider_id ?? order.driver_id) === user?.id;
+  const isServiceOrder = (order.order_type ?? "") === "service" || !!order.service_type;
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -233,26 +246,36 @@ const OrderDetailPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-5 space-y-5">
-        {/* Status Progress */}
-        <section className="bg-card rounded-2xl p-5 card-shadow">
-          <div className="flex items-center justify-between mb-4">
-            {STATUS_STEPS.map((step, i) => {
-              const isActive = i <= activeStep;
-              const StepIcon = step.icon;
-              return (
-                <div key={step.key} className="flex flex-col items-center flex-1 relative">
-                  {i > 0 && (
-                    <div className={cn("absolute top-4 right-1/2 w-full h-0.5 -z-10", i <= activeStep ? "bg-primary" : "bg-border")} />
-                  )}
-                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center z-10", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                    <StepIcon className="w-4 h-4" />
+        {/* Unified service progress timeline (covers full lifecycle + actions) */}
+        {isServiceOrder ? (
+          <ServiceProgressTimeline
+            orderId={order.id}
+            status={order.order_status}
+            isOwner={isOwner}
+            isProvider={isProvider}
+            onChanged={refetch}
+          />
+        ) : (
+          <section className="bg-card rounded-2xl p-5 card-shadow">
+            <div className="flex items-center justify-between mb-4">
+              {STATUS_STEPS.map((step, i) => {
+                const isActive = i <= activeStep;
+                const StepIcon = step.icon;
+                return (
+                  <div key={step.key} className="flex flex-col items-center flex-1 relative">
+                    {i > 0 && (
+                      <div className={cn("absolute top-4 right-1/2 w-full h-0.5 -z-10", i <= activeStep ? "bg-primary" : "bg-border")} />
+                    )}
+                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center z-10", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                      <StepIcon className="w-4 h-4" />
+                    </div>
+                    <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>{step.label}</span>
                   </div>
-                  <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>{step.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Order Info */}
         <section className="bg-card rounded-2xl p-5 card-shadow space-y-3">
@@ -460,17 +483,15 @@ const OrderDetailPage = () => {
           </section>
         )}
 
-        <EscrowStatusCard
-          orderId={order.id}
-          escrowStatus={order.escrow_status}
-          orderStatus={order.order_status}
-          amount={order.total_amount}
-          onReleased={async () => {
-            const { data } = await supabase.from("orders").select("*").eq("id", order.id).single();
-            if (data) setOrder(data as Order);
-          }}
-        />
-
+        {isServiceOrder && (
+          <EscrowStatusCard
+            orderId={order.id}
+            escrowStatus={order.escrow_status}
+            orderStatus={order.order_status}
+            amount={order.total_amount}
+            onReleased={refetch}
+          />
+        )}
         {/* Quick links */}
         {["confirmed", "in_progress"].includes(order.order_status) && (
           <Button variant="hero" className="w-full" onClick={() => navigate(`/track/${order.id}`)}>
