@@ -15,6 +15,8 @@ const POINTS_BY_ACTION: Record<string, number> = {
   comment_create: 2,
   like_create: 1,
   rescue_feed: 1,
+  order_review: 5,
+  order_confirm: 3,
 };
 
 Deno.serve(async (req) => {
