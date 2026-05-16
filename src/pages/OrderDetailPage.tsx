@@ -252,6 +252,19 @@ const OrderDetailPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-5 space-y-5">
+        {isOwner && order.order_status === "completed" && !review && (
+          <button
+            onClick={() => { setShowReviewForm(true); document.getElementById("order-review-section")?.scrollIntoView({ behavior: "smooth" }); }}
+            className="w-full bg-gradient-to-r from-amber-400/15 to-orange-400/15 border border-amber-400/40 rounded-2xl p-3 flex items-center gap-3 text-left hover:from-amber-400/25 hover:to-orange-400/25 transition-colors"
+          >
+            <Star className="w-5 h-5 text-amber-500 fill-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-foreground">服务完成啦，分享您的体验？</p>
+              <p className="text-[11px] text-muted-foreground">写评价可获 +5 爱心积分</p>
+            </div>
+            <span className="text-xs text-primary font-semibold">去评价 →</span>
+          </button>
+        )}
         {/* Unified service progress timeline (covers full lifecycle + actions) */}
         {isServiceOrder ? (
           <ServiceProgressTimeline
