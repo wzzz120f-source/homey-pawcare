@@ -360,7 +360,7 @@ const OrderDetailPage = () => {
         </section>
 
         {/* Review Section */}
-        <section className="bg-card rounded-2xl p-5 card-shadow">
+        <section id="order-review-section" className="bg-card rounded-2xl p-5 card-shadow scroll-mt-20">
           <h2 className="font-bold text-foreground text-base flex items-center gap-2 mb-3">
             <MessageSquare className="w-4 h-4 text-primary" /> 订单评价
           </h2>
