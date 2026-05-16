@@ -230,6 +230,9 @@ const OrderDetailPage = () => {
   const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === order.order_status);
   const activeStep = currentStepIndex === -1 ? 0 : currentStepIndex;
   const logistics = generateLogistics(order);
+  const isOwner = order.user_id === user?.id;
+  const isProvider = (order.provider_id ?? order.driver_id) === user?.id;
+  const isServiceOrder = (order.order_type ?? "") === "service" || !!order.service_type;
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -243,26 +246,36 @@ const OrderDetailPage = () => {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-5 space-y-5">
-        {/* Status Progress */}
-        <section className="bg-card rounded-2xl p-5 card-shadow">
-          <div className="flex items-center justify-between mb-4">
-            {STATUS_STEPS.map((step, i) => {
-              const isActive = i <= activeStep;
-              const StepIcon = step.icon;
-              return (
-                <div key={step.key} className="flex flex-col items-center flex-1 relative">
-                  {i > 0 && (
-                    <div className={cn("absolute top-4 right-1/2 w-full h-0.5 -z-10", i <= activeStep ? "bg-primary" : "bg-border")} />
-                  )}
-                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center z-10", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                    <StepIcon className="w-4 h-4" />
+        {/* Unified service progress timeline (covers full lifecycle + actions) */}
+        {isServiceOrder ? (
+          <ServiceProgressTimeline
+            orderId={order.id}
+            status={order.order_status}
+            isOwner={isOwner}
+            isProvider={isProvider}
+            onChanged={refetch}
+          />
+        ) : (
+          <section className="bg-card rounded-2xl p-5 card-shadow">
+            <div className="flex items-center justify-between mb-4">
+              {STATUS_STEPS.map((step, i) => {
+                const isActive = i <= activeStep;
+                const StepIcon = step.icon;
+                return (
+                  <div key={step.key} className="flex flex-col items-center flex-1 relative">
+                    {i > 0 && (
+                      <div className={cn("absolute top-4 right-1/2 w-full h-0.5 -z-10", i <= activeStep ? "bg-primary" : "bg-border")} />
+                    )}
+                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center z-10", isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                      <StepIcon className="w-4 h-4" />
+                    </div>
+                    <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>{step.label}</span>
                   </div>
-                  <span className={cn("text-[10px] mt-1.5 text-center", isActive ? "text-foreground font-semibold" : "text-muted-foreground")}>{step.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Order Info */}
         <section className="bg-card rounded-2xl p-5 card-shadow space-y-3">
