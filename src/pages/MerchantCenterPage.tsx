@@ -28,6 +28,7 @@ import { ArrowLeft, ImagePlus, Loader2, Plus, Store, Trash2, X } from "lucide-re
 import { toast } from "sonner";
 import MerchantDashboard from "@/components/merchant/MerchantDashboard";
 import MerchantOrders from "@/components/merchant/MerchantOrders";
+import MerchantFlashSales from "@/components/merchant/MerchantFlashSales";
 
 interface MerchantProduct {
   id: string;
@@ -330,9 +331,10 @@ const MerchantCenterPage = () => {
 
       <main className="max-w-lg mx-auto px-4 py-4">
         <Tabs defaultValue="dashboard">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="dashboard" className="text-xs">看板</TabsTrigger>
             <TabsTrigger value="products" className="text-xs">产品</TabsTrigger>
+            <TabsTrigger value="flash" className="text-xs">闪购</TabsTrigger>
             <TabsTrigger value="orders" className="text-xs">订单</TabsTrigger>
             <TabsTrigger value="info" className="text-xs">店铺</TabsTrigger>
           </TabsList>
@@ -343,6 +345,10 @@ const MerchantCenterPage = () => {
 
           <TabsContent value="orders" className="mt-4">
             <MerchantOrders merchantId={activeMerchantId} />
+          </TabsContent>
+
+          <TabsContent value="flash" className="mt-4">
+            <MerchantFlashSales merchantId={activeMerchantId} />
           </TabsContent>
 
           <TabsContent value="products" className="mt-4 space-y-3">
