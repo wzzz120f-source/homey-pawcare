@@ -90,13 +90,14 @@ export const useUserRoles = () => {
   const { isSuperAdmin } = useSuperAdmin();
   const availableRoles: ActiveRole[] = ["user"];
   if (isSuperAdmin) {
-    availableRoles.push("sitter", "groomer", "driver", "merchant", "admin");
+    availableRoles.push("sitter", "groomer", "driver", "merchant", "admin", "hotel_owner");
   } else {
     if (roles.includes("sitter")) availableRoles.push("sitter");
     if (roles.includes("groomer")) availableRoles.push("groomer");
     if (roles.includes("driver")) availableRoles.push("driver");
     if (roles.includes("merchant")) availableRoles.push("merchant");
     if (roles.includes("admin")) availableRoles.push("admin");
+    if (roles.includes("hotel_owner")) availableRoles.push("hotel_owner");
   }
 
   const activeRole: ActiveRole =
