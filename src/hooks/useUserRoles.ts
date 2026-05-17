@@ -3,13 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
-export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver";
-export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin";
+export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver" | "hotel_owner";
+export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin" | "hotel_owner";
 
 const STORAGE_KEY = "active_role_override";
 const EVT = "active-role-change";
 
-const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin"];
+const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin", "hotel_owner"];
 
 const readOverride = (): ActiveRole | null => {
   if (typeof window === "undefined") return null;
