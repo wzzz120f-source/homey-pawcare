@@ -28,6 +28,7 @@ import { ArrowLeft, ImagePlus, Loader2, Plus, Store, Trash2, X } from "lucide-re
 import { toast } from "sonner";
 import MerchantDashboard from "@/components/merchant/MerchantDashboard";
 import MerchantOrders from "@/components/merchant/MerchantOrders";
+import MerchantFlashSales from "@/components/merchant/MerchantFlashSales";
 
 interface MerchantProduct {
   id: string;
