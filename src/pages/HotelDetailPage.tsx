@@ -443,6 +443,12 @@ const HotelDetailPage = () => {
         pickupMethod === "pickup" && `接送地址：${pickupAddress}`,
       ].filter(Boolean).join("；");
 
+      const checkInDate = bookingDate;
+      const checkOutDate = (() => {
+        const d = new Date(bookingDate);
+        d.setDate(d.getDate() + bookingNights);
+        return d.toISOString().slice(0, 10);
+      })();
       const { data, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: "hotel",
@@ -454,6 +460,11 @@ const HotelDetailPage = () => {
         notes: composedNotes,
         total_amount: totalAmount,
         pickup_address: pickupMethod === "pickup" ? pickupAddress : hotel.address,
+        hotel_id: hotel.id,
+        check_in: checkInDate,
+        check_out: checkOutDate,
+        nights: bookingNights,
+        guest_pet_count: 1,
       }).select("order_no").single();
       if (error) throw error;
 

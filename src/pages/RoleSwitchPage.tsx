@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, User, Heart, Scissors, Car, Store, ShieldCheck, Check, Lock, Info } from "lucide-react";
+import { ArrowLeft, User, Heart, Scissors, Car, Store, ShieldCheck, Check, Lock, Info, Hotel } from "lucide-react";
 import { useUserRoles, type ActiveRole } from "@/hooks/useUserRoles";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -22,11 +22,11 @@ const ROLE_META: Record<ActiveRole, Meta> = {
   driver:   { label: "司机",   icon: Car,         toneLabel: "天空蓝", toneHex: "#1E90FF", home: "/worker?tab=route",    desc: "实时地图、接送任务单、里程结算",            applyPath: "/driver/apply" },
   merchant: { label: "商家",   icon: Store,       toneLabel: "深靛青", toneHex: "#000080", home: "/merchant",        desc: "考勤看板、SKU 定价、扫码核销、营业额看板",   applyPath: "/merchant/apply" },
   admin:    { label: "审核员", icon: ShieldCheck, toneLabel: "深蓝",   toneHex: "#1E3A8A", home: "/admin/review",    desc: "内容与商家审核、违规处理、申诉裁决" },
+  hotel_owner: { label: "酒店方", icon: Hotel, toneLabel: "暖橙", toneHex: "#FF8C00", home: "/merchant/hotel", desc: "管理房型、入住打卡、上传探视照片、退房结算" },
 };
 
-const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin"];
+const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin", "hotel_owner"];
 
-// 角色兼容路由前缀：决定切换时是否能停留在当前页
 const ROLE_ALLOWED_PREFIXES: Record<ActiveRole, string[]> = {
   user:     ["/", "/community", "/shop", "/customer-service", "/profile", "/orders", "/booking", "/pet-hotel", "/post", "/product", "/points", "/charity-footprint", "/pets", "/track", "/rate", "/group-booking"],
   sitter:   ["/worker", "/orders", "/profile"],
@@ -34,6 +34,7 @@ const ROLE_ALLOWED_PREFIXES: Record<ActiveRole, string[]> = {
   driver:   ["/worker", "/orders", "/profile", "/track"],
   merchant: ["/merchant", "/orders", "/profile", "/shop"],
   admin:    ["/admin", "/", "/community", "/shop", "/profile", "/orders"],
+  hotel_owner: ["/merchant/hotel", "/orders", "/profile"],
 };
 
 const isCompatible = (role: ActiveRole, pathname: string) => {

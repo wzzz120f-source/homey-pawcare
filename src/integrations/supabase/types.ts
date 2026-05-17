@@ -984,6 +984,83 @@ export type Database = {
         }
         Relationships: []
       }
+      hotel_check_logs: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          hotel_id: string
+          id: string
+          notes: string | null
+          order_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          hotel_id: string
+          id?: string
+          notes?: string | null
+          order_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          hotel_id?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_check_logs_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "pet_hotels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotel_check_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_owners: {
+        Row: {
+          created_at: string
+          hotel_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hotel_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_owners_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "pet_hotels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotel_reviews: {
         Row: {
           content: string | null
@@ -1069,6 +1146,57 @@ export type Database = {
           stock?: number
         }
         Relationships: []
+      }
+      hotel_visit_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          hotel_id: string
+          id: string
+          order_id: string
+          photo_url: string
+          taken_at: string
+          uploader_id: string
+          visibility: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          hotel_id: string
+          id?: string
+          order_id: string
+          photo_url: string
+          taken_at?: string
+          uploader_id: string
+          visibility?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          hotel_id?: string
+          id?: string
+          order_id?: string
+          photo_url?: string
+          taken_at?: string
+          uploader_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_visit_photos_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "pet_hotels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotel_visit_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       likes: {
         Row: {
@@ -1560,6 +1688,8 @@ export type Database = {
           accepted_at: string | null
           booking_date: string | null
           booking_time: string | null
+          check_in: string | null
+          check_out: string | null
           completed_at: string | null
           confirmed_at: string | null
           created_at: string
@@ -1568,8 +1698,11 @@ export type Database = {
           driver_id: string | null
           dropoff_address: string | null
           escrow_status: string
+          guest_pet_count: number | null
+          hotel_id: string | null
           id: string
           is_physical: boolean
+          nights: number | null
           notes: string | null
           order_no: string
           order_status: string
@@ -1585,6 +1718,7 @@ export type Database = {
           provider_id: string | null
           provider_role: Database["public"]["Enums"]["app_role"] | null
           refund_status: string
+          room_id: string | null
           service_type: string | null
           shipping_address_snapshot: Json | null
           started_at: string | null
@@ -1597,6 +1731,8 @@ export type Database = {
           accepted_at?: string | null
           booking_date?: string | null
           booking_time?: string | null
+          check_in?: string | null
+          check_out?: string | null
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -1605,8 +1741,11 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           escrow_status?: string
+          guest_pet_count?: number | null
+          hotel_id?: string | null
           id?: string
           is_physical?: boolean
+          nights?: number | null
           notes?: string | null
           order_no?: string
           order_status?: string
@@ -1622,6 +1761,7 @@ export type Database = {
           provider_id?: string | null
           provider_role?: Database["public"]["Enums"]["app_role"] | null
           refund_status?: string
+          room_id?: string | null
           service_type?: string | null
           shipping_address_snapshot?: Json | null
           started_at?: string | null
@@ -1634,6 +1774,8 @@ export type Database = {
           accepted_at?: string | null
           booking_date?: string | null
           booking_time?: string | null
+          check_in?: string | null
+          check_out?: string | null
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -1642,8 +1784,11 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           escrow_status?: string
+          guest_pet_count?: number | null
+          hotel_id?: string | null
           id?: string
           is_physical?: boolean
+          nights?: number | null
           notes?: string | null
           order_no?: string
           order_status?: string
@@ -1659,6 +1804,7 @@ export type Database = {
           provider_id?: string | null
           provider_role?: Database["public"]["Enums"]["app_role"] | null
           refund_status?: string
+          room_id?: string | null
           service_type?: string | null
           shipping_address_snapshot?: Json | null
           started_at?: string | null
@@ -1669,10 +1815,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "pet_hotels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -3427,12 +3587,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      hotel_checkin: {
+        Args: { _notes?: string; _order_id: string }
+        Returns: Json
+      }
+      hotel_checkout: {
+        Args: { _notes?: string; _order_id: string }
+        Returns: Json
+      }
       increment_ai_chat_quota: {
         Args: { _max?: number; _uid: string }
         Returns: Json
       }
       is_admin_recently_authed: {
         Args: { _admin_id: string }
+        Returns: boolean
+      }
+      is_any_hotel_owner: { Args: { _user_id: string }; Returns: boolean }
+      is_hotel_owner: {
+        Args: { _hotel_id: string; _user_id: string }
         Returns: boolean
       }
       is_merchant_owner: {
@@ -3531,7 +3704,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver"
+      app_role:
+        | "admin"
+        | "merchant"
+        | "user"
+        | "sitter"
+        | "groomer"
+        | "driver"
+        | "hotel_owner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3659,7 +3839,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "merchant", "user", "sitter", "groomer", "driver"],
+      app_role: [
+        "admin",
+        "merchant",
+        "user",
+        "sitter",
+        "groomer",
+        "driver",
+        "hotel_owner",
+      ],
     },
   },
 } as const

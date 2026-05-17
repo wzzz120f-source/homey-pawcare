@@ -15,6 +15,7 @@ import {
   Car,
   Map,
   CalendarClock,
+  Hotel,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ActiveRole } from "@/hooks/useUserRoles";
@@ -66,6 +67,12 @@ export const NAV_TABS: Record<ActiveRole, NavTabItem[]> = {
     { path: "/admin/review", icon: ShieldCheck, label: "审核" },
     { path: "/shop", icon: ShoppingBag, label: "商城" },
     { path: "/community", icon: MessageSquare, label: "社区" },
+    { path: "/profile", icon: User, label: "我的" },
+  ],
+  hotel_owner: [
+    { path: "/merchant/hotel", icon: Hotel, label: "酒店" },
+    { path: "/merchant/hotel/rooms", icon: ClipboardList, label: "房型" },
+    { path: "/merchant/hotel/orders", icon: Package, label: "订单" },
     { path: "/profile", icon: User, label: "我的" },
   ],
 };

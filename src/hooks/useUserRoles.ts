@@ -3,13 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
-export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver";
-export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin";
+export type AppRole = "admin" | "merchant" | "user" | "sitter" | "groomer" | "driver" | "hotel_owner";
+export type ActiveRole = "user" | "sitter" | "groomer" | "driver" | "merchant" | "admin" | "hotel_owner";
 
 const STORAGE_KEY = "active_role_override";
 const EVT = "active-role-change";
 
-const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin"];
+const ALL_ROLES: ActiveRole[] = ["user", "sitter", "groomer", "driver", "merchant", "admin", "hotel_owner"];
 
 const readOverride = (): ActiveRole | null => {
   if (typeof window === "undefined") return null;
@@ -56,15 +56,18 @@ export const useUserRoles = () => {
       return;
     }
     setLoading(true);
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .then(({ data }) => {
-        if (cancelled) return;
-        setRoles((data ?? []).map((r: any) => r.role as AppRole));
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", user.id),
+      supabase.from("hotel_owners").select("id").eq("user_id", user.id).limit(1),
+    ]).then(([rolesRes, hotelRes]) => {
+      if (cancelled) return;
+      const list = (rolesRes.data ?? []).map((r: any) => r.role as AppRole);
+      if ((hotelRes.data ?? []).length > 0 && !list.includes("hotel_owner")) {
+        list.push("hotel_owner");
+      }
+      setRoles(list);
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -87,13 +90,14 @@ export const useUserRoles = () => {
   const { isSuperAdmin } = useSuperAdmin();
   const availableRoles: ActiveRole[] = ["user"];
   if (isSuperAdmin) {
-    availableRoles.push("sitter", "groomer", "driver", "merchant", "admin");
+    availableRoles.push("sitter", "groomer", "driver", "merchant", "admin", "hotel_owner");
   } else {
     if (roles.includes("sitter")) availableRoles.push("sitter");
     if (roles.includes("groomer")) availableRoles.push("groomer");
     if (roles.includes("driver")) availableRoles.push("driver");
     if (roles.includes("merchant")) availableRoles.push("merchant");
     if (roles.includes("admin")) availableRoles.push("admin");
+    if (roles.includes("hotel_owner")) availableRoles.push("hotel_owner");
   }
 
   const activeRole: ActiveRole =

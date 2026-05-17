@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard, Star, MessageSquare, AlertTriangle, XCircle, Hotel } from "lucide-react";
+import VisitPhotoGallery from "@/components/hotel/VisitPhotoGallery";
 import MediaPicker from "@/components/MediaPicker";
 import MediaThumb from "@/components/MediaThumb";
 import CompanionReportGenerator, { type SavedReport } from "@/components/CompanionReportGenerator";
@@ -37,6 +38,10 @@ interface Order {
   user_id?: string;
   provider_id?: string | null;
   driver_id?: string | null;
+  hotel_id?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  nights?: number | null;
 }
 
 interface Review {
@@ -307,7 +312,38 @@ const OrderDetailPage = () => {
           <InfoRow label="创建时间" value={format(new Date(order.created_at), "yyyy-MM-dd HH:mm:ss")} />
         </section>
 
-        {/* Address */}
+        {/* Hotel-specific section */}
+        {order.order_type === "hotel" && order.hotel_id && (
+          <>
+            <section className="bg-card rounded-2xl p-5 card-shadow space-y-3">
+              <h2 className="font-bold text-foreground text-base flex items-center gap-2">
+                <Hotel className="w-4 h-4 text-primary" /> 入住信息
+              </h2>
+              {order.check_in && <InfoRow label="入住日期" value={order.check_in} />}
+              {order.check_out && <InfoRow label="退房日期" value={order.check_out} />}
+              {order.nights ? <InfoRow label="入住时长" value={`${order.nights} 晚`} /> : null}
+              {order.order_status === "awaiting_confirm" && isOwner && (
+                <Button
+                  className="w-full mt-3"
+                  onClick={async () => {
+                    const { data, error } = await supabase.rpc("user_confirm_complete", { _order_id: order.id });
+                    if (error || !(data as any)?.success) {
+                      toast.error((data as any)?.error || error?.message || "确认失败");
+                      return;
+                    }
+                    toast.success("已确认完成，结算款项已划转给酒店");
+                    refetch();
+                  }}
+                >
+                  确认退房并结算
+                </Button>
+              )}
+            </section>
+            {isOwner && <VisitPhotoGallery orderId={order.id} />}
+          </>
+        )}
+
+
         {(order.pickup_address || order.dropoff_address) && (
           <section className="bg-card rounded-2xl p-5 card-shadow space-y-3">
             <h2 className="font-bold text-foreground text-base flex items-center gap-2">

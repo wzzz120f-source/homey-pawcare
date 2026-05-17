@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, User, Heart, Scissors, Car, Store, ShieldCheck, Check } from "lucide-react";
+import { ChevronDown, User, Heart, Scissors, Car, Store, ShieldCheck, Check, Hotel } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ const ROLE_META: Record<ActiveRole, { label: string; icon: typeof User; tone: st
   driver: { label: "司机", icon: Car, tone: "天空蓝 #1E90FF", home: "/worker" },
   merchant: { label: "商家", icon: Store, tone: "深靛青 #000080", home: "/merchant" },
   admin: { label: "审核员", icon: ShieldCheck, tone: "深蓝", home: "/admin/review" },
+  hotel_owner: { label: "酒店方", icon: Hotel, tone: "暖橙", home: "/merchant/hotel" },
 };
 
 interface Props {
