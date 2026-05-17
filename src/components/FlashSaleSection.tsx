@@ -59,13 +59,22 @@ const FlashSaleCard = ({ sale, onSold }: { sale: FlashSale; onSold: () => void }
       });
       if (error) throw error;
       if (!data?.success) {
-        toast({ title: data?.error === "sold_out" ? "已抢光" : "下单失败", description: data?.error, variant: "destructive" });
+        const msg = data?.error === "sold_out" ? "已抢光" :
+                    data?.error === "flash_window_closed" ? "活动已结束" :
+                    data?.error === "flash_inactive" ? "活动已下架" : "下单失败";
+        toast({ title: msg, description: data?.error, variant: "destructive" });
         onSold();
         return;
       }
-      navigate(`/payment?flash_order_id=${data.order_id}`);
+      // 立即发起钱包支付（其余渠道用户可在结果页重新选择）
+      const { data: payRes } = await supabase.functions.invoke("create-payment", {
+        body: { order_id: data.order_id, channel: "wallet" },
+      });
+      const pid = (payRes as any)?.payment_id;
+      navigate(`/payment/result/${data.order_id}${pid ? `?pid=${pid}` : ""}`);
     } catch (err: any) {
       toast({ title: "下单失败", description: err?.message ?? "请重试", variant: "destructive" });
+      onSold();
     } finally {
       setBuying(false);
     }
