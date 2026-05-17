@@ -140,6 +140,8 @@ const AdminRefundsPage = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+        <PartialRefundCard onDone={load} />
+
         {loading ? (
           <div className="text-center py-12 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin inline" /></div>
         ) : rows.length === 0 ? (
@@ -359,3 +361,51 @@ const TimelineItem = ({ ts, title, desc, tone }: { ts: string; title: string; de
 );
 
 export default AdminRefundsPage;
+
+function PartialRefundCard({ onDone }: { onDone: () => void }) {
+  const [orderNo, setOrderNo] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!orderNo.trim() || !amount) { toast.error("请填写订单号和金额"); return; }
+    const amt = Number(amount);
+    if (!(amt > 0)) { toast.error("金额无效"); return; }
+    setBusy(true);
+    const { data: ord, error: e1 } = await supabase
+      .from("orders").select("id").eq("order_no", orderNo.trim()).maybeSingle();
+    if (e1 || !ord) { setBusy(false); toast.error("订单不存在"); return; }
+    const { data, error } = await (supabase as any).rpc("partial_refund", {
+      _order_id: ord.id, _amount: amt, _reason: reason || null,
+    });
+    setBusy(false);
+    if (error || !data?.success) {
+      toast.error("部分退款失败：" + (data?.error ?? error?.message ?? "未知错误"));
+      return;
+    }
+    toast.success(`已部分退款 ¥${amt.toFixed(2)} · ${data.eta ?? ""}`);
+    setOrderNo(""); setAmount(""); setReason("");
+    onDone();
+  };
+
+  return (
+    <section className="rounded-2xl border border-sky-300 bg-sky-50 p-4 space-y-2">
+      <div className="font-bold text-sky-900 text-sm flex items-center gap-1">
+        <RefreshCw className="w-4 h-4" /> 手动部分退款
+      </div>
+      <p className="text-xs text-sky-800/80">按订单号录入金额（小于订单总额），系统会按比例回滚担保金与闪购库存，并通知用户。</p>
+      <div className="grid grid-cols-3 gap-2">
+        <input value={orderNo} onChange={e => setOrderNo(e.target.value)} placeholder="订单号 ORDxxx"
+          className="col-span-3 sm:col-span-1 px-3 h-9 rounded-lg border border-sky-300 bg-background text-sm" />
+        <input value={amount} onChange={e => setAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="退款金额 ¥"
+          className="col-span-3 sm:col-span-1 px-3 h-9 rounded-lg border border-sky-300 bg-background text-sm" />
+        <input value={reason} onChange={e => setReason(e.target.value)} placeholder="退款原因（可选）"
+          className="col-span-3 sm:col-span-1 px-3 h-9 rounded-lg border border-sky-300 bg-background text-sm" />
+      </div>
+      <Button size="sm" onClick={submit} disabled={busy} className="bg-sky-600 hover:bg-sky-700 text-white">
+        {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}发起部分退款
+      </Button>
+    </section>
+  );
+}
