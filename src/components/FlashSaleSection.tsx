@@ -37,10 +37,39 @@ const useCountdown = (endTime: string) => {
   return remaining;
 };
 
-const FlashSaleCard = ({ sale }: { sale: FlashSale }) => {
+const FlashSaleCard = ({ sale, onSold }: { sale: FlashSale; onSold: () => void }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const countdown = useCountdown(sale.ends_at);
-  const progress = sale.stock > 0 ? Math.min((sale.sold_count / (sale.stock + sale.sold_count)) * 100, 100) : 100;
+  const remaining = Math.max(sale.stock - sale.sold_count, 0);
+  const total = sale.stock || (sale.sold_count + remaining) || 1;
+  const progress = Math.min((sale.sold_count / total) * 100, 100);
+  const soldOut = remaining <= 0;
+  const [buying, setBuying] = useState(false);
+
+  const handleBuy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { navigate("/auth"); return; }
+    if (soldOut || buying) return;
+    setBuying(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("create_flash_order", {
+        _flash_id: sale.id, _qty: 1, _payment_method: "wallet",
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        toast({ title: data?.error === "sold_out" ? "已抢光" : "下单失败", description: data?.error, variant: "destructive" });
+        onSold();
+        return;
+      }
+      navigate(`/payment?flash_order_id=${data.order_id}`);
+    } catch (err: any) {
+      toast({ title: "下单失败", description: err?.message ?? "请重试", variant: "destructive" });
+    } finally {
+      setBuying(false);
+    }
+  };
 
   return (
     <Card
@@ -56,6 +85,11 @@ const FlashSaleCard = ({ sale }: { sale: FlashSale }) => {
         <Badge className="absolute top-1 left-1 bg-destructive text-destructive-foreground text-[10px] px-1 py-0">
           <Zap className="w-3 h-3 mr-0.5" />限时
         </Badge>
+        {soldOut && (
+          <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+            <Badge variant="secondary" className="text-xs">已抢光</Badge>
+          </div>
+        )}
       </div>
       <CardContent className="p-2">
         <p className="text-xs font-medium text-foreground line-clamp-1 mb-1">{sale.product.name}</p>
@@ -67,9 +101,18 @@ const FlashSaleCard = ({ sale }: { sale: FlashSale }) => {
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div className="h-full bg-destructive rounded-full transition-all" style={{ width: `${progress}%` }} />
           </div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">已抢{sale.sold_count}件</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">已抢{sale.sold_count}件 · 剩{remaining}</p>
         </div>
         <p className="text-[10px] text-destructive font-mono mt-0.5">{countdown}</p>
+        <Button
+          size="sm"
+          variant={soldOut ? "secondary" : "destructive"}
+          className="w-full h-7 mt-1.5 text-[11px]"
+          disabled={soldOut || buying}
+          onClick={handleBuy}
+        >
+          {buying ? <Loader2 className="w-3 h-3 animate-spin" /> : soldOut ? "已抢光" : "立即抢"}
+        </Button>
       </CardContent>
     </Card>
   );
