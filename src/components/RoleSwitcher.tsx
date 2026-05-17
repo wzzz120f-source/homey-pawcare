@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, User, Heart, Scissors, Car, Store, ShieldCheck, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const ROLE_META: Record<ActiveRole, { label: string; icon: typeof User; tone: string; home: string }> = {
   user: { label: "铲屎官", icon: User, tone: "暖橙 #FF8C00", home: "/" },
@@ -35,7 +36,9 @@ const RoleSwitcher = ({ navigateOnSwitch = true, className }: Props) => {
   if (availableRoles.length <= 1) return null;
 
   const handleSwitch = (r: ActiveRole) => {
+    if (r === activeRole) return;
     setActiveRole(r === "user" ? null : r); // user 视为默认
+    toast.success(`已切换到「${ROLE_META[r].label}」视图`);
     if (navigateOnSwitch) navigate(ROLE_META[r].home);
   };
 
