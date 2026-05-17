@@ -141,6 +141,14 @@ export default function ServiceCheckinChecklist({
       const pos = await getPos();
       const lat = pos?.coords.latitude ?? null;
       const lng = pos?.coords.longitude ?? null;
+      if (lat == null || lng == null) {
+        toast({
+          title: "需要定位权限",
+          description: "打卡必须记录服务位置。请在浏览器中允许定位权限后重试。",
+          variant: "destructive",
+        });
+        return;
+      }
       const blob = await watermarkImage(file, lat, lng);
       const path = `${user.id}/${orderId}/${key}-${Date.now()}.jpg`;
       const up = await supabase.storage.from("service-checkins").upload(path, blob, {
