@@ -19,6 +19,7 @@ const ROLE_CN: Record<AppRole, string> = {
   sitter: "宠托师",
   groomer: "护理师",
   driver: "司机",
+  hotel_owner: "酒店方",
 };
 
 /**
