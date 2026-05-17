@@ -140,6 +140,8 @@ const AdminRefundsPage = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+        <PartialRefundCard onDone={load} />
+
         {loading ? (
           <div className="text-center py-12 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin inline" /></div>
         ) : rows.length === 0 ? (
