@@ -11,7 +11,20 @@ const MaintenanceGate = ({ children }: { children: React.ReactNode }) => {
   const loc = useLocation();
   const isAllowed = ALLOW_PATHS.some((p) => loc.pathname.startsWith(p));
 
-  if (loading || !maintenance || isSuperAdmin || isAllowed) return <>{children}</>;
+  if (loading) return <>{children}</>;
+  if (!maintenance || isAllowed) return <>{children}</>;
+  if (isSuperAdmin) {
+    // Super admins still see the app, but with a top banner reminder.
+    return (
+      <>
+        <div className="sticky top-0 z-[60] bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-center gap-2">
+          <Wrench className="w-3.5 h-3.5" />
+          维护模式已开启（仅超管可见）
+        </div>
+        {children}
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
