@@ -69,4 +69,10 @@ export const NAV_TABS: Record<ActiveRole, NavTabItem[]> = {
     { path: "/community", icon: MessageSquare, label: "社区" },
     { path: "/profile", icon: User, label: "我的" },
   ],
+  hotel_owner: [
+    { path: "/merchant/hotel", icon: Hotel, label: "酒店" },
+    { path: "/merchant/hotel/rooms", icon: ClipboardList, label: "房型" },
+    { path: "/merchant/hotel/orders", icon: Package, label: "订单" },
+    { path: "/profile", icon: User, label: "我的" },
+  ],
 };
