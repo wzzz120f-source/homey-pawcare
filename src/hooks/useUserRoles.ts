@@ -56,15 +56,18 @@ export const useUserRoles = () => {
       return;
     }
     setLoading(true);
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .then(({ data }) => {
-        if (cancelled) return;
-        setRoles((data ?? []).map((r: any) => r.role as AppRole));
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", user.id),
+      supabase.from("hotel_owners").select("id").eq("user_id", user.id).limit(1),
+    ]).then(([rolesRes, hotelRes]) => {
+      if (cancelled) return;
+      const list = (rolesRes.data ?? []).map((r: any) => r.role as AppRole);
+      if ((hotelRes.data ?? []).length > 0 && !list.includes("hotel_owner")) {
+        list.push("hotel_owner");
+      }
+      setRoles(list);
+      setLoading(false);
+    });
     return () => {
       cancelled = true;
     };
