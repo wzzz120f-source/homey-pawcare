@@ -1,95 +1,95 @@
-# 七项验收 / 修复 / 完善方案
+# 酒店双视角闭环方案
 
-## A. 验收类（1-5）— 编写自动化 E2E + 人工冒烟脚本
+## 目标
+- 用户侧：完成下单 → 入住 → 接收每日探视照片 → 退房确认 → 结算
+- 酒店方：通过 `hotel_owner` 身份登录酒店后台，管理房间/订单/打卡/探视照片
+- 探视照片只对该订单的用户与酒店方可见，杜绝越权
 
-### 1. 手机号 OTP 登录（dev 模式）
-- 验证 `send-sms-code` → 日志返回 `dev_code` → `verify-sms-code` → session 写入
-- 增加 `AuthPage` 的「Dev 模式回填验证码」按钮（仅 super admin 或 `import.meta.env.DEV`）
-- E2E：`e2e/otp-login.spec.ts`：填手机 → 触发发码 → 调用 edge fn 取 code → 输入 → 跳 `/`
+## 一、数据层（一次性 migration）
 
-### 2. 担保支付 held → released 全流程
-- 真订单链路：下单(`create-payment`) → 支付成功(webhook/`query-payment`) → `escrow_status='held'` → 服务者接单/打卡/完成 → 用户确认(`user_confirm_complete`) → `released` + `escrow_ledger` 写入
-- 缺口排查：确认 `create-payment` 在 `payment_status='paid'` 时是否写入 `escrow_status='held'`；若无则补 trigger
-- E2E：用 dev 钱包(`wallet_pay`) 完成支付链路，断言 `escrow_ledger` 两条记录(hold/release)
+### 1. 角色与归属
+- 新增 `app_role` 枚举值 `hotel_owner`
+- 新表 `hotel_owners(user_id, hotel_id, role[owner|staff], created_at)`，唯一约束 `(user_id, hotel_id)`
+- `is_hotel_owner(_user_id, _hotel_id)` SECURITY DEFINER 函数
 
-### 3. 服务者 GPS 打卡 + 强制照片
-- 现状：`ServiceCheckinChecklist` + `complete_service_order` 已校验 `_required` 完成度
-- 加强：
-  - `service_checkins` 增加 `latitude/longitude/photo_url NOT NULL`（trigger 校验）
-  - 前端拍照走 `MediaPicker`（必填），定位走 `navigator.geolocation`，写入前校验距离用户地址 < 500m（容忍模式给提示）
-  - `complete_service_order` 内补充：所有 checkin 必须含 photo_url
+### 2. 订单扩展
+- 复用 `orders` 表，约定 `order_type='hotel'`
+- 新增字段：`hotel_id uuid`、`room_id uuid`、`check_in date`、`check_out date`、`nights int`、`guest_pet_count int`
+- 新增 `hotel_check_logs(order_id, hotel_id, action[checkin|daily|checkout], notes, created_by, created_at)` —— 仅用作时间线，不存图
 
-### 4. 商家发布商品 / 库存 / 闪购
-- 验收：进入 `MerchantCenterPage` → 新建 product（含 SKU + stock）→ 创建 flash_sale → 首页 `FlashSaleSection` 出现 → 下单扣库存(原子 RPC)
-- 缺口修复：
-  - 若无 `decrement_stock` 原子函数，补 migration（`UPDATE ... WHERE stock >= qty RETURNING`）
-  - 闪购库存进度条接 realtime
-- E2E：商家路径 + 用户购买路径双脚本
+### 3. 探视照片（隐私核心）
+- 新表 `hotel_visit_photos`
+  - `id, order_id, hotel_id, uploader_id, photo_url, caption, visibility[order_only|hotel_internal], taken_at, created_at`
+  - 触发器禁止把 `visibility='hotel_internal'` 推送给用户
+- RLS：
+  - SELECT：`order.user_id = auth.uid()` 且 `visibility='order_only'`；或 `is_hotel_owner(auth.uid(), hotel_id)`；或 super admin
+  - INSERT：`is_hotel_owner(auth.uid(), hotel_id)` 且订单 hotel_id 匹配
+  - UPDATE/DELETE：仅上传者 24h 内 或 super admin
+- 触发器 `trg_visit_photo_notify`：插入 `visibility='order_only'` 时给用户发 notification（type=`hotel_visit`）
+- 存储桶 `hotel-visits`（私有），policy：路径 `${hotel_id}/${order_id}/...`；读权限同上
 
-### 5. 超管 /dev 控制台 + 维护模式
-- 已有 `DevConsolePage` / `DevFlagsPage` / `MaintenanceGate`
-- 验收：超管登录 → `/dev/flags` 切 `maintenance_mode=true` → 普通账号访问任意路由显示「系统维护中」→ 超管 + `/__dev` + `/auth` 仍可进
-- 补：维护模式 banner 顶部显示「维护中（仅超管可见）」给超管自己
+### 4. 状态机（酒店订单）
+`created → paid → checked_in → in_stay → awaiting_confirm → completed`
+- `hotel_checkin(_order_id)` SECURITY DEFINER：仅酒店方，order 进入 `checked_in/in_stay`，escrow 自动 `held`（复用既有触发器）
+- `hotel_checkout(_order_id)` SECURITY DEFINER：仅酒店方，order 进入 `awaiting_confirm`，发通知"请确认退房"
+- 用户 `user_confirm_complete(_order_id)`（已存在）释放 escrow
+- 兜底 cron：`awaiting_confirm > 48h` 自动确认（复用既有任务）
 
-## B. Bug 修复（6）
+### 5. RLS 补丁
+- `orders` SELECT 增加策略：`is_hotel_owner(auth.uid(), hotel_id)` 可见自家酒店订单
+- `orders` UPDATE 增加策略：酒店方仅能改 `order_status`（限定到上述状态）+ `notes`
 
-### 6.1 下单失败
-- 复现路径：`/booking` → 选服务 → 提交 → 失败
-- 排查清单：
-  - `orders` insert 是否被 RLS 拦截（user_id 必填）
-  - `create-payment` edge fn 日志
-  - 金额/服务字段校验
-- 修复后加 `try/catch` 上报 `ErrorReport` 并 toast 真实原因
+## 二、用户侧（user-facing）
 
-### 6.2 账号突然跳转其他角色
-- 怀疑：`useUserRoles` 的 `override` localStorage 在 super admin 模式下可切换全部角色；某处误调 `setActiveRole`，或 `data-role` 触发路由重定向
-- 排查：搜索所有 `setActiveRole(` 调用 / `localStorage.setItem('active_role_override')`
-- 修复：
-  - `RoleSwitcher` 增加切换确认 toast
-  - 登出 / 登录时强制清空 override
-  - 路由守卫不基于 override 跳转，只基于真实 `roles`
+### 改动文件
+- `src/pages/HotelDetailPage.tsx`：房型选择 → 入住/退房日期 → 必选爱宠 → 跳转 PaymentPage
+- `src/pages/OrderDetailPage.tsx`：`order_type='hotel'` 时
+  - 显示房型、入住/退房日期、酒店地址电话
+  - "探视相册"区块：实时订阅 `hotel_visit_photos`，按天分组
+  - 底部按钮：`awaiting_confirm` 时显示"确认退房并结算"
+- 新增 `src/components/hotel/VisitPhotoGallery.tsx`：网格 + 大图查看 + 时间水印
+- 顶部说明文案："照片仅你和酒店方可见，平台不会公开"
 
-## C. 酒店板块闭环（7）
+## 三、酒店方后台（hotel owner）
 
-### 7.1 用户视角问题清单（待探索 `PetHotelPage` / `HotelDetailPage`）
-- 检查项：
-  - 搜索（高德 POI）→ 列表 → 详情 → 选房型 → 选日期 → 下单 → 支付 → 订单详情 → 入住打卡 → 退房 → 评价
-  - 缺：入住/退房凭证、宠物健康证上传、紧急联系人、视频探视入口
-- 完善：
-  - `HotelDetailPage` 增加「房间实拍 + 探视视频直链」「在店宠物数量(可用余量)」
-  - 下单时强制选「宠物档案」并展示健康证
+### 路由
+- `/merchant/hotel`（已有 merchant 区，可平移结构）
+  - `/merchant/hotel/dashboard`：今日入住/退房/在住数
+  - `/merchant/hotel/rooms`：房型 CRUD（仅自家酒店）
+  - `/merchant/hotel/orders`：订单列表 + tab（待入住/在住/待退房确认/已完成）
+  - `/merchant/hotel/orders/:id`：入住打卡、上传每日探视、退房结算
 
-### 7.2 酒店方视角闭环
-- 现状缺：酒店方没有独立后台
-- 补建（最小可用）：
-  - 新增 `role = hotel_owner`（复用 `merchant_owners` + `merchant_type='hotel'`）
-  - 新增 `/merchant/hotel` Tab（在 `MerchantCenterPage` 内）：
-    - 房型管理（已有 `hotel_rooms`?需确认 schema）
-    - 订单列表：今日入住 / 今日退房 / 在店
-    - 接单按钮（`pending_accept` → `accepted`）
-    - 入住打卡 / 每日探视照片上传 → 推送给用户
-    - 退房结算 → 触发 `user_confirm_complete` 入口
-  - 用户端订单详情显示酒店每日探视照片流（realtime）
+### 新增组件
+- `src/pages/merchant/HotelDashboard.tsx`
+- `src/pages/merchant/HotelRoomManager.tsx`
+- `src/pages/merchant/HotelOrderList.tsx`
+- `src/pages/merchant/HotelOrderDetail.tsx`
+  - "入住打卡"按钮 → `hotel_checkin`
+  - "上传探视照片" MediaPicker（多图，必填可见性=order_only 默认）
+  - "退房结算"按钮 → `hotel_checkout`
 
-### 7.3 数据 / 触发器补充
-- `orders.order_type = 'hotel'` 路由
-- 通知触发器扩展：酒店订单 `pending_accept` 通知 hotel_owner
+### 权限入口
+- `RoleSwitcher` 增加 `hotel_owner` 视图选项
+- `MerchantLayout` 顶部 tab 增加"酒店"入口（仅 `hotel_owner` 可见）
 
-## 交付物
-1. 一份验收报告 `docs/ACCEPTANCE.md`（步骤 + 截图位）
-2. 新增 / 修改 E2E：`otp-login`、`escrow-flow`、`checkin-required-photo`、`merchant-flash-sale`、`maintenance-mode`、`hotel-full-flow`
-3. 修复 commit：下单失败、角色跳转
-4. 酒店方后台 MVP + 相应 migration（房型校验 trigger / 通知 trigger）
-5. 文档：`docs/HOTEL_FLOW.md`（双视角时序图）
+## 四、隐私加固
+- 所有探视照片走私有桶，前端通过 `createSignedUrl(60)` 临时访问
+- `hotel_visit_photos` 不进 realtime 公共频道，使用 `postgres_changes` 按 `order_id` 过滤
+- 文件路径强制 `${hotel_id}/${order_id}/${uuid}.jpg`，Storage policy 校验前缀
+- 上传时客户端打时间戳水印（不含位置）
+- 删除：用户可对自己订单的探视照片标记"申诉" → super admin 处理；酒店方 24h 内可撤回
 
-## 技术要点
-- 触发器统一 `SECURITY DEFINER` + `search_path=public`
-- 所有金额/库存变更走 RPC，避免客户端竞态
-- 强制上传：DB 层 trigger > 前端校验（前端可绕过）
-- 角色权限：`hotel_owner` 用 `app_role` 枚举扩展需 migration
+## 五、不在本轮范围
+- 视频探视（占位入口，禁用）
+- 健康证明 OCR
+- 多语言酒店端（先 zh，沿用 i18n key）
 
-## 范围确认
-任务量较大，建议拆分实施顺序：**6 → 1 → 5 → 3 → 2 → 4 → 7**
-（先修 bug、再补登录与维护开关、再做服务/支付/商品，最后酒店闭环）
+## 六、交付顺序
+1. migration（角色 + 字段 + 表 + RLS + 函数 + 存储桶）— 单次
+2. 用户侧 HotelDetailPage 下单 + OrderDetailPage 酒店视图 + 探视相册
+3. 酒店方后台 4 页 + RoleSwitcher 入口
+4. QA 双视角走通：下单 → 酒店入住 → 上传探视（用户实时收到） → 酒店退房 → 用户确认 → escrow 释放
 
-是否按此顺序分批执行？或优先完成其中某几项？
+## 风险
+- `hotel_owner` 角色加入后，`useUserRoles` override 列表要同步，避免上一轮"角色乱跳"复发
+- 现有 `pet_hotels` 无 owner 字段；首批数据需 super admin 在 `/dev` 控制台手动绑定 `hotel_owners`（本轮顺手加一个绑定 UI）
