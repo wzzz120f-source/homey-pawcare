@@ -8,10 +8,10 @@ import { refreshSuperAdmin } from "@/hooks/useSuperAdmin";
 import { toast } from "sonner";
 
 const ROLE_HOMES: Record<ActiveRole, string> = {
-  user: "/", sitter: "/worker", groomer: "/worker", driver: "/worker", merchant: "/merchant", admin: "/admin",
+  user: "/", sitter: "/worker", groomer: "/worker", driver: "/worker", merchant: "/merchant", admin: "/admin", hotel_owner: "/merchant/hotel",
 };
 const ROLE_LABEL: Record<ActiveRole, string> = {
-  user: "铲屎官", sitter: "宠托师", groomer: "护理师", driver: "司机", merchant: "商家", admin: "审核员",
+  user: "铲屎官", sitter: "宠托师", groomer: "护理师", driver: "司机", merchant: "商家", admin: "审核员", hotel_owner: "酒店方",
 };
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
