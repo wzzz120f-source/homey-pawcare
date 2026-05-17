@@ -3612,6 +3612,10 @@ export type Database = {
         Args: { _merchant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_merchant_owner_of_product: {
+        Args: { _product_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
       log_admin_action: {
         Args: {
