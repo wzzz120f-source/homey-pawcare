@@ -37,6 +37,10 @@ interface Order {
   user_id?: string;
   provider_id?: string | null;
   driver_id?: string | null;
+  hotel_id?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  nights?: number | null;
 }
 
 interface Review {
