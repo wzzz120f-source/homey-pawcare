@@ -1718,6 +1718,7 @@ export type Database = {
           pickup_address: string | null
           provider_id: string | null
           provider_role: Database["public"]["Enums"]["app_role"] | null
+          refund_amount: number
           refund_status: string
           room_id: string | null
           service_type: string | null
@@ -1762,6 +1763,7 @@ export type Database = {
           pickup_address?: string | null
           provider_id?: string | null
           provider_role?: Database["public"]["Enums"]["app_role"] | null
+          refund_amount?: number
           refund_status?: string
           room_id?: string | null
           service_type?: string | null
@@ -1806,6 +1808,7 @@ export type Database = {
           pickup_address?: string | null
           provider_id?: string | null
           provider_role?: Database["public"]["Enums"]["app_role"] | null
+          refund_amount?: number
           refund_status?: string
           room_id?: string | null
           service_type?: string | null
@@ -3660,6 +3663,10 @@ export type Database = {
         }
         Returns: Json
       }
+      partial_refund: {
+        Args: { _amount: number; _order_id: string; _reason: string }
+        Returns: Json
+      }
       process_refund: {
         Args: { _action: string; _note?: string; _refund_id: string }
         Returns: Json
@@ -3686,8 +3693,12 @@ export type Database = {
         Returns: Json
       }
       restore_flash_stock: { Args: { _order_id: string }; Returns: Json }
+      restore_flash_stock_partial: {
+        Args: { _order_id: string; _ratio: number }
+        Returns: Json
+      }
       rollback_escrow: {
-        Args: { _order_id: string; _reason?: string }
+        Args: { _order_id: string; _reason: string }
         Returns: Json
       }
       spend_love_points: {
