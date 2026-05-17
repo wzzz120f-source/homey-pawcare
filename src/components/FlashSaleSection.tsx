@@ -122,7 +122,7 @@ const FlashSaleSection = () => {
   const [sales, setSales] = useState<FlashSale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
     supabase
       .from("flash_sales")
       .select("id, flash_price, original_price, stock, sold_count, ends_at, product:products(id, name, cover_image)")
@@ -132,7 +132,8 @@ const FlashSaleSection = () => {
         if (data) setSales(data as any);
         setLoading(false);
       });
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
 
   if (!loading && sales.length === 0) return null;
 
@@ -153,7 +154,7 @@ const FlashSaleSection = () => {
                 <Skeleton className="h-4 w-16 mx-1" />
               </div>
             ))
-          : sales.map((s) => <FlashSaleCard key={s.id} sale={s} />)}
+          : sales.map((s) => <FlashSaleCard key={s.id} sale={s} onSold={load} />)}
       </div>
     </section>
   );
