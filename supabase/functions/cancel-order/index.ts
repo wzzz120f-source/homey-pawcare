@@ -108,6 +108,9 @@ Deno.serve(async (req) => {
 
     await admin.from("orders").update(updates).eq("id", order.id);
 
+    // 担保资金回滚 + 闪购库存回补（幂等）
+    await admin.rpc("rollback_escrow", { _order_id: order.id, _reason: reason });
+
     // 通知
     await admin.from("notifications").insert({
       user_id: userId,
