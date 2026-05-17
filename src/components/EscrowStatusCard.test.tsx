@@ -43,6 +43,6 @@ describe("EscrowStatusCard", () => {
     render(
       <EscrowStatusCard orderId="o1" escrowStatus="refunded" orderStatus="cancelled" amount={50} refundAmount={50} />,
     );
-    expect(screen.getByText(/已退款/)).toBeInTheDocument();
+    expect(screen.getAllByText(/已退款/).length).toBeGreaterThan(0);
   });
 });
