@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
 
     let refund: { ok: boolean; type: string; amount: number } | null = null;
 
-    if (order.payment_status === "succeeded" && order.payment_id) {
+    if (["succeeded", "paid"].includes(order.payment_status) && order.payment_id) {
       // 虚拟订单：自动全额退款（写 payment_refunds 标记 auto，状态 succeeded）
       // 实物订单：进入人工审核队列（pending）
       const refundType = order.is_physical ? "manual" : "auto";
