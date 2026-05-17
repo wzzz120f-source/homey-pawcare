@@ -74,6 +74,7 @@ const DevConsolePage = lazyTracked("路由 DevConsolePage", () => import("./page
 const DevUsersPage = lazyTracked("路由 DevUsersPage", () => import("./pages/dev/DevUsersPage"));
 const DevFlagsPage = lazyTracked("路由 DevFlagsPage", () => import("./pages/dev/DevFlagsPage"));
 const DevHealthPage = lazyTracked("路由 DevHealthPage", () => import("./pages/dev/DevHealthPage"));
+const HotelMerchantPage = lazyTracked("路由 HotelMerchantPage", () => import("./pages/merchant/HotelMerchantPage"));
 
 const queryClient = new QueryClient();
 
