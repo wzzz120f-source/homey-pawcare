@@ -15,6 +15,7 @@ import {
   Car,
   Map,
   CalendarClock,
+  Hotel,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ActiveRole } from "@/hooks/useUserRoles";
