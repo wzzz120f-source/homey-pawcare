@@ -1698,6 +1698,7 @@ export type Database = {
           driver_id: string | null
           dropoff_address: string | null
           escrow_status: string
+          flash_sale_id: string | null
           guest_pet_count: number | null
           hotel_id: string | null
           id: string
@@ -1741,6 +1742,7 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           escrow_status?: string
+          flash_sale_id?: string | null
           guest_pet_count?: number | null
           hotel_id?: string | null
           id?: string
@@ -1784,6 +1786,7 @@ export type Database = {
           driver_id?: string | null
           dropoff_address?: string | null
           escrow_status?: string
+          flash_sale_id?: string | null
           guest_pet_count?: number | null
           hotel_id?: string | null
           id?: string
@@ -1814,6 +1817,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_flash_sale_id_fkey"
+            columns: ["flash_sale_id"]
+            isOneToOne: false
+            referencedRelation: "flash_sales"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_hotel_id_fkey"
             columns: ["hotel_id"]
@@ -3423,6 +3433,16 @@ export type Database = {
         Args: { _order_id: string; _required: string[] }
         Returns: Json
       }
+      create_flash_order: {
+        Args: {
+          _flash_id: string
+          _notes?: string
+          _payment_method?: string
+          _qty: number
+          _shipping_address?: Json
+        }
+        Returns: Json
+      }
       create_payment_intent: {
         Args: { _channel: string; _idempotency_key?: string; _order_id: string }
         Returns: Json
@@ -3663,6 +3683,11 @@ export type Database = {
       }
       request_withdrawal_v2: {
         Args: { _amount: number; _bank_info: Json }
+        Returns: Json
+      }
+      restore_flash_stock: { Args: { _order_id: string }; Returns: Json }
+      rollback_escrow: {
+        Args: { _order_id: string; _reason?: string }
         Returns: Json
       }
       spend_love_points: {
