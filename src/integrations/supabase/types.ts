@@ -3431,6 +3431,7 @@ export type Database = {
         }
         Returns: Json
       }
+      canonical_service_type: { Args: { _t: string }; Returns: string }
       close_expired_payments: { Args: never; Returns: number }
       complete_service_order: {
         Args: { _order_id: string; _required: string[] }
@@ -3700,6 +3701,10 @@ export type Database = {
       rollback_escrow: {
         Args: { _order_id: string; _reason: string }
         Returns: Json
+      }
+      service_type_role: {
+        Args: { _t: string }
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       spend_love_points: {
         Args: {
