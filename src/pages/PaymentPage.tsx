@@ -32,6 +32,9 @@ interface OrderData {
   cart_items?: CartItem[];
   pet_id?: string;
   pet_snapshot?: any;
+  provider_id?: string | null;
+  driver_id?: string | null;
+  hotel_id?: string | null;
   pickup_tier?: {
     id: string;
     label: string;
@@ -227,10 +230,14 @@ const PaymentPage = () => {
     try {
       const isPhysical = isShop;
       const addrSnap = isShop && selectedAddrId ? addresses.find((a) => a.id === selectedAddrId) : null;
+      const { canonicalServiceType } = await import("@/config/services");
       const { data: orderRow, error } = await supabase.from("orders").insert({
         user_id: user.id,
         order_type: orderData.order_type,
-        service_type: orderData.service_type ?? null,
+        service_type: canonicalServiceType(orderData.service_type ?? null),
+        provider_id: orderData.provider_id ?? null,
+        driver_id: orderData.driver_id ?? null,
+        hotel_id: orderData.hotel_id ?? null,
         pet_type: orderData.pet_type ?? null,
         pet_id: orderData.pet_id ?? null,
         pet_snapshot: orderData.pet_snapshot ?? null,

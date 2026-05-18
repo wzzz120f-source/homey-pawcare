@@ -1,106 +1,106 @@
-# 计划：担保资金透明化 + 部分退款 + 实时通知 + 一致性测试
+## 问题定位
 
-## 目标拆解
+刚才你以「铲屎官」下了一单美容（`service_type='grooming'`），但护理师工作台/抢单大厅都看不到。原因有三处串不上：
 
-1. **订单详情页**展示担保资金状态与 `escrow_ledger` 时间轴
-2. **部分退款 `released_partial`**：按比例回滚担保金 + 闪购库存 + 账本可追踪
-3. **取消/退款**触发实时通知（含原因 + 预计到账时间）
-4. **闪购端到端 + 数据库一致性**测试套件
+```text
+BookingPage  →  PaymentPage  →  orders 表          →  DriverHallPage (师傅大厅)
+selectedService           service_type='grooming'      期望 service_type IN ('groom')
+                          order_status='created'       期望 order_status='pending_accept'
+                          provider_id 未传             期望 provider_id IS NULL ✓
+```
 
----
+1. **service_type 枚举不一致**：下单写入 `bath/grooming/health/walking/home/pickup`（来自 `SERVICE_TYPES`/`activeTab`），大厅只识别 `groom/walk/feed/pickup/delivery`。所有美容/上门单全部被过滤掉。
+2. **支付成功后无人转为「待接单」**：`PaymentPage` 写入 `order_status='created'`，支付完成后通过 `mark_payment_succeeded` 走 `paid/confirmed`，**没有任何分支把服务类订单切到 `pending_accept`**，所以即使 service_type 对了大厅也查不到。
+3. **`PaymentPage` 丢弃了上游字段**：`SimpleBookingPage` 已正确把 `provider_id` 放入 `orderData`，但 `PaymentPage.insert` 完全不读 `provider_id / driver_id / hotel_id`，指定了师傅也等于没指定。
 
-## 1. 订单详情页 · 担保资金可视化
+数据库里最近 7 条订单的 `provider_id/driver_id/hotel_id` 全部为 NULL，且 `grooming` 订单状态停在 `confirmed` —— 与上面分析吻合。
 
-### 数据
-- 复用现有 `escrow_ledger`：`order_id, action(hold|release|refund|partial_refund), amount, note, created_at`
-- 新增视图（可选）`v_order_escrow_summary`：聚合 hold 总额 / refund 总额 / release 总额 / 余额
+## 修复方案
 
-### UI（`src/components/EscrowStatusCard.tsx` 扩展）
-- 顶部 4 态徽章：`held / released / released_partial / refunded / failed`，配色和图标
-- 金额行：原担保 ¥X · 已退 ¥Y · 已结算 ¥Z · 余 ¥W
-- 折叠「资金流水」时间轴：每笔 ledger 一行（时间 + 动作中文 + 金额 + note）
-- `OrderDetailPage.tsx` 已挂载本组件，无需新增挂点
+### 1. 统一 service_type（前端归一）
+在 `src/config/services.ts` 增加 `SERVICE_TYPE_CANONICAL`：
 
----
+```ts
+// UI 标签 → 后端归一
+export const SERVICE_TYPE_CANONICAL = {
+  bath: 'groom', grooming: 'groom', health: 'groom',
+  walking: 'walk', walk: 'walk',
+  home: 'feed', feed: 'feed',
+  pickup: 'pickup', delivery: 'delivery',
+  hotel: 'hotel', shop: 'shop',
+} as const;
+```
 
-## 2. 部分退款 `released_partial`
+- `BookingPage` 提交时把 `selectedService / activeTab / selectedTier` 经过该映射再放入 `orderData.service_type`，原始标签另存 `service_label`（已存在）用于展示。
+- `SimpleBookingPage` 的 `svcType` 同样过一次映射。
+- `DriverHallPage` / `WorkerDashboardPage` 的 `ROLE_SERVICES` / `SVC_LABEL` 与归一枚举对齐（已基本一致，复核一遍）。
 
-### 数据库（Migration A）
+### 2. 支付成功后自动转入「待接单」（数据库触发器）
+新增 migration：
 
-新增 RPC `partial_refund(_order_id uuid, _amount numeric, _reason text)`：
-- `FOR UPDATE` 订单行，校验 `escrow_status='held'` 且 `_amount < total_amount`
-- 计算比例 `ratio = _amount / total_amount`
-- 写 `escrow_ledger(action='partial_refund', amount=_amount, note=_reason)`
-- 更新 `orders.escrow_status='released_partial'`、`refund_amount`、`refund_status='partial'`
-- **闪购按比例回库**：若 `flash_sale_id` 存在，调 `restore_flash_stock_partial(_order_id, ratio)`
-  - 该函数将 `qty * ratio` 向下取整回补到 `flash_sales.sold_count` 与 `products.stock`（最少回 1 件防止 0 件归还）
-- 触发用户/服务者通知
-- 返回 `{success, remaining_held, refunded_total}`
+```sql
+CREATE OR REPLACE FUNCTION public.orders_after_pay_to_hall()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+  IF NEW.payment_status = 'paid'
+     AND OLD.payment_status IS DISTINCT FROM 'paid'
+     AND NEW.order_type = 'service'
+     AND NEW.provider_id IS NULL
+     AND NEW.driver_id IS NULL
+     AND NEW.hotel_id IS NULL
+     AND NEW.order_status IN ('created','confirmed','paid') THEN
+    NEW.order_status := 'pending_accept';
+  END IF;
+  RETURN NEW;
+END $$;
 
-支付渠道层（钱包/微信/支付宝）退款逻辑沿用 `process_refund`/`refund-payment`，回调成功后调 `partial_refund` 而非 `rollback_escrow` 当 `_amount < total`。
+CREATE TRIGGER trg_orders_after_pay_to_hall
+BEFORE UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION public.orders_after_pay_to_hall();
+```
 
-### 前端
-- `AdminRefundsPage` / `OrderDetailPage` 新增「部分退款」按钮（admin 或服务者发起场景），弹窗输入金额 + 原因
-- 售后入口（用户侧）：暂不开放部分退款 UI，仅 admin 审批通过后入账（后续再扩）
+并对历史已支付 NULL provider 的服务单做一次性 backfill（仅服务类）。
 
----
+### 3. PaymentPage 透传指派字段
+`insert` 时补：
 
-## 3. 实时通知（取消 / 退款 / 部分退款 / 回填）
+```ts
+provider_id: orderData.provider_id ?? null,
+driver_id:   orderData.driver_id   ?? null,
+hotel_id:    orderData.hotel_id    ?? null,
+```
 
-### 数据库
-- 在 `rollback_escrow` / `partial_refund` 内统一插入 `notifications`：
-  - `title`：`订单已取消` / `已收到退款` / `已收到部分退款`
-  - `content`：含原因 + 「预计 ¥X 在 1-3 个工作日到账（钱包退款实时到账）」
-  - `type='refund'`，`related_id=order_id`
-- 钱包通道立即到账：`content` 显示「已退至钱包，余额 ¥new_balance」
-- 第三方通道：根据 `payment_method` 显示「微信支付原路退回，预计 1-3 个工作日」
+并在 `orderData` 类型里补这 3 个可选字段。这样：
+- 用户在 `SimpleBookingPage` 选定具体师傅 → 订单直接指派，进入该师傅的工作台；
+- 未指定 → 进入对应角色的抢单大厅。
 
-### 前端
-- 已有 `NotificationBell` + Supabase Realtime 订阅 `notifications` 表，无需新代码
-- 仅需确保 `notifications` 已在 `supabase_realtime` publication 中（核查后如缺则 Migration 补）
+### 4. 实时通知接单方
+为 `orders` 表新增 `AFTER UPDATE` 触发器：当 `order_status` 变为 `pending_accept` 且未指派时，向具备对应 `app_role` 的用户广播一条 `notifications` 记录（基于 `service_type → role` 映射：groom→groomer、walk/feed→sitter、pickup/delivery→driver、hotel→hotel_owner）。挂在已有 `notifications` 表 + Realtime（`NotificationBell` 已订阅）。
 
----
+### 5. 端到端连通测试（E2E + SQL）
+新增 `e2e/cross-role-routing.spec.ts` 与 `supabase/tests/order_routing.sql`，覆盖矩阵：
 
-## 4. 闪购一致性测试
+```text
+下单角色  服务/类型           期望面板
+user     groom(bath/美容)    groomer 抢单大厅 + 接单后工作台
+user     walk / feed         sitter 抢单大厅
+user     pickup / delivery   driver 抢单大厅 (已有，回归)
+user     hotel               hotel_owner /merchant/hotel 看到入住单
+user     shop 商品            merchant 后台 MerchantOrders
+```
 
-### 4.1 数据库层（pgTAP 风格 SQL 测试，存 `supabase/tests/flash_consistency.sql`）
-作为 Migration 附带的一次性自检脚本（手动跑），覆盖：
-- **T1 并发抢购**：库存 3 件，模拟 5 次 `create_flash_order(qty=1)`，断言只成功 3，`sold_count=3`，`products.stock` 同步 -3
-- **T2 售罄拒绝**：再调 1 次返回 `sold_out`
-- **T3 取消回库**：取消 1 单 → `sold_count=2`，`stock` +1，ledger 有 `refund` 行
-- **T4 部分退款**：2 件订单部分退 50% → `released_partial`，闪购回 1 件，ledger 有 `partial_refund`
-- **T5 退款失败回滚**：模拟 `rollback_escrow` 失败 → 订单状态不变（用 savepoint）
+每个场景断言：
+- `orders` 行 `service_type` 已归一；
+- 付款后 `order_status='pending_accept'` 且对应大厅查询命中；
+- 接单后 `provider_id` 写入、原下单用户的订单详情页状态同步；
+- `notifications` 表为对应角色生成消息。
 
-### 4.2 E2E 测试（Playwright，`e2e/flash-sale-flow.spec.ts`）
-- 登录 → 进入闪购 → 点击「立即抢」→ 进入支付页 → 钱包支付 → 结果页 → 订单详情看到 `held` + ledger 1 行
-- 用户取消订单 → 详情页 `refunded` + ledger 2 行 + 通知出现
-- 售罄 UI 验证：mock RPC 返回 `sold_out` 时按钮禁用为「已抢光」
+## 改动文件
 
-### 4.3 单元测试（Vitest）
-- `FlashSaleSection` 售罄态渲染、抢购成功跳转
-- `EscrowStatusCard` 各状态分支快照
+- 新增：`supabase/migrations/*_order_routing.sql`、`e2e/cross-role-routing.spec.ts`、`supabase/tests/order_routing.sql`
+- 修改：`src/config/services.ts`、`src/pages/BookingPage.tsx`、`src/pages/SimpleBookingPage.tsx`、`src/pages/PaymentPage.tsx`、`src/pages/DriverHallPage.tsx`（如需对齐枚举/标签）、`src/integrations/supabase/types.ts`（迁移后自动）
 
----
+## 风险与回滚
 
-## 交付顺序
-
-1. **Migration A**：`partial_refund` RPC + `restore_flash_stock_partial` + 通知文案统一 + realtime publication 补齐
-2. **前端**：`EscrowStatusCard` 扩展（流水时间轴 + 4 态徽章）
-3. **Admin 部分退款入口**：`AdminRefundsPage` 增加金额输入
-4. **退款链路接入**：`refund-payment` edge function 区分全额/部分
-5. **测试**：SQL 一致性脚本 + Playwright E2E + Vitest 单元
-
----
-
-## 技术细节
-
-- `restore_flash_stock_partial` 取整规则：`floor(qty * ratio)`；若结果为 0 而 `_amount > 0`，强制回 1 件以保证账实一致
-- `released_partial` 在 `EscrowStatusCard` 与现有 `released` 共享 UI 但金额行显示「已退 ¥X · 已结算 ¥Y」
-- 通知 `预计到账时间` 通过 `payment_method` 映射：`wallet→实时`、`wechat/alipay→1-3 工作日`、`bank→3-7 工作日`
-- E2E 测试需 seed：1 条进行中闪购 + 测试用户余额 ≥ 闪购价
-
-## 风险
-
-- 部分退款后再次部分退款：需累加 `refund_amount` 校验 `refund_amount + _amount <= total_amount`，超出返回 `over_refund`
-- 闪购回库取整可能导致同一订单退 2 次 50% 时回 2 件而原本只买 2 件，需用 `order_items.quantity - 已退回件数` 做上限保护
-- Realtime publication 若已包含 `notifications` 则 `ALTER PUBLICATION ADD TABLE` 会报错；用 `DO $$ ... pg_publication_tables ... $$` 守卫
+- 触发器使用 `BEFORE UPDATE`，不会阻塞支付主流程；失败回滚仅影响状态字段，金额相关已有 escrow 逻辑不变。
+- service_type 归一只在写入端做映射，读取端读到的是归一值；旧数据通过 backfill 一次性更新到归一枚举（同事务）。
